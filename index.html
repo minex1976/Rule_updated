@@ -11,6 +11,10 @@
     </script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js">
     </script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js">
+    </script>
 
     <style>
         /* ===== STYLES – compact & clean ===== */
@@ -873,18 +877,18 @@
 
         .num-picker {
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
+            grid-template-columns: repeat(10, 1fr);
             gap: 2px;
             padding: 2px;
         }
         .num-btn {
             background: rgba(30, 60, 90, 0.5);
             border: none;
-            border-radius: 20px;
+            border-radius: 4px;
             padding: 0;
-            font-weight: 900;
-            font-size: 0.9rem;
-            color: white;
+            font-weight: 700;
+            font-size: 0.5rem;
+            color: #b0c8d8;
             box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
             cursor: pointer;
             transition: all 0.06s linear;
@@ -910,7 +914,7 @@
         }
         .num-btn.taken {
             background: rgba(40, 40, 70, 0.6);
-            color: red;
+            color: #4a5a6a;
             border-color: rgba(40, 40, 70, 0.3);
             box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
@@ -1268,8 +1272,14 @@
             background: rgba(40, 80, 120, 0.6);
         }
         @keyframes slideUp {
-            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+            from {
+                transform: translateX(-50%) translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
         }
 
         /* ===== Welcome Toast ===== */
@@ -1309,8 +1319,14 @@
             line-height: 1.4;
         }
         @keyframes slideDown {
-            from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+            from {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
         }
 
         /* ===== Fireworks Canvas ===== */
@@ -1499,7 +1515,7 @@
         <!-- ===== AUTH SCREEN ===== -->
         <div id="authScreen" class="auth-screen">
             <div class="logo"><h2>🎯 <span>WINZO</span></h2></div>
-            <div class="subtitle">Bet 10 or 20 Birr</div>
+            <div class="subtitle">Bet 15 or 30 Birr</div>
             <div id="authError" class="auth-error"></div>
             <div class="telegram-info" id="telegramInfo">📱 Detecting Telegram user...</div>
             <input type="text" id="authUsername" placeholder="Username" maxlength="20" autocomplete="username">
@@ -1518,8 +1534,8 @@
                 <div style="color:#8ab0c8;font-size:0.8rem;letter-spacing:1px;margin-top:4px;">Choose your bet amount</div>
             </div>
             <div class="bet-options">
-                <button id="bet10Btn">10 <span class="label">Birr</span></button>
-                <button id="bet20Btn">20 <span class="label">Birr</span></button>
+                <button id="bet15Btn">15 <span class="label">Birr</span></button>
+                <button id="bet30Btn">30 <span class="label">Birr</span></button>
             </div>
             <div class="wallet-info">Play balance: <span class="amount" id="welcomeBalance">0</span> Birr</div>
             <div style="display:flex;gap:8px;margin-top:4px;">
@@ -1530,8 +1546,8 @@
 
         <!-- ===== GAME SCREEN ===== -->
         <div id="gameScreen">
-            <div class="title">✨ <span style="color:#f5c542;">WINZO</span> · <small id="modeLabel">10 Birr</small></div>
-            <div style="text-align:center;"><span class="room-badge" id="gameRoomBadge">💰 Bet: 10 Birr</span></div>
+            <div class="title">✨ <span style="color:#f5c542;">WINZO</span> · <small id="modeLabel">15 Birr</small></div>
+            <div style="text-align:center;"><span class="room-badge" id="gameRoomBadge">💰 Bet: 15 Birr</span></div>
 
             <div class="wallet-bar">
                 <div class="wallet-left">
@@ -1559,8 +1575,8 @@
 
             <div class="bet-switcher">
                 <span class="label">🎯 Bet:</span>
-                <button class="bet-btn active" id="switchBet10">10 Birr</button>
-                <button class="bet-btn" id="switchBet20">20 Birr</button>
+                <button class="bet-btn active" id="switchBet15">15 Birr</button>
+                <button class="bet-btn" id="switchBet30">30 Birr</button>
             </div>
 
             <div class="game-info-bar">
@@ -1590,7 +1606,7 @@
             </div>
 
             <div class="status-area" id="statusMessage">
-                <span>⏳ Pick one number · Bet: <span class="highlight" id="betDisplay">10</span> Birr</span>
+                <span>⏳ Pick one number · Bet: <span class="highlight" id="betDisplay">15</span> Birr</span>
             </div>
 
             <div class="profile-area">
@@ -1617,19 +1633,30 @@
         </div>
     </div>
 
+    <!-- UPDATED DEPOSIT MODAL with OCR and optional reference -->
     <div class="deposit-modal" id="depositModal">
         <div class="modal-content">
             <h3>💰 Deposit to Play</h3>
             <div class="balance-info">Current Play: <span class="amount" id="depositPlayBalance">0</span></div>
-            <input type="number" class="modal-input" id="depositAmount" placeholder="Amount" min="1">
+            <input type="number" class="modal-input" id="depositAmount" placeholder="Amount (Birr)" min="1">
+            <input type="text" class="modal-input" id="depositReference" placeholder="Reference (optional, e.g. WEJH453YCP)" maxlength="20">
+            <div style="margin: 8px 0;">
+                <label style="color:#8ab0c8;font-size:0.8rem;">Upload Screenshot (optional)</label>
+                <input type="file" id="depositImage" accept="image/*" style="width:100%;padding:6px;background:#0a1a2a;border:1px solid rgba(60,120,170,0.3);border-radius:30px;color:#d4e6fa;">
+                <div style="display:flex;gap:8px;margin-top:6px;">
+                    <button id="extractRefBtn" style="background:rgba(70,200,120,0.2);border:1px solid rgba(70,200,120,0.3);border-radius:30px;padding:4px 16px;color:#7ddfa0;font-size:0.75rem;cursor:pointer;">🔍 Extract Reference from Image</button>
+                    <span id="ocrStatus" style="color:#f5d76e;font-size:0.7rem;align-self:center;"></span>
+                </div>
+            </div>
             <div class="modal-error" id="depositError"></div>
             <div class="modal-btns">
-                <button class="confirm" id="depositConfirm">Confirm</button>
+                <button class="confirm" id="depositConfirm">Submit</button>
                 <button class="cancel" id="depositCancel">Cancel</button>
             </div>
         </div>
     </div>
 
+    <!-- WITHDRAW MODAL (unchanged) -->
     <div class="withdraw-modal" id="withdrawModal">
         <div class="modal-content">
             <h3>🏦 Withdraw from Main</h3>
@@ -1651,7 +1678,7 @@
         </div>
     </div>
 
-    <!-- ===== WAITING MODAL (non-blocking, bottom) ===== -->
+    <!-- ===== WAITING MODAL ===== -->
     <div class="waiting-modal" id="waitingModal">
         <span class="icon">🕐</span>
         <h3>ብቻዎትን ኖት</h3>
@@ -1659,44 +1686,110 @@
         <button class="close-waiting" id="closeWaitingBtn">✕ Dismiss</button>
     </div>
 
-    <!-- ===== TOAST (welcome bonus) ===== -->
+    <!-- ===== TOAST ===== -->
     <div class="toast" id="welcomeToast">
         <span class="icon">🎉</span>
         <h3>Welcome to Winzo!</h3>
         <p>You've been given <strong>10 Birr</strong> in your play wallet. Good luck!</p>
     </div>
 
-    <!-- ===== FIREWORKS CANVAS ===== -->
+    <!-- ===== FIREWORKS ===== -->
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – COMPLETE WITH SPIN ON TIMER 0                 -->
+    <!-- JAVASCRIPT – DEPOSIT WITH OCR & OPTIONAL REFERENCE          -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
-        //  AUDIO PLACEHOLDERS – Replace with your base64 audio data
+        //  AUDIO – Web Audio API
         // ============================================================
-        const GET_READY_AUDIO = "data:audio/wav;base64,YOUR_GET_READY_AUDIO_BASE64_HERE";
-        const WINNING_AUDIO = "data:audio/wav;base64,YOUR_WINNING_AUDIO_BASE64_HERE";
-        const NO_WINNER_AUDIO = "data:audio/wav;base64,YOUR_NO_WINNER_AUDIO_BASE64_HERE";
+        let audioCtx = null;
+        let audioInitialized = false;
 
-        function playAudio(audioData) {
-            if (!audioData || audioData.includes('YOUR_') || audioData === "data:audio/wav;base64,YOUR_NO_WINNER_AUDIO_BASE64_HERE") return;
-            try {
-                const audio = new Audio(audioData);
-                audio.volume = 0.8;
-                audio.play().catch(e => console.log('Audio play error:', e));
-            } catch (e) { console.log('Audio error:', e); }
+        function initAudio() {
+            if (!audioInitialized) {
+                try {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                    audioInitialized = true;
+                } catch (e) {
+                    console.log('Web Audio not supported:', e);
+                }
+            }
+            return audioCtx;
         }
-        function playGetReadyAudio() { playAudio(GET_READY_AUDIO); }
-        function playWinningAudio() { playAudio(WINNING_AUDIO); }
-        function playNoWinnerAudio() { playAudio(NO_WINNER_AUDIO); }
+
+        document.addEventListener('click', function resumeAudio() {
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+        }, { once: false });
+
+        function playTone(freq, duration, type = 'sine', volume = 0.30, delay = 0) {
+            const ctx = initAudio();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') {
+                ctx.resume().catch(() => {});
+            }
+            try {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+                gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+                gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + delay + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + delay);
+                osc.stop(ctx.currentTime + delay + duration);
+            } catch (e) {
+                // silently fail
+            }
+        }
+
+        function playGetReadyAudio() {
+            const ctx = initAudio();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+            playTone(523.25, 0.12, 'sine', 0.30, 0);
+            playTone(659.25, 0.15, 'sine', 0.30, 0.20);
+            playTone(783.99, 0.10, 'sine', 0.12, 0.10);
+        }
+
+        function playWinningAudio() {
+            const ctx = initAudio();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            const durations = [0.20, 0.20, 0.25, 0.35];
+            const volumes = [0.28, 0.28, 0.28, 0.26];
+            notes.forEach((freq, i) => {
+                const delay = i * 0.16;
+                playTone(freq, durations[i], 'sine', volumes[i], delay);
+            });
+            playTone(1318.51, 0.20, 'sine', 0.10, 0.55);
+            playTone(1567.98, 0.15, 'sine', 0.07, 0.70);
+        }
+
+        function playNoWinnerAudio() {
+            const ctx = initAudio();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+            const notes = [783.99, 659.25, 523.25];
+            const durations = [0.22, 0.22, 0.28];
+            const volumes = [0.22, 0.22, 0.20];
+            notes.forEach((freq, i) => {
+                const delay = i * 0.20;
+                playTone(freq, durations[i], 'sine', volumes[i], delay);
+            });
+            playTone(392.00, 0.25, 'sine', 0.08, 0.50);
+        }
 
         // ============================================================
         //  FIREWORKS EFFECT
         // ============================================================
         const canvas = document.getElementById('fireworksCanvas');
-        const ctx = canvas.getContext('2d');
+        const ctx2 = canvas.getContext('2d');
         let fireworks = [];
         let particles = [];
         let fireworksRunning = false;
@@ -1763,19 +1856,19 @@
                 if (this.exploded) return;
                 for (let i = 0; i < this.trail.length; i++) {
                     const alpha = i / this.trail.length;
-                    ctx.beginPath();
-                    ctx.arc(this.trail[i].x, this.trail[i].y, this.size * alpha * 0.8, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 200, 100, ${alpha * 0.6})`;
-                    ctx.fill();
+                    ctx2.beginPath();
+                    ctx2.arc(this.trail[i].x, this.trail[i].y, this.size * alpha * 0.8, 0, Math.PI * 2);
+                    ctx2.fillStyle = `rgba(255, 200, 100, ${alpha * 0.6})`;
+                    ctx2.fill();
                 }
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = '#fff';
-                ctx.fill();
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#f5c542';
-                ctx.fill();
-                ctx.shadowBlur = 0;
+                ctx2.beginPath();
+                ctx2.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx2.fillStyle = '#fff';
+                ctx2.fill();
+                ctx2.shadowBlur = 20;
+                ctx2.shadowColor = '#f5c542';
+                ctx2.fill();
+                ctx2.shadowBlur = 0;
             }
         }
 
@@ -1793,24 +1886,24 @@
                     continue;
                 }
                 const alpha = p.life;
-                ctx.globalAlpha = alpha;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.fill();
-                ctx.shadowBlur = 0;
-                ctx.globalAlpha = 1;
+                ctx2.globalAlpha = alpha;
+                ctx2.shadowBlur = 10;
+                ctx2.shadowColor = p.color;
+                ctx2.beginPath();
+                ctx2.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx2.fillStyle = p.color;
+                ctx2.fill();
+                ctx2.shadowBlur = 0;
+                ctx2.globalAlpha = 1;
             }
         }
 
         function animateFireworks() {
             if (!fireworksRunning) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx2.clearRect(0, 0, canvas.width, canvas.height);
                 return;
             }
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx2.clearRect(0, 0, canvas.width, canvas.height);
 
             if (Math.random() < 0.08 && fireworks.length < 6) {
                 fireworks.push(new Firework());
@@ -1860,7 +1953,7 @@
                 clearTimeout(fireworksAutoStopTimer);
                 fireworksAutoStopTimer = null;
             }
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx2.clearRect(0, 0, canvas.width, canvas.height);
             fireworks = [];
             particles = [];
         }
@@ -1932,20 +2025,22 @@
         }
 
         // ============================================================
-        //  FIREBASE CONFIG – solve-527f4
+        //  FIREBASE CONFIG
         // ============================================================
         const firebaseConfig = {
-            apiKey: "AIzaSyCdkbagIXjA17AZnbLFNgRT2_mamTJaLUw",
-            authDomain: "solve-527f4.firebaseapp.com",
-            databaseURL: "https://solve-527f4-default-rtdb.firebaseio.com",
-            projectId: "solve-527f4",
-            storageBucket: "solve-527f4.firebasestorage.app",
-            messagingSenderId: "902625825327",
-            appId: "1:902625825327:web:2425068977702d6f90ecda"
+            apiKey: "AIzaSyA2VCeCTCx_NAcsxK-es1DCTmRjOD43dt4",
+            authDomain: "renewed-8fe38.firebaseapp.com",
+            databaseURL: "https://renewed-8fe38-default-rtdb.firebaseio.com",
+            projectId: "renewed-8fe38",
+            storageBucket: "renewed-8fe38.firebasestorage.app",
+            messagingSenderId: "741808375705",
+            appId: "1:741808375705:web:c961f1664a0e17ad257508",
+            measurementId: "G-04EW1D775E"
         };
 
         let firebaseAvailable = false;
         let database = null;
+        let storage = null;
         let isMultiplayer = false;
         let transactionListeners = {};
         let userWalletRef = null;
@@ -1954,9 +2049,10 @@
         try {
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
+            storage = firebase.storage();
             firebaseAvailable = true;
             isMultiplayer = true;
-            console.log('✅ Firebase ready (solve-527f4)');
+            console.log('✅ Firebase ready (renewed-8fe38)');
         } catch (e) {
             console.warn('⚠️ Firebase init error:', e);
             firebaseAvailable = false;
@@ -1964,14 +2060,20 @@
         }
 
         // ============================================================
-        //  LOCAL DB – clear all data on logout
+        //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '2.0';
+        const APP_VERSION = '3.2';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
                 if (username) localStorage.setItem('bingo_current_user', username);
                 else localStorage.removeItem('bingo_current_user');
+            },
+            getSavedCredentials() {
+                try { return JSON.parse(localStorage.getItem('bingo_saved_credentials') || 'null'); } catch { return null; }
+            },
+            setSavedCredentials(username, password) {
+                localStorage.setItem('bingo_saved_credentials', JSON.stringify({ username, password }));
             },
             getSavedBet() {
                 try { return parseInt(localStorage.getItem('bingo_saved_bet')) || null; } catch { return null; }
@@ -2009,8 +2111,8 @@
         let currentUser = null;
         let gameRef = null;
         let isGameInitialized = false;
-        let currentBet = 10;
-        let currentRoom = 'room_10';
+        let currentBet = 15;
+        let currentRoom = 'room_15';
         let walletData = { main: 0, play: 0, pending: 0 };
 
         let engineState = {
@@ -2071,14 +2173,14 @@
         const authStatus = $('authStatus');
         const telegramInfo = $('telegramInfo');
 
-        const bet10Btn = $('bet10Btn');
-        const bet20Btn = $('bet20Btn');
+        const bet15Btn = $('bet15Btn');
+        const bet30Btn = $('bet30Btn');
         const welcomeBalance = $('welcomeBalance');
         const welcomeLogoutBtn = $('welcomeLogoutBtn');
         const welcomeDepositBtn = $('welcomeDepositBtn');
 
-        const switchBet10 = $('switchBet10');
-        const switchBet20 = $('switchBet20');
+        const switchBet15 = $('switchBet15');
+        const switchBet30 = $('switchBet30');
 
         const walletUsername = $('walletUsername');
         const mainWalletEl = $('mainWallet');
@@ -2101,6 +2203,10 @@
         const depositModal = $('depositModal');
         const withdrawModal = $('withdrawModal');
         const depositAmount = $('depositAmount');
+        const depositReference = $('depositReference');
+        const depositImage = $('depositImage');
+        const extractRefBtn = $('extractRefBtn');
+        const ocrStatus = $('ocrStatus');
         const withdrawAmount = $('withdrawAmount');
         const depositError = $('depositError');
         const withdrawError = $('withdrawError');
@@ -2199,13 +2305,49 @@
         }
 
         // ============================================================
-        //  TRANSACTION SYSTEM
+        //  OCR FUNCTION – extract 10-character alphanumeric code
         // ============================================================
-        function requestTransaction(type, amount) {
+        async function extractReferenceFromImage(file) {
+            if (!file) {
+                ocrStatus.textContent = '⚠️ No image selected.';
+                return null;
+            }
+            ocrStatus.textContent = '⏳ Extracting...';
+            try {
+                const imageUrl = URL.createObjectURL(file);
+                const result = await Tesseract.recognize(imageUrl, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            ocrStatus.textContent = `⏳ OCR ${Math.round(m.progress * 100)}%`;
+                        }
+                    }
+                });
+                URL.revokeObjectURL(imageUrl);
+                const text = result.data.text;
+                // Look for a 10-character alphanumeric pattern (uppercase letters and digits)
+                const match = text.match(/\b[A-Z0-9]{10}\b/);
+                if (match) {
+                    ocrStatus.textContent = '✅ Extracted: ' + match[0];
+                    return match[0];
+                } else {
+                    ocrStatus.textContent = '❌ No 10-digit code found.';
+                    return null;
+                }
+            } catch (e) {
+                console.error('OCR error:', e);
+                ocrStatus.textContent = '❌ OCR failed.';
+                return null;
+            }
+        }
+
+        // ============================================================
+        //  TRANSACTION SYSTEM – with optional reference & image
+        // ============================================================
+        function requestTransaction(type, amount, reference = '', imageFile = null) {
             if (!currentUser) return false;
             return safeExecute(() => {
                 const txRef = database.ref('transactions').push();
-                const txData = {
+                let txData = {
                     id: txRef.key,
                     username: currentUser,
                     type: type,
@@ -2216,6 +2358,23 @@
                     playerPlayWallet: walletData.play,
                     pendingWithdrawal: walletData.pending
                 };
+
+                if (type === 'deposit') {
+                    if (reference) txData.reference = reference;
+                    if (imageFile && storage) {
+                        const storageRef = storage.ref(`deposits/${currentUser}/${txRef.key}.jpg`);
+                        const uploadTask = storageRef.put(imageFile);
+                        uploadTask.then(snapshot => {
+                            return snapshot.ref.getDownloadURL();
+                        }).then(url => {
+                            txData.imageUrl = url;
+                            txRef.update({ imageUrl: url });
+                        }).catch(err => {
+                            console.warn('Image upload failed:', err);
+                        });
+                    }
+                }
+
                 txRef.set(txData);
 
                 transactionStatus.textContent = '⏳ Pending admin approval...';
@@ -2225,19 +2384,91 @@
                 const listener = txRef.on('value', snapshot => {
                     const data = snapshot.val();
                     if (!data) return;
+
                     if (data.status === 'approved') {
-                        transactionStatus.textContent = '✅ Approved! Transaction completed.';
-                        transactionStatus.className = 'status-text approved';
+                        if (data.type === 'withdraw') {
+                            const userRef = database.ref('users/' + data.username);
+                            userRef.transaction(current => {
+                                if (current) {
+                                    const pending = current.pendingWithdrawal || 0;
+                                    const amt = data.amount || 0;
+                                    current.mainWallet = (current.mainWallet || 0) - amt;
+                                    current.pendingWithdrawal = Math.max(0, pending - amt);
+                                }
+                                return current;
+                            }, (error, committed, snap) => {
+                                if (error) {
+                                    console.error('Error processing withdrawal approval:', error);
+                                } else if (committed && snap) {
+                                    const updated = snap.val();
+                                    walletData.main = updated.mainWallet || 0;
+                                    walletData.play = updated.playWallet || 0;
+                                    walletData.pending = updated.pendingWithdrawal || 0;
+                                    updateWalletUI();
+                                    updateWelcomeUI();
+                                }
+                            });
+                            transactionStatus.textContent = '✅ Withdrawal approved.';
+                            transactionStatus.className = 'status-text approved';
+                        } else if (data.type === 'deposit') {
+                            const userRef = database.ref('users/' + data.username);
+                            userRef.transaction(current => {
+                                if (current) {
+                                    const amt = data.amount || 0;
+                                    current.playWallet = (current.playWallet || 0) + amt;
+                                }
+                                return current;
+                            }, (error, committed, snap) => {
+                                if (error) {
+                                    console.error('Error crediting deposit:', error);
+                                } else if (committed && snap) {
+                                    const updated = snap.val();
+                                    walletData.main = updated.mainWallet || 0;
+                                    walletData.play = updated.playWallet || 0;
+                                    walletData.pending = updated.pendingWithdrawal || 0;
+                                    updateWalletUI();
+                                    updateWelcomeUI();
+                                }
+                            });
+                            transactionStatus.textContent = '✅ Deposit approved. Balance updated.';
+                            transactionStatus.className = 'status-text approved';
+                        }
                         setTimeout(() => {
                             transactionModal.classList.remove('active');
                         }, 2000);
                     } else if (data.status === 'rejected') {
-                        transactionStatus.textContent = '❌ Rejected by admin.';
-                        transactionStatus.className = 'status-text rejected';
+                        if (data.type === 'withdraw') {
+                            const userRef = database.ref('users/' + data.username);
+                            userRef.transaction(current => {
+                                if (current) {
+                                    const pending = current.pendingWithdrawal || 0;
+                                    const amt = data.amount || 0;
+                                    current.pendingWithdrawal = Math.max(0, pending - amt);
+                                }
+                                return current;
+                            }, (error, committed, snap) => {
+                                if (error) {
+                                    console.error('Error clearing pending on rejection:', error);
+                                } else if (committed && snap) {
+                                    const updated = snap.val();
+                                    walletData.main = updated.mainWallet || 0;
+                                    walletData.play = updated.playWallet || 0;
+                                    walletData.pending = updated.pendingWithdrawal || 0;
+                                    updateWalletUI();
+                                    updateWelcomeUI();
+                                }
+                            });
+                            transactionStatus.textContent = '❌ Withdrawal rejected.';
+                            transactionStatus.className = 'status-text rejected';
+                        } else if (data.type === 'deposit') {
+                            transactionStatus.textContent = '❌ Deposit rejected.';
+                            transactionStatus.className = 'status-text rejected';
+                        }
                         setTimeout(() => {
                             transactionModal.classList.remove('active');
                         }, 2000);
                     }
+
                     if (data.status !== 'pending') {
                         txRef.off();
                         delete transactionListeners[txRef.key];
@@ -2249,7 +2480,7 @@
         }
 
         // ============================================================
-        //  INSTANT TRANSFER (Main → Play)
+        //  INSTANT TRANSFER
         // ============================================================
         function transferToPlay(amount) {
             if (!currentUser || !database) return false;
@@ -2296,7 +2527,6 @@
                     const main = current.mainWallet || 0;
                     const pending = current.pendingWithdrawal || 0;
                     if (main - pending >= amount) {
-                        current.mainWallet = main - amount;
                         current.pendingWithdrawal = pending + amount;
                     }
                 }
@@ -2314,6 +2544,25 @@
         }
 
         // ============================================================
+        //  DEPOSIT – with optional reference and image
+        // ============================================================
+        function depositToPlay(amount, reference, imageFile) {
+            if (!currentUser) return false;
+            if (amount <= 0) {
+                depositError.textContent = 'Please enter a valid amount.';
+                return false;
+            }
+            // At least one of reference or image is required
+            if (!reference && !imageFile) {
+                depositError.textContent = 'Please provide either a reference number or upload a screenshot.';
+                return false;
+            }
+            depositError.textContent = '';
+            depositModal.classList.remove('active');
+            return requestTransaction('deposit', amount, reference || '', imageFile || null);
+        }
+
+        // ============================================================
         //  AUTH
         // ============================================================
         function showAuthScreen() {
@@ -2323,6 +2572,9 @@
             authError.textContent = '';
             setConnectionStatus(firebaseAvailable, firebaseAvailable ? '🌐 Connected' : '📡 Offline');
             DB.setSavedBet(null);
+            const savedCredentials = DB.getSavedCredentials();
+            if (savedCredentials?.username) authUsername.value = savedCredentials.username;
+            if (savedCredentials?.password) authPassword.value = savedCredentials.password;
             if (userWalletRef) { userWalletRef.off();
                 userWalletRef = null; }
             if (pendingTxListener) { pendingTxListener.off();
@@ -2341,7 +2593,7 @@
             const savedBet = DB.getSavedBet();
             if (savedBet && firebaseAvailable) {
                 currentBet = savedBet;
-                currentRoom = savedBet === 10 ? 'room_10' : 'room_20';
+                currentRoom = savedBet === 15 ? 'room_15' : 'room_30';
                 showGameScreen();
                 initGameConnection();
             }
@@ -2372,12 +2624,12 @@
         }
 
         function updateBetSwitcher() {
-            if (currentBet === 10) {
-                switchBet10.classList.add('active');
-                switchBet20.classList.remove('active');
+            if (currentBet === 15) {
+                switchBet15.classList.add('active');
+                switchBet30.classList.remove('active');
             } else {
-                switchBet20.classList.add('active');
-                switchBet10.classList.remove('active');
+                switchBet30.classList.add('active');
+                switchBet15.classList.remove('active');
             }
         }
 
@@ -2405,6 +2657,7 @@
                         authError.textContent = '✅ Account created! +10 Birr bonus.';
                         currentUser = username;
                         DB.setCurrentUser(username);
+                        DB.setSavedCredentials(username, password);
                         syncWalletFromFirebase();
                         checkPendingTransactionStatus();
                         showWelcomeScreen();
@@ -2420,6 +2673,7 @@
                 } else if (userData.password === password) {
                     currentUser = username;
                     DB.setCurrentUser(username);
+                    DB.setSavedCredentials(username, password);
                     authError.textContent = '';
                     syncWalletFromFirebase();
                     checkPendingTransactionStatus();
@@ -2443,7 +2697,7 @@
         function handleSignup() { handleLogin(); }
 
         // ============================================================
-        //  LOGOUT – FULL CLEANUP
+        //  LOGOUT
         // ============================================================
         function clearAllLocalData() {
             localStorage.removeItem('bingo_current_user');
@@ -2488,8 +2742,8 @@
             clearAllLocalData();
 
             currentUser = null;
-            currentBet = 10;
-            currentRoom = 'room_10';
+            currentBet = 15;
+            currentRoom = 'room_15';
             isGameInitialized = false;
             audioPlayedThisRound = false;
             syncInProgress = false;
@@ -2554,7 +2808,7 @@
             }
             isGameInitialized = false;
             currentBet = amount;
-            currentRoom = amount === 10 ? 'room_10' : 'room_20';
+            currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
             showGameScreen();
             initGameConnection();
@@ -2576,7 +2830,7 @@
                 return;
             }
             currentBet = amount;
-            currentRoom = amount === 10 ? 'room_10' : 'room_20';
+            currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
             showGameScreen();
             initGameConnection();
@@ -2616,23 +2870,39 @@
         }
 
         // ============================================================
-        //  DEPOSIT
+        //  DEPOSIT MODAL HANDLERS
         // ============================================================
-        function depositToPlay(amount) {
-            if (!currentUser) return false;
-            if (amount <= 0) { depositError.textContent = 'Enter a valid amount.'; return false; }
+        function openDepositModal() {
+            depositPlayBalance.textContent = walletData.play;
             depositError.textContent = '';
-            depositModal.classList.remove('active');
-            return requestTransaction('deposit', amount);
+            depositAmount.value = '';
+            depositReference.value = '';
+            depositImage.value = '';
+            ocrStatus.textContent = '';
+            depositModal.classList.add('active');
+            closeMoreDropdown();
         }
+
+        // OCR extraction button
+        extractRefBtn.onclick = async function() {
+            const file = depositImage.files[0];
+            if (!file) {
+                ocrStatus.textContent = '⚠️ Please select an image first.';
+                return;
+            }
+            const code = await extractReferenceFromImage(file);
+            if (code) {
+                depositReference.value = code;
+            }
+        };
 
         // ============================================================
         //  BET DEDUCTION & REFUND
         // ============================================================
-        function deductBetFromPlay(username, betAmount) {
-            if (!username) return false;
+        function deductBetImmediately(username, betAmount) {
+            if (!username || !database) return Promise.reject('No user or DB');
             const userRef = database.ref('users/' + username);
-            userRef.transaction(current => {
+            return userRef.transaction(current => {
                 if (current) {
                     const play = current.playWallet || 0;
                     if (play >= betAmount) {
@@ -2642,20 +2912,48 @@
                     }
                 }
                 return current;
+            }).then(result => {
+                if (result.committed) {
+                    walletData.play = result.snapshot.val().playWallet;
+                    updateWalletUI();
+                    updateWelcomeUI();
+                    if (gameRef) {
+                        gameRef.child('players/' + username + '/betDeducted').set(true);
+                    }
+                    return true;
+                } else {
+                    console.warn('Deduction failed or aborted');
+                    return false;
+                }
+            }).catch(err => {
+                handleError(err, 'Deduct bet');
+                return false;
             });
-            return true;
         }
 
-        function refundBetToPlay(username, betAmount) {
-            if (!username) return false;
+        function refundBetImmediately(username, betAmount) {
+            if (!username || !database) return Promise.reject('No user or DB');
             const userRef = database.ref('users/' + username);
-            userRef.transaction(current => {
+            return userRef.transaction(current => {
                 if (current) {
                     current.playWallet = (current.playWallet || 0) + betAmount;
                 }
                 return current;
+            }).then(result => {
+                if (result.committed) {
+                    walletData.play = result.snapshot.val().playWallet;
+                    updateWalletUI();
+                    updateWelcomeUI();
+                    if (gameRef) {
+                        gameRef.child('players/' + username + '/betDeducted').set(false);
+                    }
+                    return true;
+                }
+                return false;
+            }).catch(err => {
+                handleError(err, 'Refund bet');
+                return false;
             });
-            return true;
         }
 
         // ============================================================
@@ -2676,27 +2974,8 @@
                 });
 
                 const takenCount = playersWithPick.length;
-                const shouldDeduct = takenCount >= 2;
-
                 engineState.totalBetsPlaced = playersWithPick.length;
                 engineState.potAmount = playersWithPick.length * currentBet;
-
-                const updates = {};
-                playersWithPick.forEach(username => {
-                    const player = players[username];
-                    const isDeducted = player.betDeducted || false;
-                    if (shouldDeduct && !isDeducted) {
-                        updates['players/' + username + '/betDeducted'] = true;
-                        deductBetFromPlay(username, player.bet || currentBet);
-                    } else if (!shouldDeduct && isDeducted) {
-                        updates['players/' + username + '/betDeducted'] = false;
-                        refundBetToPlay(username, player.bet || currentBet);
-                    }
-                });
-
-                if (Object.keys(updates).length > 0) {
-                    gameRef.update(updates);
-                }
 
                 updatePrizeDisplay();
             } finally {
@@ -2734,6 +3013,24 @@
         // ============================================================
         //  GAME CONNECTION
         // ============================================================
+        let serverTimeOffset = 0;
+        let phaseDeadline = 0;
+        const SELECTION_SECONDS = 30;
+
+        function getServerNow() { return Date.now() + serverTimeOffset; }
+
+        function getRemainingSeconds(deadline) {
+            return Number(deadline) ? Math.max(0, Math.ceil((Number(deadline) - getServerNow()) / 1000)) : 0;
+        }
+
+        function ensureSelectionDeadline() {
+            if (!gameRef || engineState.gamePhase !== 'selection') return;
+            gameRef.child('selectionEndsAt').transaction(current => {
+                if (typeof current === 'number' && current > getServerNow()) return current;
+                return getServerNow() + SELECTION_SECONDS * 1000;
+            });
+        }
+
         function initGameConnection() {
             if (isGameInitialized) {
                 if (gameRef) {
@@ -2744,6 +3041,8 @@
             }
             const roomPath = currentRoom;
             gameRef = database.ref('rooms/' + roomPath);
+            database.ref('.info/serverTimeOffset').once('value').then(snap => { serverTimeOffset = Number(snap.val()) || 0;
+                ensureSelectionDeadline(); });
 
             gameRef.once('value', snapshot => {
                 if (!snapshot.exists()) {
@@ -2751,6 +3050,7 @@
                         gameState: 'selection',
                         round: 1,
                         timer: 30,
+                        selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000,
                         drawnNumbers: [],
                         winners: [],
                         spinCount: 0,
@@ -2794,7 +3094,7 @@
         }
 
         // ============================================================
-        //  SYNC GAME STATE – FIXED: Spin always triggers with 1+ players
+        //  SYNC GAME STATE
         // ============================================================
         function syncGameState(data) {
             if (syncInProgress) return;
@@ -2809,6 +3109,8 @@
                 engineState.gamePhase = data.gameState || 'selection';
                 engineState.roundNumber = data.round || 1;
                 engineState.timer = data.timer || 30;
+                phaseDeadline = Number(data.selectionEndsAt) || 0;
+                if (engineState.gamePhase === 'selection' && !phaseDeadline) ensureSelectionDeadline();
                 engineState.drawnNumbers = data.drawnNumbers || [];
                 engineState.winners = data.winners || [];
                 engineState.spinCount = data.spinCount || 0;
@@ -2866,35 +3168,25 @@
                     startTimer();
                 }
 
-                // 🔥 KEY CHANGE: Spin triggers with 1+ players (not 2+)
-                if (engineState.gamePhase === 'selection' && engineState.timer <= 0 && engineState.activePlayersCount >= 1) {
-                    stopTimer();
-                    if (!audioPlayedThisRound) {
-                        playGetReadyAudio();
-                        audioPlayedThisRound = true;
-                    }
-                    setTimeout(() => {
-                        if (gameRef) {
-                            gameRef.update({ gameState: 'spinning' });
-                            setTimeout(() => {
-                                if (engineState.gamePhase === 'spinning' && !engineState.isSpinning && engineState
-                                    .spinCount === 0) {
-                                    executeSpin();
-                                }
-                            }, 1000);
-                        }
-                    }, 1000);
-                } else if (engineState.gamePhase === 'selection' && engineState.timer <= 0 && engineState.activePlayersCount === 0) {
-                    // No players – reset timer
-                    gameRef.child('timer').transaction(current => {
-                        if (current === null || current === undefined || typeof current !== 'number') {
-                            return 30;
-                        }
-                        if (current === 0) return 30;
-                        return current;
+                if (engineState.gamePhase === 'selection' && engineState.timer <= 0) {
+                    const playersWithPick = Object.keys(engineState.players).filter(name => {
+                        const p = engineState.players[name];
+                        return p && p.pick !== null && p.round === engineState.roundNumber;
                     });
-                    if (!isTimerRunning) startTimer();
-                    updateStatus('⏳ Waiting for players...');
+                    if (playersWithPick.length > 0) {
+                        if (!engineState.isSpinning && !engineState.spinInProgress) {
+                            stopTimer();
+                            if (!audioPlayedThisRound) {
+                                playGetReadyAudio();
+                                audioPlayedThisRound = true;
+                            }
+                            setTimeout(() => {
+                                requestSpin();
+                            }, 500);
+                        }
+                    } else {
+                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                    }
                 }
 
                 if (engineState.gamePhase === 'results' && !isResultsCountdownRunning) {
@@ -2903,6 +3195,41 @@
             } finally {
                 syncInProgress = false;
             }
+        }
+
+        // ============================================================
+        //  REQUEST SPIN (with single-player refund)
+        // ============================================================
+        function requestSpin() {
+            if (!gameRef || engineState.gamePhase !== 'selection') return;
+            const playersWithPick = Object.keys(engineState.players).filter(name => {
+                const p = engineState.players[name];
+                return p && p.pick !== null && p.round === engineState.roundNumber;
+            });
+
+            if (playersWithPick.length === 0) {
+                gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                return;
+            }
+
+            if (playersWithPick.length === 1) {
+                const singlePlayer = playersWithPick[0];
+                const playerData = engineState.players[singlePlayer];
+                if (playerData.betDeducted) {
+                    refundBetImmediately(singlePlayer, playerData.bet || currentBet).then(() => {
+                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                        gameRef.child('players/' + singlePlayer + '/pick').set(null);
+                        gameRef.child('players/' + singlePlayer + '/betDeducted').set(false);
+                        gameRef.child('players/' + singlePlayer + '/round').set(null);
+                        updateStatus('⏳ Only one player. Round reset.');
+                    });
+                } else {
+                    gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                }
+                return;
+            }
+
+            gameRef.update({ gameState: 'spinning' });
         }
 
         // ============================================================
@@ -2923,66 +3250,25 @@
         };
 
         // ============================================================
-        //  TIMER
+        //  TIMER (FIXED)
         // ============================================================
         function startTimer() {
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-            if (isTimerRunning) return;
-            if (engineState.gamePhase !== 'selection') return;
-            if (!gameRef) return;
-
+            if (timerInterval) clearInterval(timerInterval);
+            if (!gameRef || engineState.gamePhase !== 'selection') return;
+            if (!phaseDeadline) { ensureSelectionDeadline(); return; }
             isTimerRunning = true;
-            timerDisplay.textContent = engineState.timer;
-
-            timerInterval = setInterval(() => {
-                if (engineState.gamePhase !== 'selection') {
+            const tick = () => {
+                if (engineState.gamePhase !== 'selection') { stopTimer(); return; }
+                const remaining = getRemainingSeconds(phaseDeadline);
+                engineState.timer = remaining;
+                timerDisplay.textContent = remaining;
+                if (remaining <= 0) {
                     stopTimer();
-                    return;
+                    requestSpin();
                 }
-                if (!gameRef) {
-                    stopTimer();
-                    return;
-                }
-
-                let transactionComplete = false;
-                let timeoutId = setTimeout(() => {
-                    if (!transactionComplete) {
-                        console.warn('Timer transaction timeout, forcing refresh');
-                        gameRef.child('timer').once('value', snap => {
-                            const val = snap.val();
-                            if (typeof val === 'number' && val > 0) {
-                                gameRef.child('timer').set(val - 1);
-                            } else if (typeof val !== 'number' || val === 0) {
-                                gameRef.child('timer').set(30);
-                            }
-                        });
-                    }
-                }, 2000);
-
-                gameRef.child('timer').transaction(current => {
-                    if (current === null || current === undefined || typeof current !== 'number') {
-                        return 30;
-                    }
-                    if (current > 0) {
-                        return current - 1;
-                    }
-                    return current;
-                }, (error, committed, snapshot) => {
-                    transactionComplete = true;
-                    clearTimeout(timeoutId);
-                    if (error) {
-                        handleError(error, 'Timer transaction');
-                        return;
-                    }
-                    if (committed) {
-                        const newVal = snapshot.val();
-                        // Timer reached 0 – syncGameState will handle the transition
-                    }
-                });
-            }, 1000);
+            };
+            tick();
+            timerInterval = setInterval(tick, 250);
         }
 
         function stopTimer() {
@@ -3011,6 +3297,7 @@
                             gameState: 'selection',
                             round: engineState.roundNumber + 1,
                             timer: 30,
+                            selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000,
                             drawnNumbers: [],
                             winners: [],
                             spinCount: 0,
@@ -3190,28 +3477,53 @@
                 newPick = null;
             }
             if (!engineState.players[currentUser]) {
-                engineState.players[currentUser] = { name: currentUser, pick: null, bet: bet, ready: false, betDeducted: false, round: engineState.roundNumber };
+                engineState.players[currentUser] = { name: currentUser, pick: null, bet: bet, ready: false,
+                    betDeducted: false, round: engineState.roundNumber };
             }
-            engineState.players[currentUser].pick = newPick;
-            const isReady = newPick !== null;
-            engineState.players[currentUser].ready = isReady;
-            if (gameRef) {
-                gameRef.child('players/' + currentUser + '/pick').set(newPick);
-                gameRef.child('players/' + currentUser + '/ready').set(isReady);
-                gameRef.child('players/' + currentUser + '/betDeducted').set(false);
-                gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
-            }
-            if (tg && tg.HapticFeedback) {
-                if (newPick !== null) {
-                    tg.HapticFeedback.impactOccurred('light');
-                }
-            }
-            renderNumberPicker();
-            updatePickStatus();
+
             if (newPick !== null) {
-                updateStatus(`✅ ${currentUser} picked ${newPick} for ${bet} Birr!`);
+                deductBetImmediately(currentUser, bet).then(success => {
+                    if (success) {
+                        engineState.players[currentUser].pick = newPick;
+                        engineState.players[currentUser].ready = true;
+                        if (gameRef) {
+                            gameRef.child('players/' + currentUser + '/pick').set(newPick);
+                            gameRef.child('players/' + currentUser + '/ready').set(true);
+                            gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
+                        }
+                        renderNumberPicker();
+                        updatePickStatus();
+                        updateStatus(`✅ ${currentUser} picked ${newPick} for ${bet} Birr!`);
+                        if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                    } else {
+                        updateStatus('❌ Failed to deduct bet. Insufficient balance?');
+                        engineState.players[currentUser].pick = currentPick;
+                        engineState.players[currentUser].ready = currentPick !== null;
+                        if (gameRef) {
+                            gameRef.child('players/' + currentUser + '/pick').set(currentPick);
+                            gameRef.child('players/' + currentUser + '/ready').set(currentPick !== null);
+                        }
+                        renderNumberPicker();
+                        updatePickStatus();
+                    }
+                });
             } else {
-                updateStatus(`↩️ ${currentUser} unselected their number.`);
+                refundBetImmediately(currentUser, bet).then(success => {
+                    if (success) {
+                        engineState.players[currentUser].pick = null;
+                        engineState.players[currentUser].ready = false;
+                        if (gameRef) {
+                            gameRef.child('players/' + currentUser + '/pick').set(null);
+                            gameRef.child('players/' + currentUser + '/ready').set(false);
+                            gameRef.child('players/' + currentUser + '/betDeducted').set(false);
+                        }
+                        renderNumberPicker();
+                        updatePickStatus();
+                        updateStatus(`↩️ ${currentUser} unselected their number. Refunded ${bet} Birr.`);
+                    } else {
+                        updateStatus('❌ Failed to refund bet. Contact support.');
+                    }
+                });
             }
         });
 
@@ -3281,7 +3593,6 @@
             try {
                 const numbers = Array.from(engineState.allTakenNumbers);
                 if (numbers.length === 0) {
-                    // No numbers – void round
                     updateStatus('❌ No numbers chosen!');
                     gameRef.update({ gameState: 'results', timer: 5 });
                     engineState.isSpinning = false;
@@ -3291,7 +3602,6 @@
                 }
 
                 if (numbers.length < 2) {
-                    // Only 1 player – the wheel still spins, but round is void
                     const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
                     const targetAngle = getAngleForNumber(winningNumber);
                     const fullRotations = 4 + Math.floor(Math.random() * 2);
@@ -3425,12 +3735,12 @@
             const winners = engineState.winners || [];
             const winningNumber = engineState.drawnNumbers[0] || '?';
             winnersList.innerHTML = `
-                <div style="padding:20px;text-align:center;">
-                    <div style="font-size:2rem;margin-bottom:8px;">😔</div>
-                    <div style="color:#f5d76e;font-weight:600;">Only one player – no game this round.</div>
-                    <div style="color:#8ab0c8;font-size:0.8rem;margin-top:4px;">Winning number: ${winningNumber}</div>
-                </div>
-            `;
+                    <div style="padding:20px;text-align:center;">
+                        <div style="font-size:2rem;margin-bottom:8px;">😔</div>
+                        <div style="color:#f5d76e;font-weight:600;">Only one player – no game this round.</div>
+                        <div style="color:#8ab0c8;font-size:0.8rem;margin-top:4px;">Winning number: ${winningNumber}</div>
+                    </div>
+                `;
             winnersModal.classList.add('active');
             playNoWinnerAudio();
             setTimeout(() => {
@@ -3484,11 +3794,11 @@
                     let html = '';
                     winners.forEach(name => {
                         html += `
-                            <div class="winner-entry">
-                                <span class="player-name">${name}</span>
-                                <span class="winning-nums">🎯 ${winningNumber} · ${winAmount} Birr</span>
-                            </div>
-                        `;
+                                <div class="winner-entry">
+                                    <span class="player-name">${name}</span>
+                                    <span class="winning-nums">🎯 ${winningNumber} · ${winAmount} Birr</span>
+                                </div>
+                            `;
                     });
                     winnersList.innerHTML = html;
                 }
@@ -3574,8 +3884,8 @@
         function init() {
             authLoginBtn.onclick = handleLogin;
             authSignupBtn.onclick = handleSignup;
-            bet10Btn.onclick = () => { selectBet(10); };
-            bet20Btn.onclick = () => { selectBet(20); };
+            bet15Btn.onclick = () => { selectBet(15); };
+            bet30Btn.onclick = () => { selectBet(30); };
 
             welcomeLogoutBtn.onclick = function() {
                 if (confirm('Are you sure you want to logout? All your local data will be cleared.')) {
@@ -3588,22 +3898,11 @@
                 }
             };
 
-            welcomeDepositBtn.onclick = () => {
-                depositPlayBalance.textContent = walletData.play;
-                depositError.textContent = '';
-                depositAmount.value = '';
-                depositModal.classList.add('active');
-            };
-            switchBet10.onclick = () => { switchBet(10); };
-            switchBet20.onclick = () => { switchBet(20); };
-            moreBtn.onclick = toggleMoreDropdown;
-            depositBtn.onclick = () => {
-                depositPlayBalance.textContent = walletData.play;
-                depositError.textContent = '';
-                depositAmount.value = '';
-                depositModal.classList.add('active');
-                closeMoreDropdown();
-            };
+            // Deposit button handlers
+            welcomeDepositBtn.onclick = openDepositModal;
+            depositBtn.onclick = openDepositModal;
+
+            // Withdraw button handlers
             withdrawBtn.onclick = () => {
                 const available = walletData.main - walletData.pending;
                 withdrawAvailableBalance.textContent = available;
@@ -3612,6 +3911,8 @@
                 withdrawModal.classList.add('active');
                 closeMoreDropdown();
             };
+
+            // Transfer
             transferBtn.onclick = () => {
                 const amount = prompt('Enter amount to transfer from Main to Play:', '10');
                 if (amount !== null) {
@@ -3624,8 +3925,34 @@
                 }
                 closeMoreDropdown();
             };
-            depositConfirm.onclick = () => { depositToPlay(parseInt(depositAmount.value)); };
+
+            // Bet switchers
+            switchBet15.onclick = () => { switchBet(15); };
+            switchBet30.onclick = () => { switchBet(30); };
+
+            // More dropdown
+            moreBtn.onclick = toggleMoreDropdown;
+
+            // Deposit confirm
+            depositConfirm.onclick = () => {
+                const amount = parseInt(depositAmount.value);
+                const ref = depositReference.value.trim();
+                const file = depositImage.files[0];
+                if (!amount || amount <= 0) {
+                    depositError.textContent = 'Please enter a valid amount.';
+                    return;
+                }
+                // At least one of reference or image is required
+                if (!ref && !file) {
+                    depositError.textContent = 'Please provide either a reference number or upload a screenshot.';
+                    return;
+                }
+                depositToPlay(amount, ref, file);
+            };
+
             depositCancel.onclick = () => { depositModal.classList.remove('active'); };
+
+            // Withdraw confirm
             withdrawConfirm.onclick = () => { withdrawFromMain(parseInt(withdrawAmount.value)); };
             withdrawCancel.onclick = () => { withdrawModal.classList.remove('active'); };
 
@@ -3654,16 +3981,8 @@
                 tg.BackButton.show();
             }
 
-            const savedUser = DB.getCurrentUser();
-            if (savedUser && firebaseAvailable) {
-                currentUser = savedUser;
-                syncWalletFromFirebase();
-                checkPendingTransactionStatus();
-                showWelcomeScreen();
-                setConnectionStatus(true);
-            } else {
-                showAuthScreen();
-            }
+            currentUser = null;
+            showAuthScreen();
         }
 
         // Start the app
