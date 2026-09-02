@@ -893,7 +893,7 @@
             box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
             cursor: pointer;
             transition: all 0.06s linear;
-            border: 3px solid rgba(250, 20, 70, 0.15);
+            border: 3px solid rgba(25, 220, 10, 0.15);
             text-align: center;
             aspect-ratio: 1 / 1;
             display: flex;
@@ -1576,7 +1576,7 @@
     <div class="game-wrapper">
         <!-- ===== AUTH SCREEN ===== -->
         <div id="authScreen" class="auth-screen">
-            <div class="logo"><h2><span>WINZO 🏆 Game Rooms </span></h2></div>
+            <div class="logo"><h2><span>🏆 WINZO 🏆 Games Room </span></h2></div>
             <div class="subtitle">Bet 15 or 30 Birr</div>
             <div id="authError" class="auth-error"></div>
             <div class="telegram-info" id="telegramInfo">📱 Detecting Telegram user...</div>
@@ -1608,15 +1608,15 @@
 
         <!-- ===== GAME SCREEN ===== -->
         <div id="gameScreen">
-            <div class="title">✨ <span style="color:#f5c542;">WINZO</span> · <small id="modeLabel">15 Birr</small></div>
+            <div class="title">🏆<span style="color:#f5c542;">WINZO Games Room</span>🏆<small id="modeLabel">15 Birr</small></div>
             <div style="text-align:center;"><span class="room-badge" id="gameRoomBadge">💰 Bet: 15 Birr</span></div>
 
             <div class="wallet-bar">
                 <div class="wallet-left">
                     <div class="wallet-item"><span class="label">👤</span><span class="username" id="walletUsername">User</span></div>
-                    <div class="wallet-item"><span class="label">💰</span><span class="amount" id="mainWallet">0</span></div>
-                    <div class="wallet-item"><span class="label">🎰</span><span class="amount" id="playWallet">0</span></div>
-                    <div class="wallet-item" id="pendingItem" style="display:none;"><span class="label">⏳</span><span class="pending" id="pendingAmount">0</span></div>
+                    <div class="wallet-item"><span class="label"> Main W:</span><span class="amount" id="mainWallet">0</span></div>
+                    <div class="wallet-item"><span class="label">Play W:</span><span class="amount" id="playWallet">0</span></div>
+                    <div class="wallet-item" id="pendingItem" style="display:none;"><span class="label"> በሂደት ላይ ያለ ትእዛዝ: </span><span class="pending" id="pendingAmount">0</span></div>
                 </div>
                 <div class="wallet-right">
                     <span class="status-dot offline" id="statusDot" title="Connection status"></span>
@@ -1636,15 +1636,15 @@
             </div>
 
             <div class="bet-switcher">
-                <span class="label">Romms:</span>
+                <span class="label">ROOMS:</span>
                 <button class="bet-btn active" id="switchBet15">15 Birr</button>
                 <button class="bet-btn" id="switchBet30">30 Birr</button>
             </div>
 
             <div class="game-info-bar">
                 <div class="info-item">Timer: <span class="value timer" id="timerDisplay">30</span>s</div>
-                <div class="info-item"> Online:  <span class="value players" id="playerCount">0</span></div>
-                <div class="info-item">Prize: <span class="value prize" id="prizeDisplay">0</span> Birr</div>
+                <div class="info-item"> Online: <span class="value players" id="playerCount">0</span></div>
+                <div class="info-item">Prize: <span class="value prize" id="prizeDisplay">0</span>Birr</div>
             </div>
 
             <div class="pick-status" id="pickStatus"><span>Pick <span class="highlight">one</span> number</span></div>
@@ -1668,7 +1668,7 @@
             </div>
 
             <div class="status-area" id="statusMessage">
-                <span>⏳ Pick one number · Bet: <span class="highlight" id="betDisplay">15</span> Birr</span>
+                <span> Pick one number · Bet: <span class="highlight" id="betDisplay">15</span> Birr</span>
             </div>
 
             <div class="profile-area">
@@ -1682,7 +1682,7 @@
                 </div>
             </div>
 
-            <div class="footer">✦ pick 1 number · win = bet × taken numbers – 15% fee</div>
+            <div class="footer"> © Minyihun Mamo Gizaw</div>
         </div>
     </div>
 
@@ -1698,12 +1698,12 @@
     <!-- DEPOSIT MODAL -->
     <div class="deposit-modal" id="depositModal">
         <div class="modal-content">
-            <h3>💰 Deposit to Play</h3>
-            <div class="balance-info">Current Play: <span class="amount" id="depositPlayBalance">0</span></div>
+            <h3>💰 በቴሌብር ወደ 0923002900 ያስገቡ</h3>
+            <div class="balance-info">ያሎት የመጫወቻ ብር: <span class="amount" id="depositPlayBalance">0</span></div>
             <input type="number" class="modal-input" id="depositAmount" placeholder="Amount (Birr)" min="1">
             <input type="text" class="modal-input" id="depositReference" placeholder="Reference (optional, e.g. WEJH453YCP)" maxlength="20">
             <div style="margin: 8px 0;">
-                <label style="color:#8ab0c8;font-size:0.8rem;">Upload Screenshot (optional)</label>
+                <label style="color:#8ab0c8;font-size:0.8rem;">Screenshot ያድርጉና ይላኩ</label>
                 <input type="file" id="depositImage" accept="image/*" style="width:100%;padding:6px;background:#0a1a2a;border:1px solid rgba(60,120,170,0.3);border-radius:30px;color:#d4e6fa;">
                 <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap;">
                     <button id="extractRefBtn" style="background:rgba(70,200,120,0.2);border:1px solid rgba(70,200,120,0.3);border-radius:30px;padding:4px 16px;color:#7ddfa0;font-size:0.75rem;cursor:pointer;">🔍 Extract Reference from Image</button>
@@ -1721,8 +1721,8 @@
     <!-- WITHDRAW MODAL -->
     <div class="withdraw-modal" id="withdrawModal">
         <div class="modal-content">
-            <h3>🏦 Withdraw from Main</h3>
-            <div class="balance-info">Available: <span class="amount" id="withdrawAvailableBalance">0</span> Birr</div>
+            <h3>ከተቀማጭ ሂሳብ ያውጡ </h3>
+            <div class="balance-info">ያሎት ተቀማጭ ሂሳብ: <span class="amount" id="withdrawAvailableBalance">0</span> ብር</div>
             <input type="text" class="modal-input" id="withdrawName" placeholder="Full Name" required>
             <input type="tel" class="modal-input" id="withdrawPhone" placeholder="Phone Number" required>
             <input type="number" class="modal-input" id="withdrawAmount" placeholder="Amount" min="1" required>
@@ -1737,8 +1737,8 @@
     <!-- TRANSACTION MODAL -->
     <div class="transaction-modal" id="transactionModal">
         <div class="modal-content">
-            <h3>💳 Transaction Request</h3>
-            <div class="status-text pending" id="transactionStatus">⏳ Pending admin approval...</div>
+            <h3> የዝውውር ማዘዣ ፎርም</h3>
+            <div class="status-text pending" id="transactionStatus"> ትዕዛዙ እስኪፈም ትንሽ ይጠብቁ...</div>
             <button class="close-btn" id="transactionCloseBtn">OK</button>
         </div>
     </div>
@@ -1748,8 +1748,8 @@
         <div class="modal-content">
             <div class="spinner" id="ocrSpinner"></div>
             <div class="done-icon" id="ocrDoneIcon">✅</div>
-            <div class="status-text" id="ocrProgressStatus">Extracting text from image...</div>
-            <div class="sub-text" id="ocrProgressSub">Please wait, this may take a few seconds.</div>
+            <div class="status-text" id="ocrProgressStatus"> የላኩበትን "REFERENCE" ጥቁር በማውጣት ላይ ነው...</div>
+            <div class="sub-text" id="ocrProgressSub">እባክዎ ትንሽ ይጠብቁ</div>
         </div>
     </div>
 
@@ -1765,7 +1765,7 @@
     <div class="toast" id="welcomeToast">
         <span class="icon">🎉</span>
         <h3>Welcome to Winzo!</h3>
-        <p>You've been given <strong>10 Birr</strong> in your play wallet. Good luck!</p>
+        <p>You have been given <strong>30 Birr</strong> in your play wallet. Good luck!</p>
     </div>
 
     <!-- ===== FIREWORKS ===== -->
