@@ -942,24 +942,24 @@
             transform: scale(1.06);
         }
         .num-btn.taken {
-            background: rgba(60, 30, 90, 0.5);
-            color: #5a4a6a;
+            background: red;
+            color: yellow;
             border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
-            opacity: 0.6;
+            opacity: 100;
             position: relative;
         }
         .num-btn.taken::after {
-            content: "✕";
+            content: "";
             position: absolute;
             top: -2px;
             right: -2px;
-            font-size: 0.4rem;
+            font-size: 1rem;
             color: #ff6b6b;
         }
         .num-btn:disabled {
-            opacity: 0.35;
+            opacity: 100;
             transform: translateY(2px);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             pointer-events: none;
@@ -1928,7 +1928,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Telegram Enforcement    -->
+    <!-- JAVASCRIPT – Complete Game Code with Saved Password Autofill -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2264,6 +2264,9 @@
             return detected;
         }
 
+        // ============================================================
+        //  AUTO-LOGIN WITH SAVED PASSWORD
+        // ============================================================
         function applyTelegramAutoLogin(username) {
             const usernameInput = document.getElementById('authUsername');
             const passwordInput = document.getElementById('authPassword');
@@ -2274,9 +2277,15 @@
             usernameInput.readOnly = true;
             usernameInput.style.color = '#8affb0';
 
-            // Set default password (Telegram users don't need to type)
-            const defaultPassword = 'telegram_auto_login';
-            passwordInput.value = defaultPassword;
+            // Retrieve saved password if any
+            const savedCredentials = DB.getSavedCredentials();
+            if (savedCredentials && savedCredentials.password) {
+                passwordInput.value = savedCredentials.password;
+            } else {
+                // No saved password – leave field empty so user can type
+                passwordInput.value = '';
+                passwordInput.placeholder = 'Enter your password';
+            }
 
             // Prevent manual changes to username
             usernameInput.addEventListener('focus', function() {
