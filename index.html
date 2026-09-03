@@ -894,7 +894,7 @@
 
         .num-picker {
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
+            grid-template-columns: repeat(10, 1fr);
             gap: 2px;
             padding: 2px;
         }
@@ -904,7 +904,7 @@
             border-radius: 6px;
             padding: 0;
             font-weight: 700;
-            font-size: 1rem;
+            font-size: 0.5rem;
             color: #f0e6ff;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             cursor: pointer;
@@ -1852,7 +1852,7 @@
         </div>
     </div>
 
-    <!-- UPDATED DEPOSIT MODAL with amount and reference auto-extraction -->
+    <!-- DEPOSIT MODAL with amount and reference auto-extraction -->
     <div class="deposit-modal" id="depositModal">
         <div class="modal-content">
             <h3>💰 Deposit to Play</h3>
@@ -1923,7 +1923,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- – Updated: bonus 30, OCR amount, session management -->
+    <!-- JAVASCRIPT – Complete Game Code                             -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2485,42 +2485,33 @@
 
         function startSessionListener(username) {
             if (!database) return;
-            // Generate a unique session ID for this device
             sessionId = generateSessionId();
 
-            // Listen for changes on the session node for this user
             const sessionRef = database.ref('sessions/' + username);
             if (sessionListener) {
                 sessionRef.off();
                 sessionListener = null;
             }
 
-            // First, write our session with onDisconnect cleanup
             sessionRef.onDisconnect().remove();
 
-            // Write our session data
             sessionRef.set({
                 sessionId: sessionId,
                 timestamp: Date.now()
             });
 
-            // Listen for changes (other devices)
             sessionListener = sessionRef.on('value', (snap) => {
                 const data = snap.val();
                 if (!data || data.sessionId !== sessionId) {
-                    // Another device has taken over or session was removed
                     console.warn('Session conflict detected!');
                     sessionConflictModal.classList.add('active');
-                    // Stop all game activity
                     stopTimer();
                     stopResultsCountdown();
                     if (spinTimeout) {
                         clearTimeout(spinTimeout);
                         spinTimeout = null;
                     }
-                    // Disable all buttons
                     document.querySelectorAll('.num-btn').forEach(btn => btn.disabled = true);
-                    // Remove from room
                     if (gameRef && currentUser) {
                         gameRef.child('players/' + currentUser).remove();
                     }
@@ -2709,27 +2700,20 @@
         }
 
         // ============================================================
-        //  OCR FUNCTION – extract both reference and amount
+        //  OCR FUNCTION – extract reference and amount (fixed)
         // ============================================================
-        
-            // ============================================================
-//  OCR FUNCTION – extract reference and amount (fixed)
-// ============================================================
-// ============================================================
-//  OCR FUNCTION – extract reference and amount (fixed)
-// ============================================================
         async function extractReferenceFromImage(file) {
             if (!file) {
                 ocrStatus.textContent = '⚠️ No image selected.';
                 return null;
             }
-        
+
             ocrProgressModal.classList.add('active');
             ocrSpinner.style.display = 'block';
             ocrDoneIcon.classList.remove('show');
             ocrProgressStatus.textContent = 'Initializing OCR...';
             ocrProgressSub.textContent = 'Please wait, this may take a few seconds.';
-        
+
             try {
                 const imageUrl = URL.createObjectURL(file);
                 const result = await Tesseract.recognize(imageUrl, 'eng', {
@@ -2749,13 +2733,13 @@
                 });
                 URL.revokeObjectURL(imageUrl);
                 const text = result.data.text;
-        
+
                 // Extract 10-digit alphanumeric reference
                 const refMatch = text.match(/\b[A-Z0-9]{10}\b/);
-        
+
                 // Extract amount – prioritize pattern with ETB
                 let amount = null;
-        
+
                 // 1. Look for pattern: -61.00 (ETB) or 61.00 ETB
                 const etbRegex = /-\s*(\d+\.\d+)\s*\(?ETB\)?/i;
                 const etbMatch = text.match(etbRegex);
@@ -2791,10 +2775,10 @@
                         }
                     }
                 }
-        
+
                 ocrSpinner.style.display = 'none';
                 ocrDoneIcon.classList.add('show');
-        
+
                 let resultObj = { reference: null, amount: null };
                 if (refMatch) {
                     resultObj.reference = refMatch[0];
@@ -2808,16 +2792,16 @@
                 } else {
                     ocrProgressStatus.textContent += ' ⚠️ No amount found.';
                 }
-        
+
                 // Show a summary message
                 ocrProgressSub.textContent = `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
-        
+
                 setTimeout(() => {
                     ocrProgressModal.classList.remove('active');
                 }, 1500);
-        
+
                 return resultObj;
-        
+
             } catch (e) {
                 console.error('OCR error:', e);
                 ocrSpinner.style.display = 'none';
@@ -2830,6 +2814,7 @@
                 return { reference: null, amount: null };
             }
         }
+
         // ============================================================
         //  AUTO‑OCR ON IMAGE UPLOAD
         // ============================================================
