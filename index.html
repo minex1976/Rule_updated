@@ -937,12 +937,12 @@
             transform: scale(1.06);
         }
         .num-btn.taken {
-            background: red;
-            color: yellow;
+            background: rgba(60, 30, 90, 0.5);
+            color: #5a4a6a;
             border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
-            opacity: 0.6;
+            opacity: 100;
             position: relative;
         }
         .num-btn.taken::after {
@@ -951,14 +951,13 @@
             top: -2px;
             right: -2px;
             font-size: 1rem;
-            
+            color: red;
         }
         .num-btn:disabled {
-            opacity: 100;
+            opacity: 100,
             transform: translateY(2px);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             pointer-events: none;
-        
         }
 
         .footer {
@@ -2739,15 +2738,37 @@
                 const refMatch = text.match(/\b[A-Z0-9]{10}\b/);
 
                 // Extract amount – prioritize pattern with ETB
+                // ============================================================
+                //  IMPROVED AMOUNT EXTRACTION – captures full number
+                // ============================================================
                 let amount = null;
-
-                // 1. Look for pattern: -61.00 (ETB) or 61.00 ETB
-                const etbRegex = /-\s*(\d+\.\d+)\s*\(?ETB\)?/i;
-                const etbMatch = text.match(etbRegex);
-                if (etbMatch) {
-                    amount = parseFloat(etbMatch[1]);
-                } else {
-                    // 2. Fallback: find any decimal number but exclude years (like 2026)
+                
+                // Split text into lines to find the line containing "ETB" or "Birr"
+                const lines = text.split('\n');
+                let amountLine = null;
+                for (const line of lines) {
+                    if (line.match(/ETB|Birr/i)) {
+                        amountLine = line;
+                        break;
+                    }
+                }
+                
+                if (amountLine) {
+                    // Extract the first number (with optional minus, commas, and decimal) from that line
+                    const numberMatch = amountLine.match(/-?\s*([\d,]+\.?\d*)/);
+                    if (numberMatch) {
+                        // Remove commas and parse as float
+                        const numStr = numberMatch[1].replace(/,/g, '');
+                        const parsed = parseFloat(numStr);
+                        if (!isNaN(parsed) && parsed > 0) {
+                            amount = parsed;
+                        }
+                    }
+                }
+                
+                // If still not found, fallback to scanning all numbers (but avoid years)
+                if (amount === null) {
+                    // Find all decimal numbers (e.g., 100.00)
                     const decimalRegex = /\b(\d+\.\d{2})\b/g;
                     let matches = [];
                     let m;
@@ -2761,12 +2782,11 @@
                     if (matches.length > 0) {
                         amount = Math.max(...matches);
                     } else {
-                        // 3. Final fallback: find any integer (avoid years and dates)
+                        // Fallback to integers (avoid years)
                         const intRegex = /\b(\d{2,4})\b/g;
                         let intMatches = [];
                         while ((m = intRegex.exec(text)) !== null) {
                             const val = parseInt(m[1]);
-                            // Skip years and common date parts
                             if (val < 1900 || val > 2100) {
                                 intMatches.push(val);
                             }
