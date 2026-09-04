@@ -17,7 +17,6 @@
     </script>
 
     <style>
-        /* ===== VIBRANT THEME – neon + gradient ===== */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -53,8 +52,6 @@
         .hidden {
             display: none !important;
         }
-
-        /* ===== Auth Screen ===== */
         .auth-screen {
             display: flex;
             flex-direction: column;
@@ -177,8 +174,6 @@
             color: #ff8a8a;
             border: 1px solid rgba(255, 80, 80, 0.15);
         }
-
-        /* ===== Welcome Screen ===== */
         .welcome-screen {
             display: none;
             flex-direction: column;
@@ -282,8 +277,6 @@
             background: rgba(200, 70, 70, 0.15);
             color: #ff8a8a;
         }
-
-        /* ===== Top Bar ===== */
         .wallet-bar {
             display: flex;
             flex-wrap: wrap;
@@ -487,8 +480,6 @@
             border-top: 1px solid rgba(120, 80, 200, 0.08);
             margin: 3px 8px;
         }
-
-        /* ===== Game Screen ===== */
         #gameScreen {
             display: none;
             flex-direction: column;
@@ -526,8 +517,6 @@
             letter-spacing: 1px;
             margin-top: 1px;
         }
-
-        /* ===== Bet Switcher ===== */
         .bet-switcher {
             display: flex;
             justify-content: center;
@@ -569,8 +558,6 @@
         .bet-switcher .bet-btn:active {
             transform: scale(0.95);
         }
-
-        /* ===== Game Info Bar ===== */
         .game-info-bar {
             display: flex;
             justify-content: center;
@@ -613,8 +600,6 @@
             font-size: 0.95rem;
             min-width: 50px;
         }
-
-        /* ===== Pick Status ===== */
         .pick-status {
             background: rgba(20, 10, 40, 0.5);
             backdrop-filter: blur(8px);
@@ -638,8 +623,6 @@
             color: #ffcc44;
             font-weight: 800;
         }
-
-        /* ===== Wheel ===== */
         .wheel-container {
             position: relative;
             width: 100%;
@@ -753,7 +736,6 @@
             opacity: 1;
             transform: scale(1.3);
         }
-
         .spin-results {
             display: flex;
             justify-content: center;
@@ -797,7 +779,6 @@
             opacity: 1;
             transform: scale(1);
         }
-
         .status-area {
             background: rgba(20, 10, 40, 0.6);
             backdrop-filter: blur(8px);
@@ -842,7 +823,6 @@
                 transform: scale(1.04);
             }
         }
-
         .profile-area {
             background: rgba(20, 10, 40, 0.5);
             backdrop-filter: blur(8px);
@@ -873,7 +853,6 @@
             font-size: 0.6rem;
             min-width: 24px;
         }
-
         .num-picker-wrapper {
             flex: 1;
             overflow-y: auto;
@@ -896,7 +875,6 @@
         .num-picker-wrapper::-webkit-scrollbar-thumb:hover {
             background: rgba(120, 80, 200, 0.5);
         }
-
         .num-picker {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
@@ -942,21 +920,12 @@
             transform: scale(1.06);
         }
         .num-btn.taken {
-            background: red;
+            background: #ff4444;
             color: #5a4a6a;
             border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
-            opacity: 100;
-            position: relative;
-        }
-        .num-btn.taken::after {
-            content: "";
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            font-size: 1rem;
-            color: #ff6b6b;
+            opacity: 0.8;
         }
         .num-btn:disabled {
             opacity: 0.35;
@@ -964,7 +933,6 @@
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             pointer-events: none;
         }
-
         .footer {
             color: #7a6a9a;
             text-align: center;
@@ -976,7 +944,6 @@
             flex-shrink: 0;
             letter-spacing: 1px;
         }
-
         .spinning-indicator {
             display: none;
             position: absolute;
@@ -1010,8 +977,6 @@
                 transform: translate(-50%, -50%) scale(1.05);
             }
         }
-
-        /* ===== Modals – vibrant glass, more transparent ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -1019,7 +984,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(10, 5, 20, 0.35); /* reduced opacity */
+            background: rgba(10, 5, 20, 0.35);
             backdrop-filter: blur(6px);
             justify-content: center;
             align-items: center;
@@ -1067,7 +1032,6 @@
         .modal-content h3 {
             font-size: 1.1rem;
         }
-
         .winner-entry {
             background: rgba(20, 10, 40, 0.5);
             border-radius: 14px;
@@ -1102,7 +1066,6 @@
             padding: 16px 0;
             font-weight: 500;
         }
-
         .deposit-modal,
         .withdraw-modal {
             display: none;
@@ -1187,7 +1150,6 @@
             transform: translateY(3px);
             box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
         }
-
         .transaction-modal {
             display: none;
             position: fixed;
@@ -1253,8 +1215,6 @@
         .transaction-modal .modal-content .close-btn:hover {
             background: rgba(120, 80, 200, 0.25);
         }
-
-        /* ===== Waiting Modal ===== */
         .waiting-modal {
             display: none;
             position: fixed;
@@ -1314,8 +1274,6 @@
                 opacity: 1;
             }
         }
-
-        /* ===== Toast ===== */
         .toast {
             position: fixed;
             top: 20px;
@@ -1361,8 +1319,6 @@
                 opacity: 1;
             }
         }
-
-        /* ===== Fireworks Canvas ===== */
         #fireworksCanvas {
             position: fixed;
             top: 0;
@@ -1377,8 +1333,6 @@
             display: block;
             pointer-events: none;
         }
-
-        /* ===== OCR Progress Modal ===== */
         .ocr-progress-modal {
             display: none;
             position: fixed;
@@ -1438,8 +1392,6 @@
             display: block;
             margin-bottom: 8px;
         }
-
-        /* ===== Network Offline Overlay ===== */
         .network-offline-overlay {
             display: none;
             position: absolute;
@@ -1489,8 +1441,6 @@
             transform: translateY(4px);
             box-shadow: 0 1px 0 #b87a15;
         }
-
-        /* ===== Session conflict modal ===== */
         .session-conflict-modal {
             display: none;
             position: fixed;
@@ -1550,8 +1500,6 @@
             transform: translateY(4px);
             box-shadow: 0 1px 0 #8a2a2a;
         }
-
-        /* ===== Responsive ===== */
         @media (max-height:700px) {
             .game-wrapper {
                 padding: 8px 10px 12px;
@@ -1719,7 +1667,6 @@
 <body>
     <!-- ===== GAME WRAPPER ===== -->
     <div class="game-wrapper">
-        <!-- Network Offline Overlay -->
         <div class="network-offline-overlay" id="networkOfflineOverlay">
             <div class="icon">📶</div>
             <h3>No Internet Connection</h3>
@@ -1727,7 +1674,6 @@
             <button class="retry-btn" id="networkRetryBtn">🔄 Retry</button>
         </div>
 
-        <!-- Session Conflict Modal -->
         <div class="session-conflict-modal" id="sessionConflictModal">
             <div class="modal-content">
                 <span class="icon">⚠️</span>
@@ -1737,7 +1683,6 @@
             </div>
         </div>
 
-        <!-- ===== AUTH SCREEN ===== -->
         <div id="authScreen" class="auth-screen">
             <div class="logo"><h2>🏆 <span>WINZO</span> 🏆</h2></div>
             <div class="subtitle">Bet 15 or 30 Birr</div>
@@ -1752,7 +1697,6 @@
             </div>
         </div>
 
-        <!-- ===== WELCOME SCREEN ===== -->
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo">
                 <h2>🏆 <span>WINZO</span> 🏆</h2>
@@ -1769,7 +1713,6 @@
             </div>
         </div>
 
-        <!-- ===== GAME SCREEN ===== -->
         <div id="gameScreen">
             <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆 · <small id="modeLabel">15 Birr</small></div>
             <div style="text-align:center;"><span class="room-badge" id="gameRoomBadge">💰 Bet: 15 Birr</span></div>
@@ -1858,7 +1801,6 @@
         </div>
     </div>
 
-    <!-- DEPOSIT MODAL with amount and reference auto-extraction -->
     <div class="deposit-modal" id="depositModal">
         <div class="modal-content">
             <h3>💰 Deposit to Play</h3>
@@ -1935,17 +1877,16 @@
         // ============================================================
         //  GLOBAL VARIABLES
         // ============================================================
-        let telegramDetectedUsername = null; // For enforcing Telegram username
+        let telegramDetectedUsername = null;
 
-        // ---------- NEW: PENDING ACTION (for bot auto‑open) ----------
+        // ---------- PENDING ACTION (stored in sessionStorage) ----------
         let pendingAction = null;
-
-        // Parse URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const actionParam = urlParams.get('action');
         if (actionParam === 'deposit' || actionParam === 'withdraw' || actionParam === 'transfer') {
-            pendingAction = actionParam;
+            sessionStorage.setItem('pendingAction', actionParam);
         }
+        pendingAction = sessionStorage.getItem('pendingAction');
 
         // ============================================================
         //  AUDIO – Web Audio API
@@ -2238,9 +2179,7 @@
                             if (name) {
                                 infoEl.textContent = '✅ Detected Telegram: @' + name;
                                 infoEl.className = 'telegram-info detected';
-                                // Store detected username
                                 telegramDetectedUsername = name;
-                                // Auto-fill and lock username, auto-fill password
                                 applyTelegramAutoLogin(name);
                             } else {
                                 infoEl.textContent = '📱 Telegram detected (no username). Enter manually.';
@@ -2275,30 +2214,23 @@
             return detected;
         }
 
-        // ============================================================
-        //  AUTO-LOGIN WITH SAVED PASSWORD
-        // ============================================================
         function applyTelegramAutoLogin(username) {
             const usernameInput = document.getElementById('authUsername');
             const passwordInput = document.getElementById('authPassword');
             if (!usernameInput || !passwordInput) return;
 
-            // Set username and lock it
             usernameInput.value = username;
             usernameInput.readOnly = true;
             usernameInput.style.color = '#8affb0';
 
-            // Retrieve saved password if any
             const savedCredentials = DB.getSavedCredentials();
             if (savedCredentials && savedCredentials.password) {
                 passwordInput.value = savedCredentials.password;
             } else {
-                // No saved password – leave field empty so user can type
                 passwordInput.value = '';
                 passwordInput.placeholder = 'Enter your password';
             }
 
-            // Prevent manual changes to username
             usernameInput.addEventListener('focus', function() {
                 this.value = username;
             });
@@ -2332,8 +2264,6 @@
         let transactionListeners = {};
         let userWalletRef = null;
         let pendingTxListener = null;
-
-        // Session management
         let sessionId = null;
         let sessionListener = null;
         let sessionConflictModal = document.getElementById('sessionConflictModal');
@@ -2598,7 +2528,6 @@
             if (!gameRef) return callback(false);
             const takenRef = gameRef.child('numbersTaken/' + number);
             takenRef.transaction(current => {
-                // current is true if taken, false/undefined if free
                 if (current === true) {
                     return; // abort – already taken
                 }
@@ -2610,13 +2539,11 @@
                     return;
                 }
                 if (committed) {
-                    // Successfully claimed
                     callback(true);
                 } else {
-                    // Not committed – number was already taken
                     callback(false);
                 }
-            }, false); // apply locally? We'll keep false for consistency
+            }, false);
         }
 
         function releaseNumber(number) {
@@ -2800,7 +2727,7 @@
         }
 
         // ============================================================
-        //  OCR FUNCTION – extract reference and amount (fixed)
+        //  OCR FUNCTION – extract reference and amount
         // ============================================================
         async function extractReferenceFromImage(file) {
             if (!file) {
@@ -2834,15 +2761,9 @@
                 URL.revokeObjectURL(imageUrl);
                 const text = result.data.text;
 
-                // Extract 10-digit alphanumeric reference
                 const refMatch = text.match(/\b[A-Z0-9]{10}\b/);
-
-                // ============================================================
-                //  IMPROVED AMOUNT EXTRACTION – captures full number
-                // ============================================================
                 let amount = null;
 
-                // Split text into lines to find the line containing "ETB" or "Birr"
                 const lines = text.split('\n');
                 let amountLine = null;
                 for (const line of lines) {
@@ -2853,10 +2774,8 @@
                 }
 
                 if (amountLine) {
-                    // Extract the first number (with optional minus, commas, and decimal) from that line
                     const numberMatch = amountLine.match(/-?\s*([\d,]+\.?\d*)/);
                     if (numberMatch) {
-                        // Remove commas and parse as float
                         const numStr = numberMatch[1].replace(/,/g, '');
                         const parsed = parseFloat(numStr);
                         if (!isNaN(parsed) && parsed > 0) {
@@ -2865,15 +2784,12 @@
                     }
                 }
 
-                // If still not found, fallback to scanning all numbers (but avoid years)
                 if (amount === null) {
-                    // Find all decimal numbers (e.g., 100.00)
                     const decimalRegex = /\b(\d+\.\d{2})\b/g;
                     let matches = [];
                     let m;
                     while ((m = decimalRegex.exec(text)) !== null) {
                         const val = parseFloat(m[1]);
-                        // Exclude numbers that look like years (e.g., 2026, 1999)
                         if (val < 1900 || val > 2100) {
                             matches.push(val);
                         }
@@ -2881,7 +2797,6 @@
                     if (matches.length > 0) {
                         amount = Math.max(...matches);
                     } else {
-                        // Fallback to integers (avoid years)
                         const intRegex = /\b(\d{2,4})\b/g;
                         let intMatches = [];
                         while ((m = intRegex.exec(text)) !== null) {
@@ -2913,7 +2828,6 @@
                     ocrProgressStatus.textContent += ' ⚠️ No amount found.';
                 }
 
-                // Show a summary message
                 ocrProgressSub.textContent = `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
 
                 setTimeout(() => {
@@ -2958,9 +2872,6 @@
             }
         });
 
-        // ============================================================
-        //  MANUAL EXTRACT BUTTON
-        // ============================================================
         extractRefBtn.onclick = async function() {
             const file = depositImage.files[0];
             if (!file) {
@@ -3202,7 +3113,6 @@
                 depositError.textContent = 'Please enter a valid amount.';
                 return false;
             }
-            // Reference is optional, but at least image or reference must be provided
             if (!reference && !imageFile) {
                 depositError.textContent = 'Please provide a reference number or upload a screenshot.';
                 return false;
@@ -3266,23 +3176,30 @@
 
             // ---------- Auto‑open modal from bot action ----------
             if (pendingAction) {
-                // Wait a moment for wallet to sync
+                console.log('🔔 Pending action detected:', pendingAction);
                 setTimeout(() => {
+                    console.log('⏳ Executing pending action:', pendingAction);
                     if (pendingAction === 'deposit') {
                         openDepositModal();
                     } else if (pendingAction === 'withdraw') {
                         openWithdrawModal();
                     } else if (pendingAction === 'transfer') {
-                        // Trigger the existing transfer button click (prompts for amount)
-                        document.getElementById('transferBtn').click();
+                        const amount = prompt('Enter amount to transfer from Main to Play:', '10');
+                        if (amount !== null) {
+                            const num = parseInt(amount);
+                            if (!isNaN(num) && num > 0) {
+                                transferToPlay(num);
+                            } else {
+                                alert('Please enter a valid positive number.');
+                            }
+                        }
                     }
-                    pendingAction = null; // clear so it doesn't fire again
-                }, 600);
+                    sessionStorage.removeItem('pendingAction');
+                    pendingAction = null;
+                }, 1000);
             }
 
             enableNetworkListener();
-
-            // Start session management after login
             if (currentUser) {
                 startSessionListener(currentUser);
             }
@@ -3329,7 +3246,6 @@
             const password = authPassword.value.trim();
             if (!username || !password) { authError.textContent = 'Please fill in all fields.'; return; }
 
-            // If Telegram detected, force username to detected one
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
                     authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
@@ -3375,7 +3291,6 @@
             const password = authPassword.value.trim();
             if (!username || !password) { authError.textContent = 'Please fill in all fields.'; return; }
 
-            // If Telegram detected, force username to detected one
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
                     authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
@@ -3396,7 +3311,7 @@
                     const newUserData = {
                         password: password,
                         mainWallet: 0,
-                        playWallet: 30, // bonus
+                        playWallet: 30,
                         pendingWithdrawal: 0,
                         bonusClaimed: true
                     };
@@ -3514,7 +3429,6 @@
             }
         }
 
-        // Session conflict OK button
         document.getElementById('sessionConflictOkBtn').onclick = function() {
             sessionConflictModal.classList.remove('active');
             performLogout();
@@ -3763,7 +3677,6 @@
             }
             const roomPath = currentRoom;
             gameRef = database.ref('rooms/' + roomPath);
-            // Ensure numbersTaken node exists
             gameRef.child('numbersTaken').set({});
             database.ref('.info/serverTimeOffset').once('value').then(snap => { serverTimeOffset = Number(snap.val()) || 0;
                 ensureSelectionDeadline(); });
@@ -3847,7 +3760,6 @@
                 engineState.gameStarted = data.gameStarted || true;
                 engineState.potAmount = data.potAmount || 0;
 
-                // Update taken numbers from Firebase
                 const numbersTaken = data.numbersTaken || {};
                 const allTaken = new Set();
                 Object.keys(numbersTaken).forEach(key => {
@@ -4196,7 +4108,6 @@
                 return;
             }
 
-            // Check if already taken locally (for quick feedback)
             if (engineState.allTakenNumbers.has(num)) {
                 updateStatus(`❌ Number ${num} is already taken!`);
                 if (tg && tg.HapticFeedback) {
@@ -4208,35 +4119,29 @@
             const currentPick = (engineState.players[currentUser] && engineState.players[currentUser].pick) || null;
             let newPick = num;
             if (currentPick === num) {
-                // Unselect – release number
                 if (currentPick !== null) {
                     releaseNumber(currentPick);
                 }
-                // Update player's pick to null
                 if (gameRef) {
                     gameRef.child('players/' + currentUser + '/pick').set(null);
                     gameRef.child('players/' + currentUser + '/ready').set(false);
                     gameRef.child('players/' + currentUser + '/betDeducted').set(false);
                     gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
                 }
-                // Update local state
                 engineState.players[currentUser].pick = null;
                 engineState.players[currentUser].ready = false;
-                // Also release from local taken set? Actually the sync will update.
                 renderNumberPicker();
                 updatePickStatus();
                 updateStatus(`↩️ ${currentUser} unselected their number.`);
                 return;
             }
 
-            // Attempt to claim the number atomically
             claimNumber(num, function(success) {
                 if (!success) {
                     updateStatus(`❌ Number ${num} was just taken by someone else!`);
                     if (tg && tg.HapticFeedback) {
                         tg.HapticFeedback.notificationOccurred('error');
                     }
-                    // Refresh the UI to reflect the current taken state
                     if (gameRef) {
                         gameRef.child('numbersTaken').once('value', snap => {
                             const data = snap.val();
@@ -4253,7 +4158,6 @@
                     return;
                 }
 
-                // Successfully claimed – update player's pick
                 if (!engineState.players[currentUser]) {
                     engineState.players[currentUser] = { name: currentUser, pick: null, bet: bet, ready: false,
                         betDeducted: false, round: engineState.roundNumber };
@@ -4265,12 +4169,10 @@
                     gameRef.child('players/' + currentUser + '/ready').set(true);
                     gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
                 }
-                // Also deduct bet immediately
                 deductBetImmediately(currentUser, bet).then(success => {
                     if (success) {
                         // Bet deducted
                     } else {
-                        // Failed – maybe rollback? But we already claimed the number. For safety, we'll leave it.
                         updateStatus('⚠️ Bet deduction failed. Contact support.');
                     }
                 });
@@ -4633,6 +4535,19 @@
         }
 
         // ============================================================
+        //  AUTO-LOGIN
+        // ============================================================
+        function attemptAutoLogin() {
+            const saved = DB.getSavedCredentials();
+            if (saved && saved.username && saved.password) {
+                console.log('🔄 Attempting auto-login for:', saved.username);
+                authUsername.value = saved.username;
+                authPassword.value = saved.password;
+                authLoginBtn.click();
+            }
+        }
+
+        // ============================================================
         //  EVENT BINDINGS
         // ============================================================
         function init() {
@@ -4692,7 +4607,6 @@
                     depositError.textContent = 'Please enter a valid amount.';
                     return;
                 }
-                // Reference optional if image is provided
                 if (!ref && !file) {
                     depositError.textContent = 'Please provide a reference number or upload a screenshot.';
                     return;
@@ -4742,6 +4656,11 @@
 
             currentUser = null;
             showAuthScreen();
+
+            // Attempt auto-login after showing auth screen
+            setTimeout(() => {
+                attemptAutoLogin();
+            }, 1000);
         }
 
         // Start the app
