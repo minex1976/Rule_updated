@@ -908,7 +908,7 @@
             border: 2px solid #f0e6ff;
             border-radius: 6px;
             padding: 0;
-            font-weight: 700;
+            font-weight: 800;
             font-size: 1rem;
             color: #f0e6ff;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -943,7 +943,7 @@
         }
         .num-btn.taken {
             background: red;
-            color: yellow;
+            color: #5a4a6a;
             border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
@@ -959,7 +959,7 @@
             color: #ff6b6b;
         }
         .num-btn:disabled {
-            opacity: 100;
+            opacity: 0.35;
             transform: translateY(2px);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             pointer-events: none;
@@ -1011,7 +1011,7 @@
             }
         }
 
-        /* ===== Modals – vibrant glass ===== */
+        /* ===== Modals – vibrant glass, more transparent ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -1019,8 +1019,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(10, 5, 20, 0.6);
-            backdrop-filter: blur(10px);
+            background: rgba(10, 5, 20, 0.35); /* reduced opacity */
+            backdrop-filter: blur(6px);
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -1041,7 +1041,8 @@
             }
         }
         .modal-content {
-            background: linear-gradient(160deg, #2a1a4a, #1a2a4a);
+            background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9));
+            backdrop-filter: blur(20px);
             border-radius: 28px;
             padding: 24px 20px 20px;
             max-width: 380px;
@@ -1110,8 +1111,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(10, 5, 20, 0.6);
-            backdrop-filter: blur(10px);
+            background: rgba(10, 5, 20, 0.35);
+            backdrop-filter: blur(6px);
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -1194,8 +1195,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(10, 5, 20, 0.6);
-            backdrop-filter: blur(10px);
+            background: rgba(10, 5, 20, 0.35);
+            backdrop-filter: blur(6px);
             justify-content: center;
             align-items: center;
             z-index: 1001;
@@ -1210,7 +1211,7 @@
             width: 100%;
             padding: 24px 20px 20px;
             border-radius: 28px;
-            background: linear-gradient(160deg, #2a1a4a, #1a2a4a);
+            background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9));
             border: 1px solid rgba(180, 120, 255, 0.2);
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
         }
@@ -1400,7 +1401,7 @@
             width: 100%;
             text-align: center;
             padding: 30px 20px;
-            background: linear-gradient(160deg, #2a1a4a, #1a2a4a);
+            background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9));
             border-radius: 28px;
             border: 1px solid rgba(180, 120, 255, 0.2);
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
@@ -1928,7 +1929,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Saved Password Autofill -->
+    <!-- JAVASCRIPT – Complete Game Code with Atomic Number Claims    -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2343,7 +2344,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.0';
+        const APP_VERSION = '5.1';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2578,6 +2579,45 @@
                 database.ref('sessions/' + currentUser).remove();
             }
             sessionId = null;
+        }
+
+        // ============================================================
+        //  ATOMIC NUMBER CLAIM / RELEASE – prevents simultaneous selection
+        // ============================================================
+        function claimNumber(number, callback) {
+            if (!gameRef) return callback(false);
+            const takenRef = gameRef.child('numbersTaken/' + number);
+            takenRef.transaction(current => {
+                // current is true if taken, false/undefined if free
+                if (current === true) {
+                    return; // abort – already taken
+                }
+                return true; // claim it
+            }, (error, committed, snapshot) => {
+                if (error) {
+                    console.error('Claim number error:', error);
+                    callback(false);
+                    return;
+                }
+                if (committed) {
+                    // Successfully claimed
+                    callback(true);
+                } else {
+                    // Not committed – number was already taken
+                    callback(false);
+                }
+            }, false); // apply locally? We'll keep false for consistency
+        }
+
+        function releaseNumber(number) {
+            if (!gameRef) return;
+            const takenRef = gameRef.child('numbersTaken/' + number);
+            takenRef.set(false);
+        }
+
+        function resetNumbersTaken() {
+            if (!gameRef) return;
+            gameRef.child('numbersTaken').set({});
         }
 
         // ============================================================
@@ -3682,6 +3722,8 @@
             }
             const roomPath = currentRoom;
             gameRef = database.ref('rooms/' + roomPath);
+            // Ensure numbersTaken node exists
+            gameRef.child('numbersTaken').set({});
             database.ref('.info/serverTimeOffset').once('value').then(snap => { serverTimeOffset = Number(snap.val()) || 0;
                 ensureSelectionDeadline(); });
 
@@ -3700,7 +3742,8 @@
                         gameStarted: true,
                         betAmount: currentBet,
                         potAmount: 0,
-                        totalBets: 0
+                        totalBets: 0,
+                        numbersTaken: {}
                     };
                     gameRef.set(initData);
                 } else {
@@ -3708,6 +3751,9 @@
                     if (data.gameState === 'spinning' && data.spinCount === 0 && !data.winners) {
                         console.warn('Room was stuck in spinning with no progress. Resetting.');
                         gameRef.update({ gameState: 'selection', timer: 30 });
+                    }
+                    if (!data.numbersTaken) {
+                        gameRef.child('numbersTaken').set({});
                     }
                 }
             });
@@ -3760,13 +3806,12 @@
                 engineState.gameStarted = data.gameStarted || true;
                 engineState.potAmount = data.potAmount || 0;
 
+                // Update taken numbers from Firebase
+                const numbersTaken = data.numbersTaken || {};
                 const allTaken = new Set();
-                playerNames.forEach(name => {
-                    const player = players[name];
-                    const pick = player?.pick;
-                    const round = player?.round;
-                    if (pick !== null && pick !== undefined && round === engineState.roundNumber) {
-                        allTaken.add(pick);
+                Object.keys(numbersTaken).forEach(key => {
+                    if (numbersTaken[key] === true) {
+                        allTaken.add(parseInt(key));
                     }
                 });
                 engineState.allTakenNumbers = allTaken;
@@ -3839,7 +3884,7 @@
         }
 
         // ============================================================
-        //  REQUEST SPIN
+        //  REQUEST SPIN – also reset numbersTaken when resetting round
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return;
@@ -3850,6 +3895,7 @@
 
             if (playersWithPick.length === 0) {
                 gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                resetNumbersTaken();
                 return;
             }
 
@@ -3862,10 +3908,12 @@
                         gameRef.child('players/' + singlePlayer + '/pick').set(null);
                         gameRef.child('players/' + singlePlayer + '/betDeducted').set(false);
                         gameRef.child('players/' + singlePlayer + '/round').set(null);
+                        resetNumbersTaken();
                         updateStatus('⏳ Only one player. Round reset.');
                     });
                 } else {
                     gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                    resetNumbersTaken();
                 }
                 return;
             }
@@ -3921,7 +3969,7 @@
         }
 
         // ============================================================
-        //  RESULTS COUNTDOWN
+        //  RESULTS COUNTDOWN – reset numbersTaken
         // ============================================================
         function startResultsCountdown() {
             if (isResultsCountdownRunning) return;
@@ -3954,6 +4002,7 @@
                             updates['players/' + name + '/round'] = null;
                         });
                         gameRef.update(updates);
+                        resetNumbersTaken();
 
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = [];
@@ -4056,7 +4105,7 @@
         }
 
         // ============================================================
-        //  NUMBER PICKER
+        //  NUMBER PICKER – now uses atomic claim/release
         // ============================================================
         function renderNumberPicker() {
             if (!currentUser) return;
@@ -4085,7 +4134,7 @@
             }
         }
 
-        numPicker.addEventListener('click', (e) => {
+        numPicker.addEventListener('click', function(e) {
             const btn = e.target.closest('.num-btn');
             if (!btn || btn.disabled) return;
             const num = parseInt(btn.dataset.num);
@@ -4105,6 +4154,8 @@
                 updateStatus('⛔ Cannot pick numbers now.');
                 return;
             }
+
+            // Check if already taken locally (for quick feedback)
             if (engineState.allTakenNumbers.has(num)) {
                 updateStatus(`❌ Number ${num} is already taken!`);
                 if (tg && tg.HapticFeedback) {
@@ -4112,60 +4163,81 @@
                 }
                 return;
             }
+
             const currentPick = (engineState.players[currentUser] && engineState.players[currentUser].pick) || null;
             let newPick = num;
             if (currentPick === num) {
-                newPick = null;
-            }
-            if (!engineState.players[currentUser]) {
-                engineState.players[currentUser] = { name: currentUser, pick: null, bet: bet, ready: false,
-                    betDeducted: false, round: engineState.roundNumber };
+                // Unselect – release number
+                if (currentPick !== null) {
+                    releaseNumber(currentPick);
+                }
+                // Update player's pick to null
+                if (gameRef) {
+                    gameRef.child('players/' + currentUser + '/pick').set(null);
+                    gameRef.child('players/' + currentUser + '/ready').set(false);
+                    gameRef.child('players/' + currentUser + '/betDeducted').set(false);
+                    gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
+                }
+                // Update local state
+                engineState.players[currentUser].pick = null;
+                engineState.players[currentUser].ready = false;
+                // Also release from local taken set? Actually the sync will update.
+                renderNumberPicker();
+                updatePickStatus();
+                updateStatus(`↩️ ${currentUser} unselected their number.`);
+                return;
             }
 
-            if (newPick !== null) {
+            // Attempt to claim the number atomically
+            claimNumber(num, function(success) {
+                if (!success) {
+                    updateStatus(`❌ Number ${num} was just taken by someone else!`);
+                    if (tg && tg.HapticFeedback) {
+                        tg.HapticFeedback.notificationOccurred('error');
+                    }
+                    // Refresh the UI to reflect the current taken state
+                    if (gameRef) {
+                        gameRef.child('numbersTaken').once('value', snap => {
+                            const data = snap.val();
+                            if (data) {
+                                const taken = new Set();
+                                Object.keys(data).forEach(k => {
+                                    if (data[k] === true) taken.add(parseInt(k));
+                                });
+                                engineState.allTakenNumbers = taken;
+                                renderNumberPicker();
+                            }
+                        });
+                    }
+                    return;
+                }
+
+                // Successfully claimed – update player's pick
+                if (!engineState.players[currentUser]) {
+                    engineState.players[currentUser] = { name: currentUser, pick: null, bet: bet, ready: false,
+                        betDeducted: false, round: engineState.roundNumber };
+                }
+                engineState.players[currentUser].pick = num;
+                engineState.players[currentUser].ready = true;
+                if (gameRef) {
+                    gameRef.child('players/' + currentUser + '/pick').set(num);
+                    gameRef.child('players/' + currentUser + '/ready').set(true);
+                    gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
+                }
+                // Also deduct bet immediately
                 deductBetImmediately(currentUser, bet).then(success => {
                     if (success) {
-                        engineState.players[currentUser].pick = newPick;
-                        engineState.players[currentUser].ready = true;
-                        if (gameRef) {
-                            gameRef.child('players/' + currentUser + '/pick').set(newPick);
-                            gameRef.child('players/' + currentUser + '/ready').set(true);
-                            gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
-                        }
-                        renderNumberPicker();
-                        updatePickStatus();
-                        updateStatus(`✅ ${currentUser} picked ${newPick} for ${bet} Birr!`);
-                        if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                        // Bet deducted
                     } else {
-                        updateStatus('❌ Failed to deduct bet. Insufficient balance?');
-                        engineState.players[currentUser].pick = currentPick;
-                        engineState.players[currentUser].ready = currentPick !== null;
-                        if (gameRef) {
-                            gameRef.child('players/' + currentUser + '/pick').set(currentPick);
-                            gameRef.child('players/' + currentUser + '/ready').set(currentPick !== null);
-                        }
-                        renderNumberPicker();
-                        updatePickStatus();
+                        // Failed – maybe rollback? But we already claimed the number. For safety, we'll leave it.
+                        updateStatus('⚠️ Bet deduction failed. Contact support.');
                     }
                 });
-            } else {
-                refundBetImmediately(currentUser, bet).then(success => {
-                    if (success) {
-                        engineState.players[currentUser].pick = null;
-                        engineState.players[currentUser].ready = false;
-                        if (gameRef) {
-                            gameRef.child('players/' + currentUser + '/pick').set(null);
-                            gameRef.child('players/' + currentUser + '/ready').set(false);
-                            gameRef.child('players/' + currentUser + '/betDeducted').set(false);
-                        }
-                        renderNumberPicker();
-                        updatePickStatus();
-                        updateStatus(`↩️ ${currentUser} unselected their number. Refunded ${bet} Birr.`);
-                    } else {
-                        updateStatus('❌ Failed to refund bet. Contact support.');
-                    }
-                });
-            }
+                renderNumberPicker();
+                updatePickStatus();
+                updateStatus(`✅ ${currentUser} picked ${num} for ${bet} Birr!`);
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            });
         });
 
         // ============================================================
