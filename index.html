@@ -1937,6 +1937,16 @@
         // ============================================================
         let telegramDetectedUsername = null; // For enforcing Telegram username
 
+        // ---------- NEW: PENDING ACTION (for bot auto‑open) ----------
+        let pendingAction = null;
+
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const actionParam = urlParams.get('action');
+        if (actionParam === 'deposit' || actionParam === 'withdraw' || actionParam === 'transfer') {
+            pendingAction = actionParam;
+        }
+
         // ============================================================
         //  AUDIO – Web Audio API
         // ============================================================
@@ -3222,6 +3232,20 @@
             attemptTelegramDetection();
         }
 
+        // ============================================================
+        //  NEW: openWithdrawModal (for bot auto‑open)
+        // ============================================================
+        function openWithdrawModal() {
+            const available = walletData.main - walletData.pending;
+            withdrawAvailableBalance.textContent = available;
+            withdrawError.textContent = '';
+            withdrawName.value = '';
+            withdrawPhone.value = '';
+            withdrawAmountEl.value = '';
+            withdrawModal.classList.add('active');
+            closeMoreDropdown();
+        }
+
         function showWelcomeScreen() {
             authScreen.style.display = 'none';
             welcomeScreen.style.display = 'flex';
@@ -3239,6 +3263,23 @@
             }
             syncWalletFromFirebase();
             checkPendingTransactionStatus();
+
+            // ---------- Auto‑open modal from bot action ----------
+            if (pendingAction) {
+                // Wait a moment for wallet to sync
+                setTimeout(() => {
+                    if (pendingAction === 'deposit') {
+                        openDepositModal();
+                    } else if (pendingAction === 'withdraw') {
+                        openWithdrawModal();
+                    } else if (pendingAction === 'transfer') {
+                        // Trigger the existing transfer button click (prompts for amount)
+                        document.getElementById('transferBtn').click();
+                    }
+                    pendingAction = null; // clear so it doesn't fire again
+                }, 600);
+            }
+
             enableNetworkListener();
 
             // Start session management after login
