@@ -889,7 +889,7 @@
         .num-picker-wrapper {
             flex: 1;
             overflow-y: auto;
-            -x: hidden;
+            overflow-x: hidden;
             padding: 1px 0;
             min-height: 0;
             scroll-behavior: smooth;
@@ -920,7 +920,7 @@
             border: 2px solid #f0e6ff;
             border-radius: 6px;
             padding: 0;
-            font-weight: 700;
+            font-weight: 800;
             font-size: 1rem;
             color: #f0e6ff;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -955,7 +955,7 @@
         }
         .num-btn.taken {
             background: red;
-            color: #5a4a6a;
+            color: yellow;
             border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
@@ -998,7 +998,7 @@
             color: #f0e6ff;
             font-size: 0.65rem;
             font-weight: 700;
-            background: rgba(20, 10, 40, 0.85);
+            : rgba(20, 10, 40, 0.85);
             padding: 2px 12px;
             border-radius: 30px;
             backdrop-filter: blur(4px);
@@ -1671,7 +1671,7 @@
             box-shadow: 0 1px 0 #8a2a2a;
         }
 
-        /* ===== Responsive – better small screen support ===== */
+        /* ===== Responsive ===== */
         @media (max-height:700px) {
             .game-wrapper {
                 padding: 8px 10px 12px;
@@ -1832,78 +1832,6 @@
             .bet-switcher .bet-btn {
                 font-size: 0.6rem;
                 padding: 1px 8px;
-            }
-        }
-        /* Extra small screens */
-        @media (max-width:340px) {
-            .game-wrapper {
-                padding: 3px 4px 6px;
-                border-radius: 20px;
-            }
-            .title {
-                font-size: 0.75rem;
-            }
-            .wheel-container {
-                max-width: 100px;
-            }
-            .num-btn {
-                font-size: 0.35rem;
-                border-width: 1px;
-            }
-            .spin-ball {
-                font-size: 0.55rem;
-                padding: 1px 6px;
-                min-width: 22px;
-            }
-            .wallet-item {
-                font-size: 0.4rem;
-                padding: 1px 3px;
-            }
-            .wallet-item .amount {
-                font-size: 0.5rem;
-            }
-            .more-btn {
-                width: 20px;
-                height: 20px;
-                font-size: 0.7rem;
-            }
-            .game-info-bar .info-item .value {
-                font-size: 0.65rem;
-            }
-            .game-info-bar .info-item .value.timer {
-                font-size: 0.7rem;
-            }
-            .bet-switcher .bet-btn {
-                font-size: 0.5rem;
-                padding: 1px 6px;
-            }
-            .pick-status {
-                font-size: 0.6rem;
-                min-height: 1.4rem;
-            }
-            .status-area {
-                font-size: 0.55rem;
-                min-height: 1.4rem;
-            }
-            .auth-screen .logo h2 {
-                font-size: 1.6rem;
-            }
-            .auth-btn {
-                padding: 8px 12px;
-                font-size: 0.8rem;
-            }
-            .modal-content {
-                padding: 12px 10px 10px;
-            }
-            .modal-content h2 {
-                font-size: 1rem;
-            }
-            .welcome-screen .bet-options button {
-                font-size: 1.2rem;
-                padding: 12px;
-            }
-            .referral-modal .modal-content {
-                padding: 16px 12px;
             }
         }
     </style>
@@ -2143,7 +2071,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Fixed Timer & Restart                          -->
+    <!-- JAVASCRIPT – Complete Game with TTS, Referral & Support      -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2159,15 +2087,20 @@
                 if (callback) callback();
                 return;
             }
+            // Cancel any ongoing speech
             window.speechSynthesis.cancel();
+
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
             utterance.rate = 0.9;
             utterance.pitch = 1.1;
+
+            // Try to find a good voice
             const voices = window.speechSynthesis.getVoices();
             const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) || voices.find(v => v
                 .lang.startsWith('en')) || null;
             if (preferredVoice) utterance.voice = preferredVoice;
+
             if (callback) {
                 utterance.onend = callback;
             }
@@ -2183,8 +2116,9 @@
             speakText(text);
         }
 
+        // Preload voices (optional)
         if (window.speechSynthesis) {
-            window.speechSynthesis.getVoices();
+            window.speechSynthesis.getVoices(); // Trigger loading
             window.speechSynthesis.onvoiceschanged = () => {
                 window.speechSynthesis.getVoices();
             };
@@ -2449,7 +2383,7 @@
         }
 
         // ============================================================
-        //  TELEGRAM WEBAPP INIT
+        //  TELEGRAM WEBAPP INIT – with username enforcement
         // ============================================================
         let tg = null;
         let telegramUser = null;
@@ -2587,7 +2521,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.4';
+        const APP_VERSION = '5.2';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2672,7 +2606,8 @@
         //  REFERRAL SYSTEM
         // ============================================================
         function getReferralLink(username) {
-            return `http://t.me/WinzoBettingBot/Winzo?start=ref_${username}`;
+            // Use a generic link with a parameter. In production, replace with your bot link.
+            return `https://t.me/winzobot?start=ref_${username}`;
         }
 
         function updateReferralUI() {
@@ -2691,17 +2626,22 @@
 
         function processReferralReward(referredUsername) {
             if (!referredUsername || !database) return;
+            // Find who referred this user
             const userRef = database.ref('users/' + referredUsername);
             userRef.once('value', snap => {
                 const data = snap.val();
                 if (!data || !data.referredBy) return;
                 const referrer = data.referredBy;
+                // Increment referrer's referral count
                 const referrerRef = database.ref('users/' + referrer);
                 referrerRef.transaction(current => {
                     if (current) {
                         current.referralCount = (current.referralCount || 0) + 1;
+                        // Check if referral count is a multiple of 10
                         if (current.referralCount % 10 === 0) {
+                            // Add 5 Birr to main wallet
                             current.mainWallet = (current.mainWallet || 0) + 5;
+                            // Log the reward
                             const rewardLog = {
                                 type: 'referral_bonus',
                                 amount: 5,
@@ -2718,10 +2658,13 @@
             });
         }
 
+        // Commission on wins: give 10% to referrers up the tree (max 5 levels)
         function distributeCommission(winner, winAmount) {
             if (!winner || !database || winAmount <= 0) return;
             const commission = winAmount * 0.10;
             if (commission < 0.01) return;
+
+            let current = winner;
             let level = 0;
             const maxLevels = 5;
 
@@ -3018,6 +2961,7 @@
         const closeWaitingBtn = $('closeWaitingBtn');
         const welcomeToast = $('welcomeToast');
 
+        // Referral modal
         const referralModal = $('referralModal');
         const referralLinkInput = $('referralLinkInput');
         const copyReferralBtn = $('copyReferralBtn');
@@ -3081,6 +3025,7 @@
                     if (transactionModal.classList.contains('active')) {
                         checkPendingTransactionStatus();
                     }
+                    // Update referral UI if modal is open or visible
                     updateReferralUI();
                 }
             });
@@ -3581,7 +3526,7 @@
         }
 
         // ============================================================
-        //  LOGIN / SIGNUP
+        //  LOGIN / SIGNUP – with Telegram enforcement & referral
         // ============================================================
         function handleLogin() {
             const username = authUsername.value.trim();
@@ -3993,7 +3938,7 @@
         }
 
         // ============================================================
-        //  GAME CONNECTION – FIXED TIMER
+        //  GAME CONNECTION
         // ============================================================
         let serverTimeOffset = 0;
         let phaseDeadline = 0;
@@ -4066,17 +4011,14 @@
                 }
             });
 
-            gameRef.child('players/' + currentUser).onDisconnect().update({
-                disconnected: true
-            });
+            gameRef.child('players/' + currentUser).onDisconnect().remove();
             gameRef.child('players/' + currentUser).set({
                 name: currentUser,
                 pick: null,
                 bet: currentBet,
                 ready: false,
                 betDeducted: false,
-                round: engineState.roundNumber,
-                disconnected: false
+                round: engineState.roundNumber
             });
 
             isGameInitialized = true;
@@ -4084,7 +4026,7 @@
         }
 
         // ============================================================
-        //  SYNC GAME STATE – FIXED TIMER & RESTART
+        //  SYNC GAME STATE
         // ============================================================
         function syncGameState(data) {
             if (syncInProgress) return;
@@ -4099,21 +4041,8 @@
                 engineState.gamePhase = data.gameState || 'selection';
                 engineState.roundNumber = data.round || 1;
                 engineState.timer = data.timer || 30;
-
-                // CRITICAL FIX: Update phaseDeadline from Firebase
                 phaseDeadline = Number(data.selectionEndsAt) || 0;
-                if (engineState.gamePhase === 'selection' && !phaseDeadline) {
-                    ensureSelectionDeadline();
-                    // Re-read after ensuring
-                    phaseDeadline = Number(data.selectionEndsAt) || getServerNow() + SELECTION_SECONDS * 1000;
-                }
-
-                // Use phaseDeadline to compute actual remaining time
-                if (engineState.gamePhase === 'selection' && phaseDeadline > 0) {
-                    const remaining = getRemainingSeconds(phaseDeadline);
-                    engineState.timer = remaining;
-                }
-
+                if (engineState.gamePhase === 'selection' && !phaseDeadline) ensureSelectionDeadline();
                 engineState.drawnNumbers = data.drawnNumbers || [];
                 engineState.winners = data.winners || [];
                 engineState.spinCount = data.spinCount || 0;
@@ -4155,91 +4084,6 @@
 
                 updateUIFromState();
 
-                // Handle timer expiry – the heart of the fix
-                if (engineState.gamePhase === 'selection' && engineState.timer <= 0) {
-                    // First, refund disconnected players
-                    const disconnectedPlayers = Object.keys(players).filter(name => players[name] && players[name]
-                        .disconnected === true && players[name].pick !== null);
-                    disconnectedPlayers.forEach(name => {
-                        const player = players[name];
-                        if (player && player.betDeducted && player.bet) {
-                            refundBetImmediately(name, player.bet);
-                            gameRef.child('players/' + name + '/pick').set(null);
-                            gameRef.child('players/' + name + '/betDeducted').set(false);
-                            gameRef.child('players/' + name + '/round').set(null);
-                            if (player.pick !== null) {
-                                releaseNumber(player.pick);
-                            }
-                        }
-                    });
-
-                    // Get active players with picks
-                    const activePlayers = Object.keys(players).filter(name =>
-                        !players[name].disconnected && players[name].pick !== null && players[name].round === engineState
-                        .roundNumber
-                    );
-
-                    if (activePlayers.length < 2) {
-                        // Not enough active players – reset the round
-                        if (!engineState.isSpinning && !engineState.spinInProgress) {
-                            stopTimer();
-                            const newDeadline = getServerNow() + SELECTION_SECONDS * 1000;
-                            const updates = {
-                                gameState: 'selection',
-                                timer: 30,
-                                selectionEndsAt: newDeadline,
-                                drawnNumbers: [],
-                                winners: [],
-                                spinCount: 0,
-                                cumulativeRotation: 0,
-                                potAmount: 0,
-                                totalBets: 0
-                            };
-                            playerNames.forEach(name => {
-                                if (players[name] && players[name].pick !== null) {
-                                    updates['players/' + name + '/pick'] = null;
-                                    updates['players/' + name + '/ready'] = false;
-                                    updates['players/' + name + '/betDeducted'] = false;
-                                    updates['players/' + name + '/round'] = null;
-                                }
-                            });
-                            gameRef.update(updates);
-                            resetNumbersTaken();
-                            engineState.allTakenNumbers = new Set();
-                            engineState.timer = 30;
-                            timerDisplay.textContent = '30';
-                            phaseDeadline = newDeadline;
-                            updateStatus('⏳ Not enough active players. Round reset.');
-                            // Restart timer
-                            startTimer();
-                            return;
-                        }
-                    } else {
-                        // Enough active players – trigger spin
-                        if (!engineState.isSpinning && !engineState.spinInProgress) {
-                            stopTimer();
-                            if (!audioPlayedThisRound) {
-                                playGetReadyAudio();
-                                speakGetReady();
-                                audioPlayedThisRound = true;
-                            }
-                            setTimeout(() => {
-                                requestSpin();
-                            }, 500);
-                        }
-                    }
-                }
-
-                // Start timer if in selection phase and not running
-                if (engineState.gamePhase === 'selection' && !isTimerRunning) {
-                    startTimer();
-                }
-
-                if (engineState.gamePhase === 'results' && !isResultsCountdownRunning) {
-                    startResultsCountdown();
-                }
-
-                // Handle spinning phase
                 if (engineState.gamePhase === 'spinning' && engineState.spinCount === 0 && !engineState.isSpinning && !engineState
                     .spinInProgress) {
                     console.warn('Detected stuck spin. Executing spin now.');
@@ -4250,6 +4094,35 @@
                     }, 500);
                 }
 
+                if (engineState.gamePhase === 'selection' && !isTimerRunning) {
+                    startTimer();
+                }
+
+                if (engineState.gamePhase === 'selection' && engineState.timer <= 0) {
+                    const playersWithPick = Object.keys(engineState.players).filter(name => {
+                        const p = engineState.players[name];
+                        return p && p.pick !== null && p.round === engineState.roundNumber;
+                    });
+                    if (playersWithPick.length > 0) {
+                        if (!engineState.isSpinning && !engineState.spinInProgress) {
+                            stopTimer();
+                            if (!audioPlayedThisRound) {
+                                playGetReadyAudio();
+                                speakGetReady(); // TTS
+                                audioPlayedThisRound = true;
+                            }
+                            setTimeout(() => {
+                                requestSpin();
+                            }, 500);
+                        }
+                    } else {
+                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                    }
+                }
+
+                if (engineState.gamePhase === 'results' && !isResultsCountdownRunning) {
+                    startResultsCountdown();
+                }
             } finally {
                 syncInProgress = false;
             }
@@ -4260,20 +4133,14 @@
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return;
-            if (engineState.isSpinning || engineState.spinInProgress) return;
-
-            const players = engineState.players;
-            const playersWithPick = Object.keys(players).filter(name => {
-                const p = players[name];
-                return p && !p.disconnected && p.pick !== null && p.round === engineState.roundNumber;
+            const playersWithPick = Object.keys(engineState.players).filter(name => {
+                const p = engineState.players[name];
+                return p && p.pick !== null && p.round === engineState.roundNumber;
             });
 
             if (playersWithPick.length === 0) {
-                const newDeadline = getServerNow() + SELECTION_SECONDS * 1000;
-                gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: newDeadline });
+                gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
                 resetNumbersTaken();
-                phaseDeadline = newDeadline;
-                startTimer();
                 return;
             }
 
@@ -4282,22 +4149,16 @@
                 const playerData = engineState.players[singlePlayer];
                 if (playerData.betDeducted) {
                     refundBetImmediately(singlePlayer, playerData.bet || currentBet).then(() => {
-                        const newDeadline = getServerNow() + SELECTION_SECONDS * 1000;
-                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: newDeadline });
+                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
                         gameRef.child('players/' + singlePlayer + '/pick').set(null);
                         gameRef.child('players/' + singlePlayer + '/betDeducted').set(false);
                         gameRef.child('players/' + singlePlayer + '/round').set(null);
                         resetNumbersTaken();
-                        phaseDeadline = newDeadline;
-                        startTimer();
                         updateStatus('⏳ Only one player. Round reset.');
                     });
                 } else {
-                    const newDeadline = getServerNow() + SELECTION_SECONDS * 1000;
-                    gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: newDeadline });
+                    gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
                     resetNumbersTaken();
-                    phaseDeadline = newDeadline;
-                    startTimer();
                 }
                 return;
             }
@@ -4323,45 +4184,21 @@
         };
 
         // ============================================================
-        //  TIMER – FIXED
+        //  TIMER
         // ============================================================
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
             if (!gameRef || engineState.gamePhase !== 'selection') return;
-
-            // Ensure we have a valid deadline
-            if (!phaseDeadline || phaseDeadline < getServerNow()) {
-                ensureSelectionDeadline();
-                // Re-fetch from data or set default
-                if (gameRef) {
-                    gameRef.child('selectionEndsAt').once('value', snap => {
-                        const val = snap.val();
-                        if (val) {
-                            phaseDeadline = Number(val);
-                        } else {
-                            phaseDeadline = getServerNow() + SELECTION_SECONDS * 1000;
-                            gameRef.child('selectionEndsAt').set(phaseDeadline);
-                        }
-                        startTimer(); // Restart with valid deadline
-                    });
-                    return;
-                }
-                phaseDeadline = getServerNow() + SELECTION_SECONDS * 1000;
-                if (gameRef) gameRef.child('selectionEndsAt').set(phaseDeadline);
-            }
-
+            if (!phaseDeadline) { ensureSelectionDeadline(); return; }
             isTimerRunning = true;
             const tick = () => {
-                if (engineState.gamePhase !== 'selection') {
-                    stopTimer();
-                    return;
-                }
+                if (engineState.gamePhase !== 'selection') { stopTimer(); return; }
                 const remaining = getRemainingSeconds(phaseDeadline);
                 engineState.timer = remaining;
                 timerDisplay.textContent = remaining;
                 if (remaining <= 0) {
                     stopTimer();
-                    // Let syncGameState handle the spin
+                    requestSpin();
                 }
             };
             tick();
@@ -4390,12 +4227,11 @@
                 if (countdown <= 0) {
                     stopResultsCountdown();
                     if (gameRef) {
-                        const newDeadline = getServerNow() + SELECTION_SECONDS * 1000;
                         const updates = {
                             gameState: 'selection',
                             round: engineState.roundNumber + 1,
                             timer: 30,
-                            selectionEndsAt: newDeadline,
+                            selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000,
                             drawnNumbers: [],
                             winners: [],
                             spinCount: 0,
@@ -4409,7 +4245,6 @@
                             updates['players/' + name + '/ready'] = false;
                             updates['players/' + name + '/betDeducted'] = false;
                             updates['players/' + name + '/round'] = null;
-                            updates['players/' + name + '/disconnected'] = false;
                         });
                         gameRef.update(updates);
                         resetNumbersTaken();
@@ -4417,7 +4252,6 @@
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = [];
                         audioPlayedThisRound = false;
-                        phaseDeadline = newDeadline;
                         arrowContainer.style.transform = 'rotate(0deg)';
                         arrowCenter.textContent = '🎯';
                         arrowCenter.classList.remove('reveal');
@@ -4435,8 +4269,6 @@
                             showWaitingModal();
                         }
                         stopFireworks();
-                        // Start timer for new round
-                        startTimer();
                     }
                 }
             }, 1000);
@@ -4587,7 +4419,6 @@
                     gameRef.child('players/' + currentUser + '/ready').set(false);
                     gameRef.child('players/' + currentUser + '/betDeducted').set(false);
                     gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
-                    gameRef.child('players/' + currentUser + '/disconnected').set(false);
                 }
                 engineState.players[currentUser].pick = null;
                 engineState.players[currentUser].ready = false;
@@ -4621,7 +4452,7 @@
 
                 if (!engineState.players[currentUser]) {
                     engineState.players[currentUser] = { name: currentUser, pick: null, bet: bet, ready: false,
-                        betDeducted: false, round: engineState.roundNumber, disconnected: false };
+                        betDeducted: false, round: engineState.roundNumber };
                 }
                 engineState.players[currentUser].pick = num;
                 engineState.players[currentUser].ready = true;
@@ -4629,7 +4460,6 @@
                     gameRef.child('players/' + currentUser + '/pick').set(num);
                     gameRef.child('players/' + currentUser + '/ready').set(true);
                     gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
-                    gameRef.child('players/' + currentUser + '/disconnected').set(false);
                 }
                 deductBetImmediately(currentUser, bet).then(success => {
                     if (success) {
@@ -4823,7 +4653,7 @@
                     spinEls[0].classList.add('reveal', 'active');
 
                     playWinningAudio();
-                    speakWinningNumber(winningNumber);
+                    speakWinningNumber(winningNumber); // TTS
                     updateStatus(`🎯 Winning number: <span class="highlight">${winningNumber}</span>`);
                     updateWheel();
 
@@ -4869,7 +4699,7 @@
         }
 
         // ============================================================
-        //  WINNERS
+        //  WINNERS – with delayed modal, commission distribution, referral reward
         // ============================================================
         function checkAndAnnounceWinners(prizePool) {
             try {
@@ -4892,18 +4722,22 @@
 
                 const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
+                // Credit winners and distribute commission
                 winners.forEach(name => {
                     if (name === currentUser) {
                         creditWinningsToMain(winAmount);
                         updateStatus(`🎉 You won! +${winAmount} coins (${takenCount} players × ${currentBet} − 15% fee)`,
                             true);
                     }
+                    // Distribute 10% commission to referrers (up the tree)
                     if (winAmount > 0) {
                         distributeCommission(name, winAmount);
                     }
+                    // Process referral reward for the winner (the referrer gets referral count increment)
                     processReferralReward(name);
                 });
 
+                // Update winners list
                 if (winners.length === 0) {
                     winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
                 } else {
@@ -4991,6 +4825,7 @@
             if (!currentUser) return;
             const link = getReferralLink(currentUser);
             referralLinkInput.value = link;
+            // Update stats
             updateReferralUI();
             referralModal.classList.add('active');
             closeMoreDropdown();
@@ -5002,6 +4837,7 @@
                 navigator.clipboard.writeText(link).then(() => {
                     showToast('📋 Referral link copied!');
                 }).catch(() => {
+                    // Fallback
                     referralLinkInput.select();
                     document.execCommand('copy');
                     showToast('📋 Referral link copied!');
@@ -5011,11 +4847,12 @@
                 document.execCommand('copy');
                 showToast('📋 Referral link copied!');
             }
+            // After copy, open Telegram contact list
             setTimeout(() => {
                 if (tg && tg.openTelegramLink) {
-                    tg.openTelegramLink(`https://t.me/WinzoBettingBot/Winzo?start=ref_${currentUser}`);
+                    tg.openTelegramLink(`https://t.me/winzobot?start=ref_${currentUser}`);
                 } else {
-                    window.open(`https://t.me/WinzoBettingBot/Winzo?start=ref_${currentUser}`, '_blank');
+                    window.open(`https://t.me/winzobot?start=ref_${currentUser}`, '_blank');
                 }
             }, 300);
         };
@@ -5029,6 +4866,7 @@
                     url: link
                 }).catch(() => {});
             } else {
+                // Fallback: copy and open telegram
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(link).then(() => {
                         showToast('📋 Referral link copied!');
@@ -5043,9 +4881,9 @@
                     showToast('📋 Referral link copied!');
                 }
                 if (tg && tg.openTelegramLink) {
-                    tg.openTelegramLink(`https://t.me/WinzoBettingBot/Winzo?start=ref_${currentUser}`);
+                    tg.openTelegramLink(`https://t.me/winzobot?start=ref_${currentUser}`);
                 } else {
-                    window.open(`https://t.me/WinzoBettingBot/Winzo?start=ref_${currentUser}`, '_blank');
+                    window.open(`https://t.me/winzobot?start=ref_${currentUser}`, '_blank');
                 }
             }
         };
@@ -5155,7 +4993,10 @@
                 closeMoreDropdown();
             };
 
+            // Referral button
             referralBtn.onclick = openReferralModal;
+
+            // Support button
             supportBtn.onclick = openSupport;
 
             switchBet15.onclick = () => { switchBet(15); };
