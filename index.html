@@ -477,6 +477,18 @@
         .dropdown-item.transfer:hover {
             background: rgba(50, 150, 220, 0.06);
         }
+        .dropdown-item.referral {
+            color: #f5a623;
+        }
+        .dropdown-item.referral:hover {
+            background: rgba(245, 166, 35, 0.08);
+        }
+        .dropdown-item.support {
+            color: #8affb0;
+        }
+        .dropdown-item.support:hover {
+            background: rgba(80, 255, 160, 0.08);
+        }
         .dropdown-item.logout {
             color: #ff8a8a;
         }
@@ -899,7 +911,7 @@
 
         .num-picker {
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
+            grid-template-columns: repeat(10, 1fr);
             gap: 2px;
             padding: 2px;
         }
@@ -908,8 +920,8 @@
             border: 2px solid #f0e6ff;
             border-radius: 6px;
             padding: 0;
-            font-weight: 800;
-            font-size: 1rem;
+            font-weight: 700;
+            font-size: 0.5rem;
             color: #f0e6ff;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             cursor: pointer;
@@ -942,20 +954,20 @@
             transform: scale(1.06);
         }
         .num-btn.taken {
-            background: red;
+            background: rgba(60, 30, 90, 0.5);
             color: #5a4a6a;
             border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
-            opacity: 100;
+            opacity: 0.6;
             position: relative;
         }
         .num-btn.taken::after {
-            content: "";
+            content: "✕";
             position: absolute;
             top: -2px;
             right: -2px;
-            font-size: 1rem;
+            font-size: 0.4rem;
             color: #ff6b6b;
         }
         .num-btn:disabled {
@@ -1019,7 +1031,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(10, 5, 20, 0.35); /* reduced opacity */
+            background: rgba(10, 5, 20, 0.35);
             backdrop-filter: blur(6px);
             justify-content: center;
             align-items: center;
@@ -1439,6 +1451,114 @@
             margin-bottom: 8px;
         }
 
+        /* ===== Referral Modal ===== */
+        .referral-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 5, 20, 0.6);
+            backdrop-filter: blur(10px);
+            justify-content: center;
+            align-items: center;
+            z-index: 1500;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        .referral-modal.active {
+            display: flex;
+        }
+        .referral-modal .modal-content {
+            max-width: 380px;
+            width: 100%;
+            padding: 24px 20px 20px;
+            border-radius: 28px;
+            background: linear-gradient(160deg, rgba(42, 26, 74, 0.95), rgba(26, 42, 74, 0.95));
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(180, 120, 255, 0.2);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .referral-modal h3 {
+            color: #f0e6ff;
+            font-size: 1.4rem;
+            margin-bottom: 8px;
+            border-bottom: 2px solid rgba(120, 80, 200, 0.15);
+            padding-bottom: 8px;
+        }
+        .referral-modal .link-container {
+            display: flex;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .referral-modal .link-container input {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 30px;
+            border: 2px solid rgba(120, 80, 200, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+            color: #f0e6ff;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        .referral-modal .link-container button {
+            background: linear-gradient(135deg, #ffcc44, #f5a623);
+            border: none;
+            border-radius: 30px;
+            padding: 8px 20px;
+            font-weight: 700;
+            color: #1a0a2e;
+            cursor: pointer;
+            transition: 0.08s linear;
+            white-space: nowrap;
+        }
+        .referral-modal .link-container button:active {
+            transform: scale(0.95);
+        }
+        .referral-modal .action-btns {
+            display: flex;
+            gap: 8px;
+            margin: 8px 0;
+        }
+        .referral-modal .action-btns button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 30px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.08s linear;
+        }
+        .referral-modal .action-btns .share {
+            background: rgba(80, 255, 160, 0.15);
+            border: 1px solid rgba(80, 255, 160, 0.2);
+            color: #8affb0;
+        }
+        .referral-modal .action-btns .share:active {
+            transform: scale(0.95);
+        }
+        .referral-modal .action-btns .close {
+            background: rgba(120, 80, 200, 0.15);
+            border: 1px solid rgba(120, 80, 200, 0.1);
+            color: #d4c0f0;
+        }
+        .referral-modal .action-btns .close:active {
+            transform: scale(0.95);
+        }
+        .referral-modal .stats {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(120, 80, 200, 0.15);
+            font-size: 0.75rem;
+            color: #b8a0d0;
+        }
+        .referral-modal .stats span {
+            color: #ffcc44;
+            font-weight: 700;
+        }
+
         /* ===== Network Offline Overlay ===== */
         .network-offline-overlay {
             display: none;
@@ -1791,6 +1911,8 @@
                                 <button class="dropdown-item deposit" id="depositBtn"><span class="icon">💰</span> Deposit</button>
                                 <button class="dropdown-item withdraw" id="withdrawBtn"><span class="icon">🏦</span> Withdraw</button>
                                 <button class="dropdown-item transfer" id="transferBtn"><span class="icon">↗️</span> Transfer to Play</button>
+                                <button class="dropdown-item referral" id="referralBtn"><span class="icon">🔗</span> Referral Link</button>
+                                <button class="dropdown-item support" id="supportBtn"><span class="icon">💬</span> Contact Support</button>
                                 <button class="dropdown-item logout" id="gameLogoutBtn"><span class="icon">🚪</span> Logout</button>
                             </div>
                         </div>
@@ -1904,6 +2026,26 @@
         </div>
     </div>
 
+    <!-- Referral Modal -->
+    <div class="referral-modal" id="referralModal">
+        <div class="modal-content">
+            <h3>🔗 Referral Link</h3>
+            <p style="color:#b8a0d0;font-size:0.85rem;margin-bottom:8px;">Share your referral link and earn rewards!</p>
+            <div class="link-container">
+                <input type="text" id="referralLinkInput" readonly>
+                <button id="copyReferralBtn">📋 Copy</button>
+            </div>
+            <div class="action-btns">
+                <button class="share" id="shareReferralBtn">📤 Share</button>
+                <button class="close" id="referralCancelBtn">Close</button>
+            </div>
+            <div class="stats">
+                <p>📊 You've referred <span id="referralCountDisplay">0</span> players. Earn 5 Birr per 10 referrals!</p>
+                <p>💰 Commission earned: <span id="referralEarningsDisplay">0</span> Birr</p>
+            </div>
+        </div>
+    </div>
+
     <div class="ocr-progress-modal" id="ocrProgressModal">
         <div class="modal-content">
             <div class="spinner" id="ocrSpinner"></div>
@@ -1929,13 +2071,58 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Atomic Number Claims    -->
+    <!-- JAVASCRIPT – Complete Game with TTS, Referral & Support      -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
         //  GLOBAL VARIABLES
         // ============================================================
-        let telegramDetectedUsername = null; // For enforcing Telegram username
+        let telegramDetectedUsername = null;
+
+        // ============================================================
+        //  TEXT-TO-SPEECH (TTS) FUNCTIONS
+        // ============================================================
+        function speakText(text, callback) {
+            if (!window.speechSynthesis) {
+                if (callback) callback();
+                return;
+            }
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.1;
+
+            // Try to find a good voice
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) || voices.find(v => v
+                .lang.startsWith('en')) || null;
+            if (preferredVoice) utterance.voice = preferredVoice;
+
+            if (callback) {
+                utterance.onend = callback;
+            }
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function speakGetReady() {
+            speakText('Get ready to win!');
+        }
+
+        function speakWinningNumber(number) {
+            const text = `Winzo! The winning number is ${number}`;
+            speakText(text);
+        }
+
+        // Preload voices (optional)
+        if (window.speechSynthesis) {
+            window.speechSynthesis.getVoices(); // Trigger loading
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
+        }
 
         // ============================================================
         //  AUDIO – Web Audio API
@@ -2228,9 +2415,7 @@
                             if (name) {
                                 infoEl.textContent = '✅ Detected Telegram: @' + name;
                                 infoEl.className = 'telegram-info detected';
-                                // Store detected username
                                 telegramDetectedUsername = name;
-                                // Auto-fill and lock username, auto-fill password
                                 applyTelegramAutoLogin(name);
                             } else {
                                 infoEl.textContent = '📱 Telegram detected (no username). Enter manually.';
@@ -2265,30 +2450,23 @@
             return detected;
         }
 
-        // ============================================================
-        //  AUTO-LOGIN WITH SAVED PASSWORD
-        // ============================================================
         function applyTelegramAutoLogin(username) {
             const usernameInput = document.getElementById('authUsername');
             const passwordInput = document.getElementById('authPassword');
             if (!usernameInput || !passwordInput) return;
 
-            // Set username and lock it
             usernameInput.value = username;
             usernameInput.readOnly = true;
             usernameInput.style.color = '#8affb0';
 
-            // Retrieve saved password if any
             const savedCredentials = DB.getSavedCredentials();
             if (savedCredentials && savedCredentials.password) {
                 passwordInput.value = savedCredentials.password;
             } else {
-                // No saved password – leave field empty so user can type
                 passwordInput.value = '';
                 passwordInput.placeholder = 'Enter your password';
             }
 
-            // Prevent manual changes to username
             usernameInput.addEventListener('focus', function() {
                 this.value = username;
             });
@@ -2323,7 +2501,6 @@
         let userWalletRef = null;
         let pendingTxListener = null;
 
-        // Session management
         let sessionId = null;
         let sessionListener = null;
         let sessionConflictModal = document.getElementById('sessionConflictModal');
@@ -2344,7 +2521,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.1';
+        const APP_VERSION = '5.2';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2426,6 +2603,94 @@
         let syncInProgress = false;
 
         // ============================================================
+        //  REFERRAL SYSTEM
+        // ============================================================
+        function getReferralLink(username) {
+            // Use a generic link with a parameter. In production, replace with your bot link.
+            return `https://t.me/winzobot?start=ref_${username}`;
+        }
+
+        function updateReferralUI() {
+            if (!currentUser) return;
+            const userRef = database.ref('users/' + currentUser);
+            userRef.once('value', snap => {
+                const data = snap.val();
+                if (data) {
+                    const count = data.referralCount || 0;
+                    const earnings = data.referralEarnings || 0;
+                    document.getElementById('referralCountDisplay').textContent = count;
+                    document.getElementById('referralEarningsDisplay').textContent = earnings.toFixed(2);
+                }
+            });
+        }
+
+        function processReferralReward(referredUsername) {
+            if (!referredUsername || !database) return;
+            // Find who referred this user
+            const userRef = database.ref('users/' + referredUsername);
+            userRef.once('value', snap => {
+                const data = snap.val();
+                if (!data || !data.referredBy) return;
+                const referrer = data.referredBy;
+                // Increment referrer's referral count
+                const referrerRef = database.ref('users/' + referrer);
+                referrerRef.transaction(current => {
+                    if (current) {
+                        current.referralCount = (current.referralCount || 0) + 1;
+                        // Check if referral count is a multiple of 10
+                        if (current.referralCount % 10 === 0) {
+                            // Add 5 Birr to main wallet
+                            current.mainWallet = (current.mainWallet || 0) + 5;
+                            // Log the reward
+                            const rewardLog = {
+                                type: 'referral_bonus',
+                                amount: 5,
+                                timestamp: Date.now(),
+                                referrer: referrer,
+                                referred: referredUsername
+                            };
+                            const logRef = database.ref('referral_logs').push();
+                            logRef.set(rewardLog);
+                        }
+                    }
+                    return current;
+                });
+            });
+        }
+
+        // Commission on wins: give 10% to referrers up the tree (max 5 levels)
+        function distributeCommission(winner, winAmount) {
+            if (!winner || !database || winAmount <= 0) return;
+            const commission = winAmount * 0.10;
+            if (commission < 0.01) return;
+
+            let current = winner;
+            let level = 0;
+            const maxLevels = 5;
+
+            function traverseUp(username) {
+                if (level >= maxLevels || !username) return;
+                const userRef = database.ref('users/' + username);
+                userRef.once('value', snap => {
+                    const data = snap.val();
+                    if (!data || !data.referredBy) return;
+                    const referrer = data.referredBy;
+                    const referrerRef = database.ref('users/' + referrer);
+                    referrerRef.transaction(currentData => {
+                        if (currentData) {
+                            currentData.referralEarnings = (currentData.referralEarnings || 0) + commission;
+                            currentData.mainWallet = (currentData.mainWallet || 0) + commission;
+                        }
+                        return currentData;
+                    });
+                    level++;
+                    traverseUp(referrer);
+                });
+            }
+            traverseUp(winner);
+        }
+
+        // ============================================================
         //  NETWORK DISCONNECTION LISTENER
         // ============================================================
         let isNetworkConnected = true;
@@ -2436,10 +2701,8 @@
         function startNetworkListener() {
             if (networkListenerActive) return;
             networkListenerActive = true;
-
             window.addEventListener('online', handleNetworkOnline);
             window.addEventListener('offline', handleNetworkOffline);
-
             if (database) {
                 const connectedRef = database.ref('.info/connected');
                 connectedRef.on('value', (snap) => {
@@ -2451,7 +2714,6 @@
                     }
                 });
             }
-
             if (!navigator.onLine) {
                 handleNetworkOffline();
             }
@@ -2528,7 +2790,7 @@
         };
 
         // ============================================================
-        //  SESSION MANAGEMENT – prevent multiple devices
+        //  SESSION MANAGEMENT
         // ============================================================
         function generateSessionId() {
             return Date.now().toString(36) + Math.random().toString(36).substr(2, 8);
@@ -2537,20 +2799,16 @@
         function startSessionListener(username) {
             if (!database) return;
             sessionId = generateSessionId();
-
             const sessionRef = database.ref('sessions/' + username);
             if (sessionListener) {
                 sessionRef.off();
                 sessionListener = null;
             }
-
             sessionRef.onDisconnect().remove();
-
             sessionRef.set({
                 sessionId: sessionId,
                 timestamp: Date.now()
             });
-
             sessionListener = sessionRef.on('value', (snap) => {
                 const data = snap.val();
                 if (!data || data.sessionId !== sessionId) {
@@ -2582,17 +2840,16 @@
         }
 
         // ============================================================
-        //  ATOMIC NUMBER CLAIM / RELEASE – prevents simultaneous selection
+        //  ATOMIC NUMBER CLAIM / RELEASE
         // ============================================================
         function claimNumber(number, callback) {
             if (!gameRef) return callback(false);
             const takenRef = gameRef.child('numbersTaken/' + number);
             takenRef.transaction(current => {
-                // current is true if taken, false/undefined if free
                 if (current === true) {
-                    return; // abort – already taken
+                    return;
                 }
-                return true; // claim it
+                return true;
             }, (error, committed, snapshot) => {
                 if (error) {
                     console.error('Claim number error:', error);
@@ -2600,13 +2857,11 @@
                     return;
                 }
                 if (committed) {
-                    // Successfully claimed
                     callback(true);
                 } else {
-                    // Not committed – number was already taken
                     callback(false);
                 }
-            }, false); // apply locally? We'll keep false for consistency
+            }, false);
         }
 
         function releaseNumber(number) {
@@ -2675,6 +2930,8 @@
         const depositBtn = $('depositBtn');
         const withdrawBtn = $('withdrawBtn');
         const transferBtn = $('transferBtn');
+        const referralBtn = $('referralBtn');
+        const supportBtn = $('supportBtn');
         const gameLogoutBtn = $('gameLogoutBtn');
 
         const depositModal = $('depositModal');
@@ -2703,6 +2960,15 @@
         const waitingModal = $('waitingModal');
         const closeWaitingBtn = $('closeWaitingBtn');
         const welcomeToast = $('welcomeToast');
+
+        // Referral modal
+        const referralModal = $('referralModal');
+        const referralLinkInput = $('referralLinkInput');
+        const copyReferralBtn = $('copyReferralBtn');
+        const shareReferralBtn = $('shareReferralBtn');
+        const referralCancelBtn = $('referralCancelBtn');
+        const referralCountDisplay = $('referralCountDisplay');
+        const referralEarningsDisplay = $('referralEarningsDisplay');
 
         const wheelContainer = $('wheelContainer');
         const spinResults = $('spinResults');
@@ -2759,6 +3025,8 @@
                     if (transactionModal.classList.contains('active')) {
                         checkPendingTransactionStatus();
                     }
+                    // Update referral UI if modal is open or visible
+                    updateReferralUI();
                 }
             });
         }
@@ -2769,19 +3037,16 @@
         function checkPendingTransactionStatus() {
             if (!currentUser || !database) return;
             const txRef = database.ref('transactions');
-
             if (pendingTxListener) {
                 pendingTxListener.off();
                 pendingTxListener = null;
             }
-
             txRef.orderByChild('username').equalTo(currentUser).on('child_added', snapshot => {
                 const tx = snapshot.val();
                 if (tx && tx.status === 'pending') {
                     // minimal – modal handled by requestTransaction()
                 }
             });
-
             pendingTxListener = txRef.orderByChild('username').equalTo(currentUser).on('child_changed', snapshot => {
                 const tx = snapshot.val();
                 if (!tx) return;
@@ -2790,14 +3055,13 @@
         }
 
         // ============================================================
-        //  OCR FUNCTION – extract reference and amount (fixed)
+        //  OCR FUNCTION
         // ============================================================
         async function extractReferenceFromImage(file) {
             if (!file) {
                 ocrStatus.textContent = '⚠️ No image selected.';
                 return null;
             }
-
             ocrProgressModal.classList.add('active');
             ocrSpinner.style.display = 'block';
             ocrDoneIcon.classList.remove('show');
@@ -2824,15 +3088,9 @@
                 URL.revokeObjectURL(imageUrl);
                 const text = result.data.text;
 
-                // Extract 10-digit alphanumeric reference
                 const refMatch = text.match(/\b[A-Z0-9]{10}\b/);
 
-                // ============================================================
-                //  IMPROVED AMOUNT EXTRACTION – captures full number
-                // ============================================================
                 let amount = null;
-
-                // Split text into lines to find the line containing "ETB" or "Birr"
                 const lines = text.split('\n');
                 let amountLine = null;
                 for (const line of lines) {
@@ -2841,12 +3099,9 @@
                         break;
                     }
                 }
-
                 if (amountLine) {
-                    // Extract the first number (with optional minus, commas, and decimal) from that line
                     const numberMatch = amountLine.match(/-?\s*([\d,]+\.?\d*)/);
                     if (numberMatch) {
-                        // Remove commas and parse as float
                         const numStr = numberMatch[1].replace(/,/g, '');
                         const parsed = parseFloat(numStr);
                         if (!isNaN(parsed) && parsed > 0) {
@@ -2854,16 +3109,12 @@
                         }
                     }
                 }
-
-                // If still not found, fallback to scanning all numbers (but avoid years)
                 if (amount === null) {
-                    // Find all decimal numbers (e.g., 100.00)
                     const decimalRegex = /\b(\d+\.\d{2})\b/g;
                     let matches = [];
                     let m;
                     while ((m = decimalRegex.exec(text)) !== null) {
                         const val = parseFloat(m[1]);
-                        // Exclude numbers that look like years (e.g., 2026, 1999)
                         if (val < 1900 || val > 2100) {
                             matches.push(val);
                         }
@@ -2871,7 +3122,6 @@
                     if (matches.length > 0) {
                         amount = Math.max(...matches);
                     } else {
-                        // Fallback to integers (avoid years)
                         const intRegex = /\b(\d{2,4})\b/g;
                         let intMatches = [];
                         while ((m = intRegex.exec(text)) !== null) {
@@ -2902,8 +3152,6 @@
                 } else {
                     ocrProgressStatus.textContent += ' ⚠️ No amount found.';
                 }
-
-                // Show a summary message
                 ocrProgressSub.textContent = `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
 
                 setTimeout(() => {
@@ -2948,9 +3196,6 @@
             }
         });
 
-        // ============================================================
-        //  MANUAL EXTRACT BUTTON
-        // ============================================================
         extractRefBtn.onclick = async function() {
             const file = depositImage.files[0];
             if (!file) {
@@ -2989,7 +3234,6 @@
                     playerPlayWallet: walletData.play,
                     pendingWithdrawal: walletData.pending
                 };
-
                 if (type === 'deposit') {
                     if (reference) txData.reference = reference;
                     if (imageFile && storage) {
@@ -3184,7 +3428,7 @@
         }
 
         // ============================================================
-        //  DEPOSIT – now amount and reference can be auto-filled
+        //  DEPOSIT
         // ============================================================
         function depositToPlay(amount, reference, imageFile) {
             if (!currentUser) return false;
@@ -3192,7 +3436,6 @@
                 depositError.textContent = 'Please enter a valid amount.';
                 return false;
             }
-            // Reference is optional, but at least image or reference must be provided
             if (!reference && !imageFile) {
                 depositError.textContent = 'Please provide a reference number or upload a screenshot.';
                 return false;
@@ -3203,7 +3446,7 @@
         }
 
         // ============================================================
-        //  AUTH – with Telegram enforcement
+        //  AUTH
         // ============================================================
         function showAuthScreen() {
             authScreen.style.display = 'flex';
@@ -3240,10 +3483,9 @@
             syncWalletFromFirebase();
             checkPendingTransactionStatus();
             enableNetworkListener();
-
-            // Start session management after login
             if (currentUser) {
                 startSessionListener(currentUser);
+                updateReferralUI();
             }
 
             if (!DB.getToastShown()) {
@@ -3268,6 +3510,9 @@
             audioPlayedThisRound = false;
             DB.setSavedBet(currentBet);
             enableNetworkListener();
+            if (currentUser) {
+                updateReferralUI();
+            }
         }
 
         function updateBetSwitcher() {
@@ -3281,14 +3526,13 @@
         }
 
         // ============================================================
-        //  LOGIN / SIGNUP – with Telegram enforcement
+        //  LOGIN / SIGNUP – with Telegram enforcement & referral
         // ============================================================
         function handleLogin() {
             const username = authUsername.value.trim();
             const password = authPassword.value.trim();
             if (!username || !password) { authError.textContent = 'Please fill in all fields.'; return; }
 
-            // If Telegram detected, force username to detected one
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
                     authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
@@ -3334,7 +3578,6 @@
             const password = authPassword.value.trim();
             if (!username || !password) { authError.textContent = 'Please fill in all fields.'; return; }
 
-            // If Telegram detected, force username to detected one
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
                     authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
@@ -3355,9 +3598,12 @@
                     const newUserData = {
                         password: password,
                         mainWallet: 0,
-                        playWallet: 30, // bonus
+                        playWallet: 30,
                         pendingWithdrawal: 0,
-                        bonusClaimed: true
+                        bonusClaimed: true,
+                        referralCount: 0,
+                        referralEarnings: 0,
+                        referredBy: null
                     };
                     usersRef.child(username).set(newUserData).then(() => {
                         authError.textContent = '✅ Account created! +30 Birr bonus.';
@@ -3463,6 +3709,7 @@
             transactionModal.classList.remove('active');
             winnersModal.classList.remove('active');
             sessionConflictModal.classList.remove('active');
+            referralModal.classList.remove('active');
 
             updateWalletUI();
             updateAllUI();
@@ -3473,7 +3720,6 @@
             }
         }
 
-        // Session conflict OK button
         document.getElementById('sessionConflictOkBtn').onclick = function() {
             sessionConflictModal.classList.remove('active');
             performLogout();
@@ -3722,7 +3968,6 @@
             }
             const roomPath = currentRoom;
             gameRef = database.ref('rooms/' + roomPath);
-            // Ensure numbersTaken node exists
             gameRef.child('numbersTaken').set({});
             database.ref('.info/serverTimeOffset').once('value').then(snap => { serverTimeOffset = Number(snap.val()) || 0;
                 ensureSelectionDeadline(); });
@@ -3806,7 +4051,6 @@
                 engineState.gameStarted = data.gameStarted || true;
                 engineState.potAmount = data.potAmount || 0;
 
-                // Update taken numbers from Firebase
                 const numbersTaken = data.numbersTaken || {};
                 const allTaken = new Set();
                 Object.keys(numbersTaken).forEach(key => {
@@ -3864,6 +4108,7 @@
                             stopTimer();
                             if (!audioPlayedThisRound) {
                                 playGetReadyAudio();
+                                speakGetReady(); // TTS
                                 audioPlayedThisRound = true;
                             }
                             setTimeout(() => {
@@ -3884,7 +4129,7 @@
         }
 
         // ============================================================
-        //  REQUEST SPIN – also reset numbersTaken when resetting round
+        //  REQUEST SPIN
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return;
@@ -3969,7 +4214,7 @@
         }
 
         // ============================================================
-        //  RESULTS COUNTDOWN – reset numbersTaken
+        //  RESULTS COUNTDOWN
         // ============================================================
         function startResultsCountdown() {
             if (isResultsCountdownRunning) return;
@@ -4105,7 +4350,7 @@
         }
 
         // ============================================================
-        //  NUMBER PICKER – now uses atomic claim/release
+        //  NUMBER PICKER
         // ============================================================
         function renderNumberPicker() {
             if (!currentUser) return;
@@ -4155,7 +4400,6 @@
                 return;
             }
 
-            // Check if already taken locally (for quick feedback)
             if (engineState.allTakenNumbers.has(num)) {
                 updateStatus(`❌ Number ${num} is already taken!`);
                 if (tg && tg.HapticFeedback) {
@@ -4167,35 +4411,29 @@
             const currentPick = (engineState.players[currentUser] && engineState.players[currentUser].pick) || null;
             let newPick = num;
             if (currentPick === num) {
-                // Unselect – release number
                 if (currentPick !== null) {
                     releaseNumber(currentPick);
                 }
-                // Update player's pick to null
                 if (gameRef) {
                     gameRef.child('players/' + currentUser + '/pick').set(null);
                     gameRef.child('players/' + currentUser + '/ready').set(false);
                     gameRef.child('players/' + currentUser + '/betDeducted').set(false);
                     gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
                 }
-                // Update local state
                 engineState.players[currentUser].pick = null;
                 engineState.players[currentUser].ready = false;
-                // Also release from local taken set? Actually the sync will update.
                 renderNumberPicker();
                 updatePickStatus();
                 updateStatus(`↩️ ${currentUser} unselected their number.`);
                 return;
             }
 
-            // Attempt to claim the number atomically
             claimNumber(num, function(success) {
                 if (!success) {
                     updateStatus(`❌ Number ${num} was just taken by someone else!`);
                     if (tg && tg.HapticFeedback) {
                         tg.HapticFeedback.notificationOccurred('error');
                     }
-                    // Refresh the UI to reflect the current taken state
                     if (gameRef) {
                         gameRef.child('numbersTaken').once('value', snap => {
                             const data = snap.val();
@@ -4212,7 +4450,6 @@
                     return;
                 }
 
-                // Successfully claimed – update player's pick
                 if (!engineState.players[currentUser]) {
                     engineState.players[currentUser] = { name: currentUser, pick: null, bet: bet, ready: false,
                         betDeducted: false, round: engineState.roundNumber };
@@ -4224,12 +4461,10 @@
                     gameRef.child('players/' + currentUser + '/ready').set(true);
                     gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
                 }
-                // Also deduct bet immediately
                 deductBetImmediately(currentUser, bet).then(success => {
                     if (success) {
                         // Bet deducted
                     } else {
-                        // Failed – maybe rollback? But we already claimed the number. For safety, we'll leave it.
                         updateStatus('⚠️ Bet deduction failed. Contact support.');
                     }
                 });
@@ -4418,6 +4653,7 @@
                     spinEls[0].classList.add('reveal', 'active');
 
                     playWinningAudio();
+                    speakWinningNumber(winningNumber); // TTS
                     updateStatus(`🎯 Winning number: <span class="highlight">${winningNumber}</span>`);
                     updateWheel();
 
@@ -4463,7 +4699,7 @@
         }
 
         // ============================================================
-        //  WINNERS
+        //  WINNERS – with delayed modal, commission distribution, referral reward
         // ============================================================
         function checkAndAnnounceWinners(prizePool) {
             try {
@@ -4486,21 +4722,22 @@
 
                 const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
+                // Credit winners and distribute commission
                 winners.forEach(name => {
                     if (name === currentUser) {
                         creditWinningsToMain(winAmount);
                         updateStatus(`🎉 You won! +${winAmount} coins (${takenCount} players × ${currentBet} − 15% fee)`,
                             true);
                     }
+                    // Distribute 10% commission to referrers (up the tree)
+                    if (winAmount > 0) {
+                        distributeCommission(name, winAmount);
+                    }
+                    // Process referral reward for the winner (the referrer gets referral count increment)
+                    processReferralReward(name);
                 });
 
-                if (winners.length > 0) {
-                    startFireworks();
-                    playWinningAudio();
-                } else {
-                    playNoWinnerAudio();
-                }
-
+                // Update winners list
                 if (winners.length === 0) {
                     winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
                 } else {
@@ -4515,21 +4752,38 @@
                     });
                     winnersList.innerHTML = html;
                 }
-                winnersModal.classList.add('active');
+
+                if (winners.length > 0) {
+                    startFireworks();
+                    playWinningAudio();
+                    setTimeout(() => {
+                        winnersModal.classList.add('active');
+                        setTimeout(() => {
+                            winnersModal.classList.remove('active');
+                            stopFireworks();
+                        }, 4500);
+                    }, 2000);
+                } else {
+                    playNoWinnerAudio();
+                    winnersModal.classList.add('active');
+                    setTimeout(() => {
+                        winnersModal.classList.remove('active');
+                        stopFireworks();
+                    }, 4000);
+                }
+
                 if (tg && tg.HapticFeedback) {
                     if (winners.includes(currentUser)) {
                         tg.HapticFeedback.notificationOccurred('success');
                     }
                 }
+
                 setTimeout(() => {
                     if (!isResultsCountdownRunning && engineState.gamePhase === 'results') {
                         startResultsCountdown();
                     }
                 }, 500);
-                setTimeout(() => {
-                    winnersModal.classList.remove('active');
-                    stopFireworks();
-                }, 4500);
+
             } catch (error) {
                 handleError(error, 'Check Winners');
             }
@@ -4565,6 +4819,92 @@
         };
 
         // ============================================================
+        //  REFERRAL MODAL HANDLERS
+        // ============================================================
+        function openReferralModal() {
+            if (!currentUser) return;
+            const link = getReferralLink(currentUser);
+            referralLinkInput.value = link;
+            // Update stats
+            updateReferralUI();
+            referralModal.classList.add('active');
+            closeMoreDropdown();
+        }
+
+        copyReferralBtn.onclick = function() {
+            const link = referralLinkInput.value;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(link).then(() => {
+                    showToast('📋 Referral link copied!');
+                }).catch(() => {
+                    // Fallback
+                    referralLinkInput.select();
+                    document.execCommand('copy');
+                    showToast('📋 Referral link copied!');
+                });
+            } else {
+                referralLinkInput.select();
+                document.execCommand('copy');
+                showToast('📋 Referral link copied!');
+            }
+            // After copy, open Telegram contact list
+            setTimeout(() => {
+                if (tg && tg.openTelegramLink) {
+                    tg.openTelegramLink(`https://t.me/winzobot?start=ref_${currentUser}`);
+                } else {
+                    window.open(`https://t.me/winzobot?start=ref_${currentUser}`, '_blank');
+                }
+            }, 300);
+        };
+
+        shareReferralBtn.onclick = function() {
+            const link = referralLinkInput.value;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Join Winzo Games Room!',
+                    text: 'Play Bingo and win real money! Use my referral link:',
+                    url: link
+                }).catch(() => {});
+            } else {
+                // Fallback: copy and open telegram
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(link).then(() => {
+                        showToast('📋 Referral link copied!');
+                    }).catch(() => {
+                        referralLinkInput.select();
+                        document.execCommand('copy');
+                        showToast('📋 Referral link copied!');
+                    });
+                } else {
+                    referralLinkInput.select();
+                    document.execCommand('copy');
+                    showToast('📋 Referral link copied!');
+                }
+                if (tg && tg.openTelegramLink) {
+                    tg.openTelegramLink(`https://t.me/winzobot?start=ref_${currentUser}`);
+                } else {
+                    window.open(`https://t.me/winzobot?start=ref_${currentUser}`, '_blank');
+                }
+            }
+        };
+
+        referralCancelBtn.onclick = function() {
+            referralModal.classList.remove('active');
+        };
+
+        // ============================================================
+        //  SUPPORT BUTTON
+        // ============================================================
+        function openSupport() {
+            if (tg && tg.openTelegramLink) {
+                tg.openTelegramLink('https://t.me/winzosupportcenter');
+            } else {
+                window.open('https://t.me/winzosupportcenter', '_blank');
+            }
+            closeMoreDropdown();
+        }
+
+        // ============================================================
         //  UPDATE ALL UI
         // ============================================================
         function updateAllUI() {
@@ -4576,6 +4916,7 @@
             renderNumberPicker();
             updateWheel();
             updatePrizeDisplay();
+            if (currentUser) updateReferralUI();
         }
 
         function updatePlayerList() {
@@ -4589,6 +4930,20 @@
         function updatePhase(phase) {
             const labels = { 'selection': '⏳ Selecting', 'spinning': '🎡 Spinning', 'results': '🏆 Results' };
             gamePhaseLabel.textContent = labels[phase] || '⏳';
+        }
+
+        // ============================================================
+        //  TOAST HELPER
+        // ============================================================
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('welcomeToast');
+            if (!toast) return;
+            toast.querySelector('p').textContent = msg;
+            toast.style.borderColor = isError ? '#ff6b6b' : '#f5a623';
+            toast.classList.add('active');
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
         }
 
         // ============================================================
@@ -4638,6 +4993,12 @@
                 closeMoreDropdown();
             };
 
+            // Referral button
+            referralBtn.onclick = openReferralModal;
+
+            // Support button
+            supportBtn.onclick = openSupport;
+
             switchBet15.onclick = () => { switchBet(15); };
             switchBet30.onclick = () => { switchBet(30); };
 
@@ -4651,7 +5012,6 @@
                     depositError.textContent = 'Please enter a valid amount.';
                     return;
                 }
-                // Reference optional if image is provided
                 if (!ref && !file) {
                     depositError.textContent = 'Please provide a reference number or upload a screenshot.';
                     return;
