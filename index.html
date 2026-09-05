@@ -459,10 +459,10 @@
             text-align: center;
             flex-shrink: 0;
         }
-        .dropdown-item.deposit {
+        .dropdown-item. {
             color: #8affb0;
         }
-        .dropdown-item.deposit:hover {
+        .dropdown-item.:hover {
             background: rgba(80, 255, 160, 0.08);
         }
         .dropdown-item.withdraw {
@@ -911,7 +911,7 @@
 
         .num-picker {
             display: grid;
-            grid-template-columns: repeat(10, 1fr);
+            grid-template-columns: repeat(8, 1fr);
             gap: 2px;
             padding: 2px;
         }
@@ -920,8 +920,8 @@
             border: 2px solid #f0e6ff;
             border-radius: 6px;
             padding: 0;
-            font-weight: 700;
-            font-size: 0.5rem;
+            font-weight: 800;
+            font-size: 1rem;
             color: #f0e6ff;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             cursor: pointer;
@@ -954,16 +954,16 @@
             transform: scale(1.06);
         }
         .num-btn.taken {
-            background: rgba(60, 30, 90, 0.5);
-            color: #5a4a6a;
+            background: red;
+            color: yellow;
             border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
-            opacity: 0.6;
+            opacity: 100;
             position: relative;
         }
         .num-btn.taken::after {
-            content: "✕";
+            content: "";
             position: absolute;
             top: -2px;
             right: -2px;
@@ -971,7 +971,7 @@
             color: #ff6b6b;
         }
         .num-btn:disabled {
-            opacity: 0.35;
+            opacity: 100;
             transform: translateY(2px);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             pointer-events: none;
@@ -1115,7 +1115,7 @@
             font-weight: 500;
         }
 
-        .deposit-modal,
+        .-modal,
         .withdraw-modal {
             display: none;
             position: fixed;
@@ -1131,7 +1131,7 @@
             padding: 20px;
             animation: fadeIn 0.3s ease;
         }
-        .deposit-modal.active,
+        .-modal.active,
         .withdraw-modal.active {
             display: flex;
         }
@@ -1671,7 +1671,7 @@
             box-shadow: 0 1px 0 #8a2a2a;
         }
 
-        /* ===== Responsive ===== */
+        /* ===== Responsive – better small screen support ===== */
         @media (max-height:700px) {
             .game-wrapper {
                 padding: 8px 10px 12px;
@@ -1834,6 +1834,78 @@
                 padding: 1px 8px;
             }
         }
+        /* Extra small screens (like Pixel) */
+        @media (max-width:340px) {
+            .game-wrapper {
+                padding: 3px 4px 6px;
+                border-radius: 20px;
+            }
+            .title {
+                font-size: 0.75rem;
+            }
+            .wheel-container {
+                max-width: 100px;
+            }
+            .num-btn {
+                font-size: 0.35rem;
+                border-width: 1px;
+            }
+            .spin-ball {
+                font-size: 0.55rem;
+                padding: 1px 6px;
+                min-width: 22px;
+            }
+            .wallet-item {
+                font-size: 0.4rem;
+                padding: 1px 3px;
+            }
+            .wallet-item .amount {
+                font-size: 0.5rem;
+            }
+            .more-btn {
+                width: 20px;
+                height: 20px;
+                font-size: 0.7rem;
+            }
+            .game-info-bar .info-item .value {
+                font-size: 0.65rem;
+            }
+            .game-info-bar .info-item .value.timer {
+                font-size: 0.7rem;
+            }
+            .bet-switcher .bet-btn {
+                font-size: 0.5rem;
+                padding: 1px 6px;
+            }
+            .pick-status {
+                font-size: 0.6rem;
+                min-height: 1.4rem;
+            }
+            .status-area {
+                font-size: 0.55rem;
+                min-height: 1.4rem;
+            }
+            .auth-screen .logo h2 {
+                font-size: 1.6rem;
+            }
+            .auth-btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+            .modal-content {
+                padding: 12px 10px 10px;
+            }
+            .modal-content h2 {
+                font-size: 1rem;
+            }
+            .welcome-screen .bet-options button {
+                font-size: 1.2rem;
+                padding: 12px;
+            }
+            .referral-modal .modal-content {
+                padding: 16px 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1897,8 +1969,8 @@
             <div class="wallet-bar">
                 <div class="wallet-left">
                     <div class="wallet-item"><span class="label">👤</span><span class="username" id="walletUsername">User</span></div>
-                    <div class="wallet-item"><span class="label">💰</span><span class="amount" id="mainWallet">0</span></div>
-                    <div class="wallet-item"><span class="label">🎰</span><span class="amount" id="playWallet">0</span></div>
+                    <div class="wallet-item"><span class="label"> Main w:</span><span class="amount" id="mainWallet">0</span></div>
+                    <div class="wallet-item"><span class="label">Play W:</span><span class="amount" id="playWallet">0</span></div>
                     <div class="wallet-item" id="pendingItem" style="display:none;"><span class="label">⏳</span><span class="pending" id="pendingAmount">0</span></div>
                 </div>
                 <div class="wallet-right">
@@ -1908,7 +1980,7 @@
                         <div class="more-dropdown" id="moreDropdown">
                             <div class="dropdown-section" style="border-bottom:none;">
                                 <div class="dropdown-label">⚙️ Actions</div>
-                                <button class="dropdown-item deposit" id="depositBtn"><span class="icon">💰</span> Deposit</button>
+                                <button class="dropdown-item " id="Btn"><span class="icon">💰</span> Deposit</button>
                                 <button class="dropdown-item withdraw" id="withdrawBtn"><span class="icon">🏦</span> Withdraw</button>
                                 <button class="dropdown-item transfer" id="transferBtn"><span class="icon">↗️</span> Transfer to Play</button>
                                 <button class="dropdown-item referral" id="referralBtn"><span class="icon">🔗</span> Referral Link</button>
@@ -1921,18 +1993,18 @@
             </div>
 
             <div class="bet-switcher">
-                <span class="label">🎯 Bet:</span>
+                <span class="label">Room:</span>
                 <button class="bet-btn active" id="switchBet15">15 Birr</button>
                 <button class="bet-btn" id="switchBet30">30 Birr</button>
             </div>
 
             <div class="game-info-bar">
-                <div class="info-item">⏱️ <span class="value timer" id="timerDisplay">30</span>s</div>
-                <div class="info-item">👥 <span class="value players" id="playerCount">0</span></div>
-                <div class="info-item">🏆 <span class="value prize" id="prizeDisplay">0</span> Birr</div>
+                <div class="info-item">Timer: <span class="value timer" id="timerDisplay">30</span>s</div>
+                <div class="info-item">Online: <span class="value players" id="playerCount">0</span></div>
+                <div class="info-item">Prize <span class="value prize" id="prizeDisplay">0</span> Birr</div>
             </div>
 
-            <div class="pick-status" id="pickStatus"><span>🎯 Pick <span class="highlight">one</span> number</span></div>
+            <div class="pick-status" id="pickStatus"><span>Pick <span class="highlight">one</span> number</span></div>
 
             <div class="wheel-container hidden" id="wheelContainer">
                 <div class="wheel" id="wheel">
@@ -1942,7 +2014,7 @@
                         <div class="arrow-head"></div>
                     </div>
                     <div class="arrow-center-circle" id="arrowCenter">🎯</div>
-                    <div class="spinning-indicator" id="spinningIndicator">🎡 SPINNING...</div>
+                    <div class="spinning-indicator" id="spinningIndicator">SPINNING...</div>
                 </div>
             </div>
 
@@ -1981,32 +2053,32 @@
     </div>
 
     <!-- DEPOSIT MODAL with amount and reference auto-extraction -->
-    <div class="deposit-modal" id="depositModal">
+    <div class="-modal" id="Modal">
         <div class="modal-content">
-            <h3>💰 Deposit to Play</h3>
-            <div class="balance-info">Current Play: <span class="amount" id="depositPlayBalance">0</span></div>
-            <input type="number" class="modal-input" id="depositAmount" placeholder="Amount (auto-extracted)" min="1" step="1">
-            <input type="text" class="modal-input" id="depositReference" placeholder="Reference (auto-extracted)" maxlength="20">
+            <h3>💰 በቴሌብር ወደ 0923002900/0918242383 ያስገቡ</h3>
+            <div class="balance-info">ያሎት ብር መጠን : <span class="amount" id="PlayBalance">0</span></div>
+            <input type="number" class="modal-input" id="Amount" placeholder="Amount (auto-extracted)" min="1" step="1">
+            <input type="text" class="modal-input" id="Reference" placeholder="Reference (auto-extracted)" maxlength="20">
             <div style="margin: 8px 0;">
-                <label style="color:#b8a0d0;font-size:0.8rem;">Upload Screenshot</label>
-                <input type="file" id="depositImage" accept="image/*" style="width:100%;padding:6px;background:rgba(0,0,0,0.3);border:1px solid rgba(120,80,200,0.2);border-radius:30px;color:#f0e6ff;">
+                <label style="color:#b8a0d0;font-size:0.8rem;"> የከፈሉበትን Screenshot ይላኩ</label>
+                <input type="file" id="Image" accept="image/*" style="width:100%;padding:6px;background:rgba(0,0,0,0.3);border:1px solid rgba(120,80,200,0.2);border-radius:30px;color:#f0e6ff;">
                 <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap;">
                     <button id="extractRefBtn" style="background:rgba(80,255,160,0.08);border:1px solid rgba(80,255,160,0.15);border-radius:30px;padding:4px 16px;color:#8affb0;font-size:0.75rem;cursor:pointer;">🔍 Extract</button>
                     <span id="ocrStatus" style="color:#ffd866;font-size:0.7rem;"></span>
                 </div>
             </div>
-            <div class="modal-error" id="depositError"></div>
+            <div class="modal-error" id="Error"></div>
             <div class="modal-btns">
-                <button class="confirm" id="depositConfirm">Submit</button>
-                <button class="cancel" id="depositCancel">Cancel</button>
+                <button class="confirm" id="Confirm">Submit</button>
+                <button class="cancel" id="Cancel">Cancel</button>
             </div>
         </div>
     </div>
 
     <div class="withdraw-modal" id="withdrawModal">
         <div class="modal-content">
-            <h3>🏦 Withdraw from Main</h3>
-            <div class="balance-info">Available: <span class="amount" id="withdrawAvailableBalance">0</span> Birr</div>
+            <h3>🏦 ከተቀማጭ  ሂሳብ  ገንዘብ  ማውጫ</h3>
+            <div class="balance-info">ያሎት የብር መጠን  <span class="amount" id="withdrawAvailableBalance">0</span> ብር</div>
             <input type="text" class="modal-input" id="withdrawName" placeholder="Full Name" required>
             <input type="tel" class="modal-input" id="withdrawPhone" placeholder="Phone Number" required>
             <input type="number" class="modal-input" id="withdrawAmount" placeholder="Amount" min="1" required>
@@ -2071,7 +2143,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game with TTS, Referral & Support      -->
+    <!-- JAVASCRIPT – Complete Game with Referral, TTS & Disconnect Refund -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2087,20 +2159,15 @@
                 if (callback) callback();
                 return;
             }
-            // Cancel any ongoing speech
             window.speechSynthesis.cancel();
-
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
             utterance.rate = 0.9;
             utterance.pitch = 1.1;
-
-            // Try to find a good voice
             const voices = window.speechSynthesis.getVoices();
             const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) || voices.find(v => v
                 .lang.startsWith('en')) || null;
             if (preferredVoice) utterance.voice = preferredVoice;
-
             if (callback) {
                 utterance.onend = callback;
             }
@@ -2116,9 +2183,8 @@
             speakText(text);
         }
 
-        // Preload voices (optional)
         if (window.speechSynthesis) {
-            window.speechSynthesis.getVoices(); // Trigger loading
+            window.speechSynthesis.getVoices();
             window.speechSynthesis.onvoiceschanged = () => {
                 window.speechSynthesis.getVoices();
             };
@@ -2521,7 +2587,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.2';
+        const APP_VERSION = '5.3';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2606,7 +2672,7 @@
         //  REFERRAL SYSTEM
         // ============================================================
         function getReferralLink(username) {
-            // Use a generic link with a parameter. In production, replace with your bot link.
+            // Use the custom link provided
             return `http://t.me/WinzoBettingBot/Winzo?start=ref_${username}`;
         }
 
@@ -2626,22 +2692,17 @@
 
         function processReferralReward(referredUsername) {
             if (!referredUsername || !database) return;
-            // Find who referred this user
             const userRef = database.ref('users/' + referredUsername);
             userRef.once('value', snap => {
                 const data = snap.val();
                 if (!data || !data.referredBy) return;
                 const referrer = data.referredBy;
-                // Increment referrer's referral count
                 const referrerRef = database.ref('users/' + referrer);
                 referrerRef.transaction(current => {
                     if (current) {
                         current.referralCount = (current.referralCount || 0) + 1;
-                        // Check if referral count is a multiple of 10
                         if (current.referralCount % 10 === 0) {
-                            // Add 5 Birr to main wallet
                             current.mainWallet = (current.mainWallet || 0) + 5;
-                            // Log the reward
                             const rewardLog = {
                                 type: 'referral_bonus',
                                 amount: 5,
@@ -2658,13 +2719,10 @@
             });
         }
 
-        // Commission on wins: give 10% to referrers up the tree (max 5 levels)
         function distributeCommission(winner, winAmount) {
             if (!winner || !database || winAmount <= 0) return;
             const commission = winAmount * 0.10;
             if (commission < 0.01) return;
-
-            let current = winner;
             let level = 0;
             const maxLevels = 5;
 
@@ -2927,29 +2985,29 @@
         const betDisplay = $('betDisplay');
         const pickStatus = $('pickStatus');
 
-        const depositBtn = $('depositBtn');
+        const Btn = $('Btn');
         const withdrawBtn = $('withdrawBtn');
         const transferBtn = $('transferBtn');
         const referralBtn = $('referralBtn');
         const supportBtn = $('supportBtn');
         const gameLogoutBtn = $('gameLogoutBtn');
 
-        const depositModal = $('depositModal');
+        const Modal = $('Modal');
         const withdrawModal = $('withdrawModal');
-        const depositAmount = $('depositAmount');
-        const depositReference = $('depositReference');
-        const depositImage = $('depositImage');
+        const Amount = $('Amount');
+        const Reference = $('Reference');
+        const Image = $('Image');
         const extractRefBtn = $('extractRefBtn');
         const ocrStatus = $('ocrStatus');
         const withdrawName = $('withdrawName');
         const withdrawPhone = $('withdrawPhone');
         const withdrawAmountEl = $('withdrawAmount');
-        const depositError = $('depositError');
+        const Error = $('Error');
         const withdrawError = $('withdrawError');
-        const depositPlayBalance = $('depositPlayBalance');
+        const PlayBalance = $('PlayBalance');
         const withdrawAvailableBalance = $('withdrawAvailableBalance');
-        const depositConfirm = $('depositConfirm');
-        const depositCancel = $('depositCancel');
+        const Confirm = $('Confirm');
+        const Cancel = $('Cancel');
         const withdrawConfirm = $('withdrawConfirm');
         const withdrawCancel = $('withdrawCancel');
         const winnersModal = $('winnersModal');
@@ -3025,7 +3083,6 @@
                     if (transactionModal.classList.contains('active')) {
                         checkPendingTransactionStatus();
                     }
-                    // Update referral UI if modal is open or visible
                     updateReferralUI();
                 }
             });
@@ -3176,7 +3233,7 @@
         // ============================================================
         //  AUTO‑OCR ON IMAGE UPLOAD
         // ============================================================
-        depositImage.addEventListener('change', async function() {
+        Image.addEventListener('change', async function() {
             const file = this.files[0];
             if (!file) {
                 ocrStatus.textContent = '';
@@ -3185,10 +3242,10 @@
             const result = await extractReferenceFromImage(file);
             if (result) {
                 if (result.reference) {
-                    depositReference.value = result.reference;
+                    Reference.value = result.reference;
                 }
                 if (result.amount) {
-                    depositAmount.value = result.amount;
+                    Amount.value = result.amount;
                 }
                 ocrStatus.textContent = '✅ Extracted data.';
             } else {
@@ -3197,7 +3254,7 @@
         });
 
         extractRefBtn.onclick = async function() {
-            const file = depositImage.files[0];
+            const file = Image.files[0];
             if (!file) {
                 ocrStatus.textContent = '⚠️ Please select an image first.';
                 return;
@@ -3205,10 +3262,10 @@
             const result = await extractReferenceFromImage(file);
             if (result) {
                 if (result.reference) {
-                    depositReference.value = result.reference;
+                    Reference.value = result.reference;
                 }
                 if (result.amount) {
-                    depositAmount.value = result.amount;
+                    Amount.value = result.amount;
                 }
                 ocrStatus.textContent = '✅ Extracted data.';
             } else {
@@ -3234,10 +3291,10 @@
                     playerPlayWallet: walletData.play,
                     pendingWithdrawal: walletData.pending
                 };
-                if (type === 'deposit') {
+                if (type === '') {
                     if (reference) txData.reference = reference;
                     if (imageFile && storage) {
-                        const storageRef = storage.ref(`deposits/${currentUser}/${txRef.key}.jpg`);
+                        const storageRef = storage.ref(`s/${currentUser}/${txRef.key}.jpg`);
                         const uploadTask = storageRef.put(imageFile);
                         uploadTask.then(snapshot => {
                             return snapshot.ref.getDownloadURL();
@@ -3288,7 +3345,7 @@
                             });
                             transactionStatus.textContent = '✅ Withdrawal approved.';
                             transactionStatus.className = 'status-text approved';
-                        } else if (data.type === 'deposit') {
+                        } else if (data.type === '') {
                             const userRef = database.ref('users/' + data.username);
                             userRef.transaction(current => {
                                 if (current) {
@@ -3298,7 +3355,7 @@
                                 return current;
                             }, (error, committed, snap) => {
                                 if (error) {
-                                    console.error('Error crediting deposit:', error);
+                                    console.error('Error crediting :', error);
                                 } else if (committed && snap) {
                                     const updated = snap.val();
                                     walletData.main = updated.mainWallet || 0;
@@ -3338,7 +3395,7 @@
                             });
                             transactionStatus.textContent = '❌ Withdrawal rejected.';
                             transactionStatus.className = 'status-text rejected';
-                        } else if (data.type === 'deposit') {
+                        } else if (data.type === '') {
                             transactionStatus.textContent = '❌ Deposit rejected.';
                             transactionStatus.className = 'status-text rejected';
                         }
@@ -3430,19 +3487,19 @@
         // ============================================================
         //  DEPOSIT
         // ============================================================
-        function depositToPlay(amount, reference, imageFile) {
+        function ToPlay(amount, reference, imageFile) {
             if (!currentUser) return false;
             if (amount <= 0) {
-                depositError.textContent = 'Please enter a valid amount.';
+                Error.textContent = 'Please enter a valid amount.';
                 return false;
             }
             if (!reference && !imageFile) {
-                depositError.textContent = 'Please provide a reference number or upload a screenshot.';
+                Error.textContent = 'Please provide a reference number or upload a screenshot.';
                 return false;
             }
-            depositError.textContent = '';
-            depositModal.classList.remove('active');
-            return requestTransaction('deposit', amount, reference || '', imageFile || null);
+            Error.textContent = '';
+            Modal.classList.remove('active');
+            return requestTransaction('', amount, reference || '', imageFile || null);
         }
 
         // ============================================================
@@ -3766,7 +3823,7 @@
         function selectBet(amount) {
             if (!currentUser) return;
             if (walletData.play < amount) {
-                alert('⚠️ Insufficient play balance. Please deposit.');
+                alert('⚠️ Insufficient play balance. Please .');
                 return;
             }
             currentBet = amount;
@@ -3813,13 +3870,13 @@
         //  DEPOSIT MODAL HANDLERS
         // ============================================================
         function openDepositModal() {
-            depositPlayBalance.textContent = walletData.play;
-            depositError.textContent = '';
-            depositAmount.value = '';
-            depositReference.value = '';
-            depositImage.value = '';
+            PlayBalance.textContent = walletData.play;
+            Error.textContent = '';
+            Amount.value = '';
+            Reference.value = '';
+            Image.value = '';
             ocrStatus.textContent = '';
-            depositModal.classList.add('active');
+            Modal.classList.add('active');
             closeMoreDropdown();
         }
 
@@ -3938,7 +3995,7 @@
         }
 
         // ============================================================
-        //  GAME CONNECTION
+        //  GAME CONNECTION – with disconnect handling
         // ============================================================
         let serverTimeOffset = 0;
         let phaseDeadline = 0;
@@ -4011,14 +4068,19 @@
                 }
             });
 
-            gameRef.child('players/' + currentUser).onDisconnect().remove();
+            // On disconnect: set disconnected flag instead of removing
+            gameRef.child('players/' + currentUser).onDisconnect().update({
+                disconnected: true
+            });
+            // When joining, set disconnected false
             gameRef.child('players/' + currentUser).set({
                 name: currentUser,
                 pick: null,
                 bet: currentBet,
                 ready: false,
                 betDeducted: false,
-                round: engineState.roundNumber
+                round: engineState.roundNumber,
+                disconnected: false
             });
 
             isGameInitialized = true;
@@ -4026,7 +4088,7 @@
         }
 
         // ============================================================
-        //  SYNC GAME STATE
+        //  SYNC GAME STATE – with disconnect refund logic
         // ============================================================
         function syncGameState(data) {
             if (syncInProgress) return;
@@ -4084,31 +4146,64 @@
 
                 updateUIFromState();
 
-                if (engineState.gamePhase === 'spinning' && engineState.spinCount === 0 && !engineState.isSpinning && !engineState
-                    .spinInProgress) {
-                    console.warn('Detected stuck spin. Executing spin now.');
-                    setTimeout(() => {
-                        if (engineState.gamePhase === 'spinning') {
-                            executeSpin();
-                        }
-                    }, 500);
-                }
-
-                if (engineState.gamePhase === 'selection' && !isTimerRunning) {
-                    startTimer();
-                }
-
+                // Handle disconnect refund when timer reaches 0
                 if (engineState.gamePhase === 'selection' && engineState.timer <= 0) {
-                    const playersWithPick = Object.keys(engineState.players).filter(name => {
-                        const p = engineState.players[name];
-                        return p && p.pick !== null && p.round === engineState.roundNumber;
+                    // Refund disconnected players
+                    const disconnectedPlayers = Object.keys(players).filter(name => players[name] && players[name]
+                        .disconnected === true && players[name].pick !== null);
+                    disconnectedPlayers.forEach(name => {
+                        const player = players[name];
+                        if (player && player.betDeducted && player.bet) {
+                            // Refund the bet
+                            refundBetImmediately(name, player.bet);
+                            // Remove their pick
+                            gameRef.child('players/' + name + '/pick').set(null);
+                            gameRef.child('players/' + name + '/betDeducted').set(false);
+                            gameRef.child('players/' + name + '/round').set(null);
+                            // Also release the number
+                            if (player.pick !== null) {
+                                releaseNumber(player.pick);
+                            }
+                        }
                     });
+                    // Now proceed with spin if enough players remain
+                    const activePlayers = Object.keys(players).filter(name => !players[name].disconnected && players[name]
+                        .pick !== null);
+                    if (activePlayers.length < 2) {
+                        // Not enough active players – reset round
+                        if (!engineState.isSpinning && !engineState.spinInProgress) {
+                            stopTimer();
+                            // Reset the round
+                            gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS *
+                                    1000 });
+                            // Also reset numbers taken and picks
+                            const updates = {};
+                            playerNames.forEach(name => {
+                                if (players[name].pick !== null) {
+                                    updates['players/' + name + '/pick'] = null;
+                                    updates['players/' + name + '/ready'] = false;
+                                    updates['players/' + name + '/betDeducted'] = false;
+                                    updates['players/' + name + '/round'] = null;
+                                }
+                            });
+                            gameRef.update(updates);
+                            resetNumbersTaken();
+                            updateStatus('⏳ Not enough active players. Round reset.');
+                            // Reset local state
+                            engineState.allTakenNumbers = new Set();
+                            engineState.timer = 30;
+                            timerDisplay.textContent = '30';
+                            return;
+                        }
+                    }
+                    // If enough active players, proceed with spin
+                    const playersWithPick = activePlayers;
                     if (playersWithPick.length > 0) {
                         if (!engineState.isSpinning && !engineState.spinInProgress) {
                             stopTimer();
                             if (!audioPlayedThisRound) {
                                 playGetReadyAudio();
-                                speakGetReady(); // TTS
+                                speakGetReady();
                                 audioPlayedThisRound = true;
                             }
                             setTimeout(() => {
@@ -4116,8 +4211,15 @@
                             }, 500);
                         }
                     } else {
-                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS *
+                                1000 });
+                        resetNumbersTaken();
                     }
+                }
+
+                // Normal timer expiry handling (fallback)
+                if (engineState.gamePhase === 'selection' && engineState.timer <= 0) {
+                    // Already handled above, but keep for safety
                 }
 
                 if (engineState.gamePhase === 'results' && !isResultsCountdownRunning) {
@@ -4133,9 +4235,10 @@
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return;
-            const playersWithPick = Object.keys(engineState.players).filter(name => {
-                const p = engineState.players[name];
-                return p && p.pick !== null && p.round === engineState.roundNumber;
+            const players = engineState.players;
+            const playersWithPick = Object.keys(players).filter(name => {
+                const p = players[name];
+                return p && !p.disconnected && p.pick !== null && p.round === engineState.roundNumber;
             });
 
             if (playersWithPick.length === 0) {
@@ -4149,7 +4252,8 @@
                 const playerData = engineState.players[singlePlayer];
                 if (playerData.betDeducted) {
                     refundBetImmediately(singlePlayer, playerData.bet || currentBet).then(() => {
-                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS *
+                                1000 });
                         gameRef.child('players/' + singlePlayer + '/pick').set(null);
                         gameRef.child('players/' + singlePlayer + '/betDeducted').set(false);
                         gameRef.child('players/' + singlePlayer + '/round').set(null);
@@ -4198,7 +4302,7 @@
                 timerDisplay.textContent = remaining;
                 if (remaining <= 0) {
                     stopTimer();
-                    requestSpin();
+                    // requestSpin will be called from syncGameState
                 }
             };
             tick();
@@ -4342,9 +4446,9 @@
             const myPick = (engineState.players[currentUser] && engineState.players[currentUser].pick) || null;
             let html = '';
             if (myPick !== null) {
-                html = `🎯 Your pick: <span class="highlight">${myPick}</span>`;
+                html = `Your pick: <span class="highlight">${myPick}</span>`;
             } else {
-                html = `🎯 Pick <span class="highlight">one</span> number`;
+                html = `Pick <span class="highlight">one</span> number`;
             }
             pickStatus.innerHTML = html;
         }
@@ -4419,6 +4523,7 @@
                     gameRef.child('players/' + currentUser + '/ready').set(false);
                     gameRef.child('players/' + currentUser + '/betDeducted').set(false);
                     gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
+                    gameRef.child('players/' + currentUser + '/disconnected').set(false);
                 }
                 engineState.players[currentUser].pick = null;
                 engineState.players[currentUser].ready = false;
@@ -4452,7 +4557,7 @@
 
                 if (!engineState.players[currentUser]) {
                     engineState.players[currentUser] = { name: currentUser, pick: null, bet: bet, ready: false,
-                        betDeducted: false, round: engineState.roundNumber };
+                        betDeducted: false, round: engineState.roundNumber, disconnected: false };
                 }
                 engineState.players[currentUser].pick = num;
                 engineState.players[currentUser].ready = true;
@@ -4460,6 +4565,7 @@
                     gameRef.child('players/' + currentUser + '/pick').set(num);
                     gameRef.child('players/' + currentUser + '/ready').set(true);
                     gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
+                    gameRef.child('players/' + currentUser + '/disconnected').set(false);
                 }
                 deductBetImmediately(currentUser, bet).then(success => {
                     if (success) {
@@ -4591,7 +4697,7 @@
                         spinEls[0].textContent = winningNumber;
                         spinEls[0].classList.add('reveal', 'active');
 
-                        updateStatus(`🎯 Winning number: <span class="highlight">${winningNumber}</span>`);
+                        updateStatus(`Winning number: <span class="highlight">${winningNumber}</span>`);
                         updateWheel();
 
                         spinningIndicator.classList.remove('active');
@@ -4653,8 +4759,8 @@
                     spinEls[0].classList.add('reveal', 'active');
 
                     playWinningAudio();
-                    speakWinningNumber(winningNumber); // TTS
-                    updateStatus(`🎯 Winning number: <span class="highlight">${winningNumber}</span>`);
+                    speakWinningNumber(winningNumber);
+                    updateStatus(`Winning number: <span class="highlight">${winningNumber}</span>`);
                     updateWheel();
 
                     spinningIndicator.classList.remove('active');
@@ -4699,7 +4805,7 @@
         }
 
         // ============================================================
-        //  WINNERS – with delayed modal, commission distribution, referral reward
+        //  WINNERS – with commission and referral
         // ============================================================
         function checkAndAnnounceWinners(prizePool) {
             try {
@@ -4722,22 +4828,18 @@
 
                 const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
-                // Credit winners and distribute commission
                 winners.forEach(name => {
                     if (name === currentUser) {
                         creditWinningsToMain(winAmount);
                         updateStatus(`🎉 You won! +${winAmount} coins (${takenCount} players × ${currentBet} − 15% fee)`,
                             true);
                     }
-                    // Distribute 10% commission to referrers (up the tree)
                     if (winAmount > 0) {
                         distributeCommission(name, winAmount);
                     }
-                    // Process referral reward for the winner (the referrer gets referral count increment)
                     processReferralReward(name);
                 });
 
-                // Update winners list
                 if (winners.length === 0) {
                     winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
                 } else {
@@ -4746,7 +4848,7 @@
                         html += `
                                 <div class="winner-entry">
                                     <span class="player-name">${name}</span>
-                                    <span class="winning-nums">🎯 ${winningNumber} · ${winAmount} Birr</span>
+                                    <span class="winning-nums">${winningNumber} · ${winAmount} Birr</span>
                                 </div>
                             `;
                     });
@@ -4825,7 +4927,6 @@
             if (!currentUser) return;
             const link = getReferralLink(currentUser);
             referralLinkInput.value = link;
-            // Update stats
             updateReferralUI();
             referralModal.classList.add('active');
             closeMoreDropdown();
@@ -4837,7 +4938,6 @@
                 navigator.clipboard.writeText(link).then(() => {
                     showToast('📋 Referral link copied!');
                 }).catch(() => {
-                    // Fallback
                     referralLinkInput.select();
                     document.execCommand('copy');
                     showToast('📋 Referral link copied!');
@@ -4847,12 +4947,11 @@
                 document.execCommand('copy');
                 showToast('📋 Referral link copied!');
             }
-            // After copy, open Telegram contact list
             setTimeout(() => {
                 if (tg && tg.openTelegramLink) {
-                    tg.openTelegramLink(`https://t.me/WinzoBettingBot?start=ref_${currentUser}`);
+                    tg.openTelegramLink(`https://t.me/WinzoBettingBot/Winzo?start=ref_${currentUser}`);
                 } else {
-                    window.open(`https://t.me/WinzoBettingBot?start=ref_${currentUser}`, '_blank');
+                    window.open(`https://t.me/WinzoBettingBot/Winzo?start=ref_${currentUser}`, '_blank');
                 }
             }, 300);
         };
@@ -4866,7 +4965,6 @@
                     url: link
                 }).catch(() => {});
             } else {
-                // Fallback: copy and open telegram
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(link).then(() => {
                         showToast('📋 Referral link copied!');
@@ -4881,9 +4979,9 @@
                     showToast('📋 Referral link copied!');
                 }
                 if (tg && tg.openTelegramLink) {
-                    tg.openTelegramLink(`https://t.me/WinzoBettingBot?start=ref_${currentUser}`);
+                    tg.openTelegramLink(`https://t.me/WinzoBettingBot/Winzo?start=ref_${currentUser}`);
                 } else {
-                    window.open(`https://t.me/WinzoBettingBot?start=ref_${currentUser}`, '_blank');
+                    window.open(`https://t.me/WinzoBettingBot/Winzo?start=ref_${currentUser}`, '_blank');
                 }
             }
         };
@@ -4928,7 +5026,7 @@
         }
 
         function updatePhase(phase) {
-            const labels = { 'selection': '⏳ Selecting', 'spinning': '🎡 Spinning', 'results': '🏆 Results' };
+            const labels = { 'selection': '⏳ Selecting', 'spinning': 'Spinning', 'results': '🏆 Results' };
             gamePhaseLabel.textContent = labels[phase] || '⏳';
         }
 
@@ -4967,7 +5065,7 @@
             };
 
             welcomeDepositBtn.onclick = openDepositModal;
-            depositBtn.onclick = openDepositModal;
+            Btn.onclick = openDepositModal;
 
             withdrawBtn.onclick = () => {
                 const available = walletData.main - walletData.pending;
@@ -4993,10 +5091,7 @@
                 closeMoreDropdown();
             };
 
-            // Referral button
             referralBtn.onclick = openReferralModal;
-
-            // Support button
             supportBtn.onclick = openSupport;
 
             switchBet15.onclick = () => { switchBet(15); };
@@ -5004,22 +5099,22 @@
 
             moreBtn.onclick = toggleMoreDropdown;
 
-            depositConfirm.onclick = () => {
-                const amount = parseInt(depositAmount.value);
-                const ref = depositReference.value.trim();
-                const file = depositImage.files[0];
+            Confirm.onclick = () => {
+                const amount = parseInt(Amount.value);
+                const ref = Reference.value.trim();
+                const file = Image.files[0];
                 if (!amount || amount <= 0) {
-                    depositError.textContent = 'Please enter a valid amount.';
+                    Error.textContent = 'Please enter a valid amount.';
                     return;
                 }
                 if (!ref && !file) {
-                    depositError.textContent = 'Please provide a reference number or upload a screenshot.';
+                    Error.textContent = 'Please provide a reference number or upload a screenshot.';
                     return;
                 }
-                depositToPlay(amount, ref, file);
+                ToPlay(amount, ref, file);
             };
 
-            depositCancel.onclick = () => { depositModal.classList.remove('active'); };
+            Cancel.onclick = () => { Modal.classList.remove('active'); };
 
             withdrawConfirm.onclick = () => {
                 const amount = parseInt(withdrawAmountEl.value);
