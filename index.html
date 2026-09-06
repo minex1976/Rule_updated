@@ -670,7 +670,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.1s;
+            transition: transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
         }
         .arrow-container {
             position: absolute;
@@ -683,7 +683,6 @@
             justify-content: center;
             pointer-events: none;
             z-index: 15;
-            transition: transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
         }
         .arrow-shaft {
             position: absolute;
@@ -998,7 +997,7 @@
             color: #f0e6ff;
             font-size: 0.65rem;
             font-weight: 700;
-            : rgba(20, 10, 40, 0.85);
+            background: rgba(20, 10, 40, 0.85);
             padding: 2px 12px;
             border-radius: 30px;
             backdrop-filter: blur(4px);
@@ -1937,7 +1936,8 @@
             <div class="wheel-container hidden" id="wheelContainer">
                 <div class="wheel" id="wheel">
                     <div class="wheel-numbers" id="wheelNumbers"></div>
-                    <div class="arrow-container" id="arrowContainer">
+                    <!-- arrow container stays fixed -->
+                    <div class="arrow-container">
                         <div class="arrow-shaft"></div>
                         <div class="arrow-head"></div>
                     </div>
@@ -2030,7 +2030,7 @@
     <div class="referral-modal" id="referralModal">
         <div class="modal-content">
             <h3>🔗 Referral Link</h3>
-            <p style="color:#b8a0d0;font-size:0.85rem;margin-bottom:8px;">Share your referral link and earn rewards!</p>
+            <p style="color:#b8a0d0;font-size:0.85rem;margin-bottom:8px;">Share your referral link and earn 5% commission on your referred players' winnings!</p>
             <div class="link-container">
                 <input type="text" id="referralLinkInput" readonly>
                 <button id="copyReferralBtn">📋 Copy</button>
@@ -2040,8 +2040,8 @@
                 <button class="close" id="referralCancelBtn">Close</button>
             </div>
             <div class="stats">
-                <p>📊 You've referred <span id="referralCountDisplay">0</span> players. Earn 5 Birr per 10 referrals!</p>
-                <p>💰 Commission earned: <span id="referralEarningsDisplay">0</span> Birr</p>
+                <p>📊 You've referred <span id="referralCountDisplay">0</span> players.</p>
+                <p>💰 Commission earned from referrals: <span id="referralEarningsDisplay">0</span> Birr</p>
             </div>
         </div>
     </div>
@@ -2078,6 +2078,7 @@
         //  GLOBAL VARIABLES
         // ============================================================
         let telegramDetectedUsername = null;
+        let referralParam = null;
 
         // ============================================================
         //  TEXT-TO-SPEECH (TTS) FUNCTIONS
@@ -2391,6 +2392,35 @@
         let telegramDetectionAttempts = 0;
         const maxTelegramAttempts = 5;
 
+        // Detect referral from URL or Telegram start_param
+        function detectReferral() {
+            // Check URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            let ref = urlParams.get('ref');
+
+            // Check Telegram WebApp start_param
+            if (!ref && tg && tg.initDataUnsafe) {
+                const startParam = tg.initDataUnsafe.start_param;
+                if (startParam && startParam.startsWith('ref_')) {
+                    ref = startParam.replace('ref_', '');
+                }
+            }
+
+            if (ref) {
+                referralParam = ref;
+                console.log('🔗 Referral detected:', referralParam);
+                // Store in session for signup
+                sessionStorage.setItem('referral_param', referralParam);
+            } else {
+                // Check session storage
+                const stored = sessionStorage.getItem('referral_param');
+                if (stored) {
+                    referralParam = stored;
+                }
+            }
+            return referralParam;
+        }
+
         function detectTelegramUser() {
             try {
                 tg = window.Telegram?.WebApp;
@@ -2521,7 +2551,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.2';
+        const APP_VERSION = '5.5';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2554,6 +2584,7 @@
                 localStorage.removeItem('bingo_saved_bet');
                 localStorage.removeItem('bingo_toast_shown');
                 localStorage.removeItem('bingo_app_version');
+                sessionStorage.removeItem('referral_param');
                 console.log('🧹 All local data cleared.');
             }
         };
@@ -2603,10 +2634,9 @@
         let syncInProgress = false;
 
         // ============================================================
-        //  REFERRAL SYSTEM
+        //  REFERRAL SYSTEM – Only commission (5%) on invited player's win
         // ============================================================
         function getReferralLink(username) {
-            // Use a generic link with a parameter. In production, replace with your bot link.
             return `https://t.me/WinzoBettingBot?start=ref_${username}`;
         }
 
@@ -2624,70 +2654,31 @@
             });
         }
 
-        function processReferralReward(referredUsername) {
-            if (!referredUsername || !database) return;
-            // Find who referred this user
-            const userRef = database.ref('users/' + referredUsername);
+        function distributeCommission(winner, winAmount) {
+            if (!winner || !database || winAmount <= 0) return;
+            const commission = winAmount * 0.05;   // 5% commission
+            if (commission < 0.01) return;
+
+            const userRef = database.ref('users/' + winner);
             userRef.once('value', snap => {
                 const data = snap.val();
                 if (!data || !data.referredBy) return;
                 const referrer = data.referredBy;
-                // Increment referrer's referral count
                 const referrerRef = database.ref('users/' + referrer);
                 referrerRef.transaction(current => {
                     if (current) {
-                        current.referralCount = (current.referralCount || 0) + 1;
-                        // Check if referral count is a multiple of 10
-                        if (current.referralCount % 10 === 0) {
-                            // Add 5 Birr to main wallet
-                            current.mainWallet = (current.mainWallet || 0) + 5;
-                            // Log the reward
-                            const rewardLog = {
-                                type: 'referral_bonus',
-                                amount: 5,
-                                timestamp: Date.now(),
-                                referrer: referrer,
-                                referred: referredUsername
-                            };
-                            const logRef = database.ref('referral_logs').push();
-                            logRef.set(rewardLog);
-                        }
+                        current.mainWallet = (current.mainWallet || 0) + commission;
+                        current.referralEarnings = (current.referralEarnings || 0) + commission;
                     }
                     return current;
+                }, (error, committed, snap) => {
+                    if (error) {
+                        console.error('Error crediting commission:', error);
+                    } else if (committed) {
+                        console.log(`✅ Commission of ${commission} Birr credited to ${referrer} for ${winner}'s win.`);
+                    }
                 });
             });
-        }
-
-        // Commission on wins: give 10% to referrers up the tree (max 5 levels)
-        function distributeCommission(winner, winAmount) {
-            if (!winner || !database || winAmount <= 0) return;
-            const commission = winAmount * 0.10;
-            if (commission < 0.01) return;
-
-            let current = winner;
-            let level = 0;
-            const maxLevels = 5;
-
-            function traverseUp(username) {
-                if (level >= maxLevels || !username) return;
-                const userRef = database.ref('users/' + username);
-                userRef.once('value', snap => {
-                    const data = snap.val();
-                    if (!data || !data.referredBy) return;
-                    const referrer = data.referredBy;
-                    const referrerRef = database.ref('users/' + referrer);
-                    referrerRef.transaction(currentData => {
-                        if (currentData) {
-                            currentData.referralEarnings = (currentData.referralEarnings || 0) + commission;
-                            currentData.mainWallet = (currentData.mainWallet || 0) + commission;
-                        }
-                        return currentData;
-                    });
-                    level++;
-                    traverseUp(referrer);
-                });
-            }
-            traverseUp(winner);
         }
 
         // ============================================================
@@ -2961,7 +2952,6 @@
         const closeWaitingBtn = $('closeWaitingBtn');
         const welcomeToast = $('welcomeToast');
 
-        // Referral modal
         const referralModal = $('referralModal');
         const referralLinkInput = $('referralLinkInput');
         const copyReferralBtn = $('copyReferralBtn');
@@ -3025,7 +3015,6 @@
                     if (transactionModal.classList.contains('active')) {
                         checkPendingTransactionStatus();
                     }
-                    // Update referral UI if modal is open or visible
                     updateReferralUI();
                 }
             });
@@ -3173,9 +3162,6 @@
             }
         }
 
-        // ============================================================
-        //  AUTO‑OCR ON IMAGE UPLOAD
-        // ============================================================
         depositImage.addEventListener('change', async function() {
             const file = this.files[0];
             if (!file) {
@@ -3446,7 +3432,7 @@
         }
 
         // ============================================================
-        //  AUTH
+        //  AUTH – with referral handling
         // ============================================================
         function showAuthScreen() {
             authScreen.style.display = 'flex';
@@ -3463,6 +3449,12 @@
             if (pendingTxListener) { pendingTxListener.off();
                 pendingTxListener = null; }
             attemptTelegramDetection();
+            detectReferral();
+            if (referralParam) {
+                setTimeout(() => {
+                    showToast(`🔗 Referred by @${referralParam}! Sign up to get started.`);
+                }, 500);
+            }
         }
 
         function showWelcomeScreen() {
@@ -3495,6 +3487,12 @@
                     welcomeToast.classList.remove('active');
                 }, 5000);
             }
+
+            if (referralParam) {
+                setTimeout(() => {
+                    showToast(`🔗 You were referred by @${referralParam}!`);
+                }, 1000);
+            }
         }
 
         function showGameScreen() {
@@ -3526,7 +3524,7 @@
         }
 
         // ============================================================
-        //  LOGIN / SIGNUP – with Telegram enforcement & referral
+        //  LOGIN / SIGNUP
         // ============================================================
         function handleLogin() {
             const username = authUsername.value.trim();
@@ -3595,6 +3593,8 @@
                     authError.textContent = 'Username already exists. Please login.';
                     return;
                 } else {
+                    const ref = referralParam || sessionStorage.getItem('referral_param') || null;
+
                     const newUserData = {
                         password: password,
                         mainWallet: 0,
@@ -3603,10 +3603,17 @@
                         bonusClaimed: true,
                         referralCount: 0,
                         referralEarnings: 0,
-                        referredBy: null
+                        referredBy: ref || null
                     };
+
+                    if (ref) {
+                        console.log('🔗 New user referred by:', ref);
+                        sessionStorage.removeItem('referral_param');
+                    }
+
                     usersRef.child(username).set(newUserData).then(() => {
-                        authError.textContent = '✅ Account created! +30 Birr bonus.';
+                        authError.textContent = '✅ Account created! +30 Birr bonus.' + (ref ? ' Referred by @' + ref :
+                            '');
                         currentUser = username;
                         DB.setCurrentUser(username);
                         DB.setSavedCredentials(username, password);
@@ -3619,6 +3626,12 @@
                         setTimeout(() => {
                             welcomeToast.classList.remove('active');
                         }, 5000);
+
+                        if (ref) {
+                            setTimeout(() => {
+                                showToast(`🎉 You were referred by @${ref}! Welcome!`);
+                            }, 1500);
+                        }
                     }).catch(err => {
                         authError.textContent = 'Error: ' + err.message;
                     });
@@ -3634,6 +3647,7 @@
             localStorage.removeItem('bingo_saved_bet');
             localStorage.removeItem('bingo_toast_shown');
             localStorage.removeItem('bingo_app_version');
+            sessionStorage.removeItem('referral_param');
             console.log('🧹 All local data cleared.');
         }
 
@@ -4108,7 +4122,7 @@
                             stopTimer();
                             if (!audioPlayedThisRound) {
                                 playGetReadyAudio();
-                                speakGetReady(); // TTS
+                                speakGetReady();
                                 audioPlayedThisRound = true;
                             }
                             setTimeout(() => {
@@ -4184,7 +4198,7 @@
         };
 
         // ============================================================
-        //  TIMER
+        //  TIMER – fully driven by Firebase selectionEndsAt
         // ============================================================
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
@@ -4252,7 +4266,8 @@
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = [];
                         audioPlayedThisRound = false;
-                        arrowContainer.style.transform = 'rotate(0deg)';
+                        // Reset wheel rotation
+                        document.getElementById('wheel').style.transform = 'rotate(0deg)';
                         arrowCenter.textContent = '🎯';
                         arrowCenter.classList.remove('reveal');
                         spinEls.forEach(el => {
@@ -4312,10 +4327,11 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
+                // Apply wheel rotation (cumulativeRotation) to the wheel element
                 if (engineState.cumulativeRotation > 0 && (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results')) {
-                    arrowContainer.style.transform = `rotate(${engineState.cumulativeRotation}deg)`;
+                    document.getElementById('wheel').style.transform = `rotate(${engineState.cumulativeRotation}deg)`;
                 } else if (engineState.gamePhase === 'selection') {
-                    arrowContainer.style.transform = 'rotate(0deg)';
+                    document.getElementById('wheel').style.transform = 'rotate(0deg)';
                     arrowCenter.textContent = '🎯';
                     arrowCenter.classList.remove('reveal');
                     spinEls.forEach(el => {
@@ -4507,7 +4523,11 @@
             const index = numbers.indexOf(targetNumber);
             if (index === -1) return 0;
             const angleStep = 360 / numbers.length;
-            return index * angleStep;
+            // We want the winning number to be at the top (arrow points up)
+            // The wheel numbers are placed starting from 0° at the top (12 o'clock) going clockwise.
+            // To align the winning number with the top, we need to rotate the wheel such that the winning number's position is at 0°.
+            // The winning number is at angle = index * angleStep. To bring it to top (0°), we rotate by -angle.
+            return -angle;
         }
 
         // ============================================================
@@ -4522,7 +4542,7 @@
         }
 
         // ============================================================
-        //  SPIN EXECUTION
+        //  SPIN EXECUTION – now rotates the wheel, not the arrow
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning) {
@@ -4549,75 +4569,23 @@
                     return;
                 }
 
-                if (numbers.length < 2) {
-                    const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
-                    const targetAngle = getAngleForNumber(winningNumber);
-                    const fullRotations = 4 + Math.floor(Math.random() * 2);
-                    const extraDegrees = 360 * fullRotations + targetAngle;
-
-                    arrowContainer.style.transition = 'none';
-                    arrowContainer.style.transform = 'rotate(0deg)';
-                    void arrowContainer.offsetHeight;
-
-                    arrowContainer.style.transition = `transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
-                    arrowContainer.style.transform = `rotate(${extraDegrees}deg)`;
-
-                    engineState.cumulativeRotation = extraDegrees;
-
-                    gameRef.update({
-                        cumulativeRotation: extraDegrees,
-                        spinCount: engineState.spinCount + 1,
-                        timer: 5,
-                        potAmount: 0
-                    });
-
-                    if (spinTimeout) {
-                        clearTimeout(spinTimeout);
-                        spinTimeout = null;
-                    }
-
-                    spinTimeout = setTimeout(() => {
-                        engineState.drawnNumbers.push(winningNumber);
-                        engineState.spinCount++;
-
-                        gameRef.update({
-                            drawnNumbers: engineState.drawnNumbers,
-                            spinCount: engineState.spinCount,
-                            gameState: 'results'
-                        });
-
-                        arrowCenter.textContent = winningNumber;
-                        arrowCenter.classList.add('reveal');
-                        spinEls[0].textContent = winningNumber;
-                        spinEls[0].classList.add('reveal', 'active');
-
-                        updateStatus(`🎯 Winning number: <span class="highlight">${winningNumber}</span>`);
-                        updateWheel();
-
-                        spinningIndicator.classList.remove('active');
-                        engineState.isSpinning = false;
-                        engineState.spinInProgress = false;
-                        spinTimeout = null;
-
-                        setTimeout(() => {
-                            showNoGameMessage();
-                        }, 1000);
-                    }, 4200);
-                    return;
-                }
-
-                // Normal round (2+ players)
                 const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
-                const targetAngle = getAngleForNumber(winningNumber);
+                // Get the angle for this number (its position on the wheel)
+                const angle = getAngleForNumber(winningNumber);
+                // Full rotations + angle to stop at the top (0°)
                 const fullRotations = 4 + Math.floor(Math.random() * 2);
-                const extraDegrees = 360 * fullRotations + targetAngle;
+                const extraDegrees = fullRotations * 360 + angle; // accumulate rotations
 
-                arrowContainer.style.transition = 'none';
-                arrowContainer.style.transform = 'rotate(0deg)';
-                void arrowContainer.offsetHeight;
-
-                arrowContainer.style.transition = `transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
-                arrowContainer.style.transform = `rotate(${extraDegrees}deg)`;
+                // Get the wheel element
+                const wheelEl = document.getElementById('wheel');
+                // Reset transition to avoid glitch
+                wheelEl.style.transition = 'none';
+                wheelEl.style.transform = 'rotate(0deg)';
+                // Force reflow
+                void wheelEl.offsetHeight;
+                // Set transition and target rotation
+                wheelEl.style.transition = `transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
+                wheelEl.style.transform = `rotate(${extraDegrees}deg)`;
 
                 engineState.cumulativeRotation = extraDegrees;
 
@@ -4653,7 +4621,7 @@
                     spinEls[0].classList.add('reveal', 'active');
 
                     playWinningAudio();
-                    speakWinningNumber(winningNumber); // TTS
+                    speakWinningNumber(winningNumber);
                     updateStatus(`🎯 Winning number: <span class="highlight">${winningNumber}</span>`);
                     updateWheel();
 
@@ -4699,7 +4667,7 @@
         }
 
         // ============================================================
-        //  WINNERS – with delayed modal, commission distribution, referral reward
+        //  WINNERS
         // ============================================================
         function checkAndAnnounceWinners(prizePool) {
             try {
@@ -4722,22 +4690,17 @@
 
                 const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
-                // Credit winners and distribute commission
                 winners.forEach(name => {
                     if (name === currentUser) {
                         creditWinningsToMain(winAmount);
                         updateStatus(`🎉 You won! +${winAmount} coins (${takenCount} players × ${currentBet} − 15% fee)`,
                             true);
                     }
-                    // Distribute 10% commission to referrers (up the tree)
                     if (winAmount > 0) {
                         distributeCommission(name, winAmount);
                     }
-                    // Process referral reward for the winner (the referrer gets referral count increment)
-                    processReferralReward(name);
                 });
 
-                // Update winners list
                 if (winners.length === 0) {
                     winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
                 } else {
@@ -4825,7 +4788,6 @@
             if (!currentUser) return;
             const link = getReferralLink(currentUser);
             referralLinkInput.value = link;
-            // Update stats
             updateReferralUI();
             referralModal.classList.add('active');
             closeMoreDropdown();
@@ -4837,7 +4799,6 @@
                 navigator.clipboard.writeText(link).then(() => {
                     showToast('📋 Referral link copied!');
                 }).catch(() => {
-                    // Fallback
                     referralLinkInput.select();
                     document.execCommand('copy');
                     showToast('📋 Referral link copied!');
@@ -4847,7 +4808,6 @@
                 document.execCommand('copy');
                 showToast('📋 Referral link copied!');
             }
-            // After copy, open Telegram contact list
             setTimeout(() => {
                 if (tg && tg.openTelegramLink) {
                     tg.openTelegramLink(`https://t.me/WinzoBettingBot?start=ref_${currentUser}`);
@@ -4866,7 +4826,6 @@
                     url: link
                 }).catch(() => {});
             } else {
-                // Fallback: copy and open telegram
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(link).then(() => {
                         showToast('📋 Referral link copied!');
@@ -4993,10 +4952,7 @@
                 closeMoreDropdown();
             };
 
-            // Referral button
             referralBtn.onclick = openReferralModal;
-
-            // Support button
             supportBtn.onclick = openSupport;
 
             switchBet15.onclick = () => { switchBet(15); };
