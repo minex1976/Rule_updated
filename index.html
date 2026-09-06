@@ -998,7 +998,7 @@
             color: #f0e6ff;
             font-size: 0.65rem;
             font-weight: 700;
-            background: rgba(20, 10, 40, 0.85);
+            : rgba(20, 10, 40, 0.85);
             padding: 2px 12px;
             border-radius: 30px;
             backdrop-filter: blur(4px);
@@ -2078,7 +2078,6 @@
         //  GLOBAL VARIABLES
         // ============================================================
         let telegramDetectedUsername = null;
-        let referralParam = null;
 
         // ============================================================
         //  TEXT-TO-SPEECH (TTS) FUNCTIONS
@@ -2392,35 +2391,6 @@
         let telegramDetectionAttempts = 0;
         const maxTelegramAttempts = 5;
 
-        // Detect referral from URL or Telegram start_param
-        function detectReferral() {
-            // Check URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            let ref = urlParams.get('ref');
-
-            // Check Telegram WebApp start_param
-            if (!ref && tg && tg.initDataUnsafe) {
-                const startParam = tg.initDataUnsafe.start_param;
-                if (startParam && startParam.startsWith('ref_')) {
-                    ref = startParam.replace('ref_', '');
-                }
-            }
-
-            if (ref) {
-                referralParam = ref;
-                console.log('🔗 Referral detected:', referralParam);
-                // Store in session for signup
-                sessionStorage.setItem('referral_param', referralParam);
-            } else {
-                // Check session storage
-                const stored = sessionStorage.getItem('referral_param');
-                if (stored) {
-                    referralParam = stored;
-                }
-            }
-            return referralParam;
-        }
-
         function detectTelegramUser() {
             try {
                 tg = window.Telegram?.WebApp;
@@ -2551,7 +2521,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.3';
+        const APP_VERSION = '5.2';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2584,7 +2554,6 @@
                 localStorage.removeItem('bingo_saved_bet');
                 localStorage.removeItem('bingo_toast_shown');
                 localStorage.removeItem('bingo_app_version');
-                sessionStorage.removeItem('referral_param');
                 console.log('🧹 All local data cleared.');
             }
         };
@@ -2690,9 +2659,9 @@
         }
 
         // Commission on wins: give 10% to referrers up the tree (max 5 levels)
-        function (winner, winAmount) {
+        function distributeCommission(winner, winAmount) {
             if (!winner || !database || winAmount <= 0) return;
-            const commission = winAmount * 0.5;
+            const commission = winAmount * 0.10;
             if (commission < 0.01) return;
 
             let current = winner;
@@ -3477,7 +3446,7 @@
         }
 
         // ============================================================
-        //  AUTH – with referral handling
+        //  AUTH
         // ============================================================
         function showAuthScreen() {
             authScreen.style.display = 'flex';
@@ -3494,13 +3463,6 @@
             if (pendingTxListener) { pendingTxListener.off();
                 pendingTxListener = null; }
             attemptTelegramDetection();
-            detectReferral();
-            // If referral detected and no user logged in, show a toast
-            if (referralParam) {
-                setTimeout(() => {
-                    showToast(`🔗 Referred by @${referralParam}! Sign up to get started.`);
-                }, 500);
-            }
         }
 
         function showWelcomeScreen() {
@@ -3533,13 +3495,6 @@
                     welcomeToast.classList.remove('active');
                 }, 5000);
             }
-
-            // If there's a referral, show it on welcome too
-            if (referralParam) {
-                setTimeout(() => {
-                    showToast(`🔗 You were referred by @${referralParam}!`);
-                }, 1000);
-            }
         }
 
         function showGameScreen() {
@@ -3571,7 +3526,7 @@
         }
 
         // ============================================================
-        //  LOGIN / SIGNUP – with referral integration
+        //  LOGIN / SIGNUP – with Telegram enforcement & referral
         // ============================================================
         function handleLogin() {
             const username = authUsername.value.trim();
@@ -3640,9 +3595,6 @@
                     authError.textContent = 'Username already exists. Please login.';
                     return;
                 } else {
-                    // Get referral from session or URL
-                    const ref = referralParam || sessionStorage.getItem('referral_param') || null;
-
                     const newUserData = {
                         password: password,
                         mainWallet: 0,
@@ -3651,19 +3603,10 @@
                         bonusClaimed: true,
                         referralCount: 0,
                         referralEarnings: 0,
-                        referredBy: ref || null
+                        referredBy: null
                     };
-
-                    // If referred, log it
-                    if (ref) {
-                        console.log('🔗 New user referred by:', ref);
-                        // Clean up after use
-                        sessionStorage.removeItem('referral_param');
-                    }
-
                     usersRef.child(username).set(newUserData).then(() => {
-                        authError.textContent = '✅ Account created! +30 Birr bonus.' + (ref ? ' Referred by @' + ref :
-                            '');
+                        authError.textContent = '✅ Account created! +30 Birr bonus.';
                         currentUser = username;
                         DB.setCurrentUser(username);
                         DB.setSavedCredentials(username, password);
@@ -3676,13 +3619,6 @@
                         setTimeout(() => {
                             welcomeToast.classList.remove('active');
                         }, 5000);
-
-                        // If referred, show a special toast
-                        if (ref) {
-                            setTimeout(() => {
-                                showToast(`🎉 You were referred by @${ref}! Welcome!`);
-                            }, 1500);
-                        }
                     }).catch(err => {
                         authError.textContent = 'Error: ' + err.message;
                     });
@@ -3698,7 +3634,6 @@
             localStorage.removeItem('bingo_saved_bet');
             localStorage.removeItem('bingo_toast_shown');
             localStorage.removeItem('bingo_app_version');
-            sessionStorage.removeItem('referral_param');
             console.log('🧹 All local data cleared.');
         }
 
