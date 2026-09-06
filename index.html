@@ -660,7 +660,6 @@
             aspect-ratio: 1/1;
             flex-shrink: 0;
         }
-        /* Wheel rotates, arrow container stays fixed */
         .wheel {
             width: 100%;
             height: 100%;
@@ -673,7 +672,6 @@
             justify-content: center;
             transition: transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
         }
-        /* Arrow container – fixed, positioned absolutely over the wheel */
         .arrow-container {
             position: absolute;
             width: 100%;
@@ -757,7 +755,6 @@
             z-index: 6;
             transition: all 0.5s ease;
             opacity: 0.7;
-            /* No rotation – keep upright */
             transform: translate(-50%, -50%);
         }
         .wheel-number.highlighted {
@@ -1938,13 +1935,11 @@
             <div class="pick-status" id="pickStatus"><span>🎯 Pick <span class="highlight">one</span> number</span></div>
 
             <div class="wheel-container hidden" id="wheelContainer">
-                <!-- Arrow is outside the wheel, so it stays fixed -->
                 <div class="arrow-container">
                     <div class="arrow-shaft"></div>
                     <div class="arrow-head"></div>
                     <div class="arrow-center-circle" id="arrowCenter">🎯</div>
                 </div>
-                <!-- Wheel rotates -->
                 <div class="wheel" id="wheel">
                     <div class="wheel-numbers" id="wheelNumbers"></div>
                     <div class="spinning-indicator" id="spinningIndicator">🎡 SPINNING...</div>
@@ -2075,9 +2070,6 @@
 
     <canvas id="fireworksCanvas"></canvas>
 
-    <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game with TTS, Referral & Support      -->
-    <!-- ============================================================ -->
     <script>
         // ============================================================
         //  GLOBAL VARIABLES
@@ -2093,45 +2085,30 @@
                 if (callback) callback();
                 return;
             }
-            // Cancel any ongoing speech
             window.speechSynthesis.cancel();
-
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
             utterance.rate = 0.9;
             utterance.pitch = 1.1;
-
-            // Try to find a good voice
             const voices = window.speechSynthesis.getVoices();
             const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) || voices.find(v => v
                 .lang.startsWith('en')) || null;
             if (preferredVoice) utterance.voice = preferredVoice;
-
-            if (callback) {
-                utterance.onend = callback;
-            }
+            if (callback) utterance.onend = callback;
             window.speechSynthesis.speak(utterance);
         }
 
-        function speakGetReady() {
-            speakText('Get ready to win!');
-        }
+        function speakGetReady() { speakText('Get ready to win!'); }
 
-        function speakWinningNumber(number) {
-            const text = `Winzo! The winning number is ${number}`;
-            speakText(text);
-        }
+        function speakWinningNumber(number) { speakText(`Winzo! The winning number is ${number}`); }
 
-        // Preload voices (optional)
         if (window.speechSynthesis) {
-            window.speechSynthesis.getVoices(); // Trigger loading
-            window.speechSynthesis.onvoiceschanged = () => {
-                window.speechSynthesis.getVoices();
-            };
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
         }
 
         // ============================================================
-        //  AUDIO – Web Audio API
+        //  AUDIO
         // ============================================================
         let audioCtx = null;
         let audioInitialized = false;
@@ -2141,25 +2118,18 @@
                 try {
                     audioCtx = new(window.AudioContext || window.webkitAudioContext)();
                     audioInitialized = true;
-                } catch (e) {
-                    console.log('Web Audio not supported:', e);
-                }
+                } catch (e) { console.log('Web Audio not supported:', e); }
             }
             return audioCtx;
         }
-
         document.addEventListener('click', function resumeAudio() {
-            if (audioCtx && audioCtx.state === 'suspended') {
-                audioCtx.resume().catch(() => {});
-            }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
         }, { once: false });
 
         function playTone(freq, duration, type = 'sine', volume = 0.30, delay = 0) {
             const ctx = initAudio();
             if (!ctx) return;
-            if (ctx.state === 'suspended') {
-                ctx.resume().catch(() => {});
-            }
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
             try {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -2172,9 +2142,7 @@
                 gain.connect(ctx.destination);
                 osc.start(ctx.currentTime + delay);
                 osc.stop(ctx.currentTime + delay + duration);
-            } catch (e) {
-                // silently fail
-            }
+            } catch (e) { /* silently fail */ }
         }
 
         function playGetReadyAudio() {
@@ -2216,15 +2184,15 @@
         }
 
         // ============================================================
-        //  FIREWORKS EFFECT
+        //  FIREWORKS
         // ============================================================
         const canvas = document.getElementById('fireworksCanvas');
         const ctx2 = canvas.getContext('2d');
-        let fireworks = [];
-        let particles = [];
-        let fireworksRunning = false;
-        let fireworksRAF = null;
-        let fireworksAutoStopTimer = null;
+        let fireworks = [],
+            particles = [],
+            fireworksRunning = false,
+            fireworksRAF = null,
+            fireworksAutoStopTimer = null;
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -2244,18 +2212,14 @@
                 this.color = `hsl(${Math.random() * 360}, 80%, 60%)`;
                 this.size = 2 + Math.random() * 2;
             }
-
             update() {
                 if (this.exploded) return;
                 this.trail.push({ x: this.x, y: this.y });
                 if (this.trail.length > 10) this.trail.shift();
                 this.y -= this.speed;
-                if (this.y <= this.targetY) {
-                    this.exploded = true;
-                    this.explode();
-                }
+                if (this.y <= this.targetY) { this.exploded = true;
+                    this.explode(); }
             }
-
             explode() {
                 const count = 60 + Math.random() * 60;
                 const colors = [
@@ -2281,7 +2245,6 @@
                     });
                 }
             }
-
             draw() {
                 if (this.exploded) return;
                 for (let i = 0; i < this.trail.length; i++) {
@@ -2311,10 +2274,7 @@
                 p.vx *= 0.99;
                 p.vy *= 0.99;
                 p.life -= p.decay;
-                if (p.life <= 0) {
-                    particles.splice(i, 1);
-                    continue;
-                }
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
                 const alpha = p.life;
                 ctx2.globalAlpha = alpha;
                 ctx2.shadowBlur = 10;
@@ -2329,31 +2289,16 @@
         }
 
         function animateFireworks() {
-            if (!fireworksRunning) {
-                ctx2.clearRect(0, 0, canvas.width, canvas.height);
-                return;
-            }
+            if (!fireworksRunning) { ctx2.clearRect(0, 0, canvas.width, canvas.height); return; }
             ctx2.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (Math.random() < 0.08 && fireworks.length < 6) {
-                fireworks.push(new Firework());
-            }
-
+            if (Math.random() < 0.08 && fireworks.length < 6) fireworks.push(new Firework());
             for (let i = fireworks.length - 1; i >= 0; i--) {
                 const f = fireworks[i];
                 f.update();
                 f.draw();
-                if (f.exploded) {
-                    fireworks.splice(i, 1);
-                }
+                if (f.exploded) fireworks.splice(i, 1);
             }
-
             drawParticles();
-
-            if (fireworks.length === 0 && particles.length === 0) {
-                // keep running
-            }
-
             fireworksRAF = requestAnimationFrame(animateFireworks);
         }
 
@@ -2365,31 +2310,24 @@
             canvas.classList.add('active');
             if (fireworksRAF) cancelAnimationFrame(fireworksRAF);
             animateFireworks();
-
             if (fireworksAutoStopTimer) clearTimeout(fireworksAutoStopTimer);
-            fireworksAutoStopTimer = setTimeout(() => {
-                stopFireworks();
-            }, 6000);
+            fireworksAutoStopTimer = setTimeout(() => { stopFireworks(); }, 6000);
         }
 
         function stopFireworks() {
             fireworksRunning = false;
             canvas.classList.remove('active');
-            if (fireworksRAF) {
-                cancelAnimationFrame(fireworksRAF);
-                fireworksRAF = null;
-            }
-            if (fireworksAutoStopTimer) {
-                clearTimeout(fireworksAutoStopTimer);
-                fireworksAutoStopTimer = null;
-            }
+            if (fireworksRAF) { cancelAnimationFrame(fireworksRAF);
+                fireworksRAF = null; }
+            if (fireworksAutoStopTimer) { clearTimeout(fireworksAutoStopTimer);
+                fireworksAutoStopTimer = null; }
             ctx2.clearRect(0, 0, canvas.width, canvas.height);
             fireworks = [];
             particles = [];
         }
 
         // ============================================================
-        //  TELEGRAM WEBAPP INIT – with username enforcement
+        //  TELEGRAM WEBAPP & REFERRAL DETECTION
         // ============================================================
         let tg = null;
         let telegramUser = null;
@@ -2397,31 +2335,22 @@
         let telegramDetectionAttempts = 0;
         const maxTelegramAttempts = 5;
 
-        // Detect referral from URL or Telegram start_param
         function detectReferral() {
-            // Check URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             let ref = urlParams.get('ref');
-
-            // Check Telegram WebApp start_param
             if (!ref && tg && tg.initDataUnsafe) {
                 const startParam = tg.initDataUnsafe.start_param;
                 if (startParam && startParam.startsWith('ref_')) {
                     ref = startParam.replace('ref_', '');
                 }
             }
-
             if (ref) {
                 referralParam = ref;
                 console.log('🔗 Referral detected:', referralParam);
-                // Store in session for signup
                 sessionStorage.setItem('referral_param', referralParam);
             } else {
-                // Check session storage
                 const stored = sessionStorage.getItem('referral_param');
-                if (stored) {
-                    referralParam = stored;
-                }
+                if (stored) referralParam = stored;
             }
             return referralParam;
         }
@@ -2434,13 +2363,9 @@
                     tg.expand();
                     isTelegram = true;
                     let user = null;
-                    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                        user = tg.initDataUnsafe.user;
-                    } else if (tg.initData && tg.initData.user) {
-                        try {
-                            const parsed = JSON.parse(decodeURIComponent(tg.initData));
-                            if (parsed.user) user = parsed.user;
-                        } catch (e) {}
+                    if (tg.initDataUnsafe && tg.initDataUnsafe.user) user = tg.initDataUnsafe.user;
+                    else if (tg.initData && tg.initData.user) {
+                        try { user = JSON.parse(decodeURIComponent(tg.initData)).user; } catch (e) {}
                     }
                     if (user) {
                         telegramUser = user;
@@ -2462,26 +2387,19 @@
                     }
                 }
                 return false;
-            } catch (e) {
-                console.warn('Telegram detection error:', e);
-                return false;
-            }
+            } catch (e) { console.warn('Telegram detection error:', e); return false; }
         }
 
         function attemptTelegramDetection() {
             if (telegramDetectionAttempts >= maxTelegramAttempts) {
                 const infoEl = document.getElementById('telegramInfo');
-                if (infoEl) {
-                    infoEl.textContent = '📱 Telegram not detected. Enter manually.';
-                    infoEl.className = 'telegram-info not-detected';
-                }
+                if (infoEl) { infoEl.textContent = '📱 Telegram not detected. Enter manually.';
+                    infoEl.className = 'telegram-info not-detected'; }
                 return false;
             }
             telegramDetectionAttempts++;
             const detected = detectTelegramUser();
-            if (!detected && telegramDetectionAttempts < maxTelegramAttempts) {
-                setTimeout(attemptTelegramDetection, 500);
-            }
+            if (!detected && telegramDetectionAttempts < maxTelegramAttempts) setTimeout(attemptTelegramDetection, 500);
             return detected;
         }
 
@@ -2489,33 +2407,20 @@
             const usernameInput = document.getElementById('authUsername');
             const passwordInput = document.getElementById('authPassword');
             if (!usernameInput || !passwordInput) return;
-
             usernameInput.value = username;
             usernameInput.readOnly = true;
             usernameInput.style.color = '#8affb0';
-
             const savedCredentials = DB.getSavedCredentials();
-            if (savedCredentials && savedCredentials.password) {
-                passwordInput.value = savedCredentials.password;
-            } else {
-                passwordInput.value = '';
-                passwordInput.placeholder = 'Enter your password';
-            }
-
-            usernameInput.addEventListener('focus', function() {
-                this.value = username;
-            });
-            usernameInput.addEventListener('input', function() {
-                this.value = username;
-            });
-            usernameInput.addEventListener('keydown', function(e) {
-                e.preventDefault();
-                return false;
-            });
+            if (savedCredentials && savedCredentials.password) passwordInput.value = savedCredentials.password;
+            else { passwordInput.value = '';
+                passwordInput.placeholder = 'Enter your password'; }
+            usernameInput.addEventListener('focus', function() { this.value = username; });
+            usernameInput.addEventListener('input', function() { this.value = username; });
+            usernameInput.addEventListener('keydown', function(e) { e.preventDefault(); return false; });
         }
 
         // ============================================================
-        //  FIREBASE CONFIG
+        //  FIREBASE
         // ============================================================
         const firebaseConfig = {
             apiKey: "AIzaSyA2VCeCTCx_NAcsxK-es1DCTmRjOD43dt4",
@@ -2547,41 +2452,27 @@
             firebaseAvailable = true;
             isMultiplayer = true;
             console.log('✅ Firebase ready (renewed-8fe38)');
-        } catch (e) {
-            console.warn('⚠️ Firebase init error:', e);
+        } catch (e) { console.warn('⚠️ Firebase init error:', e);
             firebaseAvailable = false;
-            isMultiplayer = false;
-        }
+            isMultiplayer = false; }
 
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.8';
+        const APP_VERSION = '5.9';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
-            setCurrentUser(username) {
-                if (username) localStorage.setItem('bingo_current_user', username);
-                else localStorage.removeItem('bingo_current_user');
-            },
-            getSavedCredentials() {
-                try { return JSON.parse(localStorage.getItem('bingo_saved_credentials') || 'null'); } catch { return null; }
-            },
-            setSavedCredentials(username, password) {
-                localStorage.setItem('bingo_saved_credentials', JSON.stringify({ username, password }));
-            },
-            getSavedBet() {
-                try { return parseInt(localStorage.getItem('bingo_saved_bet')) || null; } catch { return null; }
-            },
-            setSavedBet(bet) {
-                if (bet) localStorage.setItem('bingo_saved_bet', bet.toString());
-                else localStorage.removeItem('bingo_saved_bet');
-            },
-            getToastShown() {
-                return localStorage.getItem('bingo_toast_shown') === 'true';
-            },
-            setToastShown() {
-                localStorage.setItem('bingo_toast_shown', 'true');
-            },
+            setCurrentUser(username) { if (username) localStorage.setItem('bingo_current_user', username);
+                else localStorage.removeItem('bingo_current_user'); },
+            getSavedCredentials() { try { return JSON.parse(localStorage.getItem('bingo_saved_credentials') || 'null'); } catch (
+                    e) { return null; } },
+            setSavedCredentials(username, password) { localStorage.setItem('bingo_saved_credentials', JSON.stringify({
+                    username, password })); },
+            getSavedBet() { try { return parseInt(localStorage.getItem('bingo_saved_bet')) || null; } catch (e) { return null; } },
+            setSavedBet(bet) { if (bet) localStorage.setItem('bingo_saved_bet', bet.toString());
+                else localStorage.removeItem('bingo_saved_bet'); },
+            getToastShown() { return localStorage.getItem('bingo_toast_shown') === 'true'; },
+            setToastShown() { localStorage.setItem('bingo_toast_shown', 'true'); },
             getVersion() { return localStorage.getItem('bingo_app_version'); },
             setVersion() { localStorage.setItem('bingo_app_version', APP_VERSION); },
             clearAll() {
@@ -2593,12 +2484,8 @@
                 console.log('🧹 All local data cleared.');
             }
         };
-
-        if (DB.getVersion() !== APP_VERSION) {
-            console.warn('App version changed, clearing localStorage');
-            DB.clearAll();
-            DB.setVersion();
-        }
+        if (DB.getVersion() !== APP_VERSION) { DB.clearAll();
+            DB.setVersion(); }
 
         // ============================================================
         //  GLOBAL STATE
@@ -2639,7 +2526,7 @@
         let syncInProgress = false;
 
         // ============================================================
-        //  REFERRAL SYSTEM – commission (5%) deducted from winner's prize
+        //  REFERRAL SYSTEM – COMMISSION (5%) DEDUCTED FROM WINNER
         // ============================================================
         function getReferralLink(username) {
             return `https://t.me/WinzoBettingBot?start=ref_${username}`;
@@ -2651,101 +2538,84 @@
             userRef.once('value', snap => {
                 const data = snap.val();
                 if (data) {
-                    const count = data.referralCount || 0;
-                    const earnings = data.referralEarnings || 0;
-                    document.getElementById('referralCountDisplay').textContent = count;
-                    document.getElementById('referralEarningsDisplay').textContent = earnings.toFixed(2);
+                    document.getElementById('referralCountDisplay').textContent = data.referralCount || 0;
+                    document.getElementById('referralEarningsDisplay').textContent = (data.referralEarnings || 0).toFixed(2);
                 }
             });
         }
 
-        // Commission: 5% of the winner's win amount is deducted from the winner and given to the referrer.
-        // Winner receives winAmount * 0.95, referrer receives winAmount * 0.05.
+        // 🔥 FIXED: commission is deducted from winner's amount, referrer gets 5%
         function distributeCommission(winner, winAmount) {
             if (!winner || !database || winAmount <= 0) return;
-            const commission = winAmount * 0.05;   // 5%
-            if (commission < 0.01) return;
+            const commission = winAmount * 0.05;
+            if (commission < 0.01) {
+                // Too small, just credit winner full amount
+                creditWinningsToMain(winner, winAmount);
+                return;
+            }
 
-            // Get winner's data to find their referrer
             const userRef = database.ref('users/' + winner);
             userRef.once('value', snap => {
                 const data = snap.val();
                 if (!data || !data.referredBy) {
-                    console.log(`ℹ️ ${winner} has no referrer, commission skipped.`);
-                    // Winner gets full amount (no deduction)
+                    // No referrer, winner gets full amount
                     creditWinningsToMain(winner, winAmount);
                     return;
                 }
                 const referrer = data.referredBy;
-                console.log(`💸 Commission of ${commission} Birr from ${winner}'s win to ${referrer}`);
+                console.log(`💸 Commission: ${commission} from ${winner} to ${referrer}`);
 
-                // Credit winner with 95% of winAmount
-                const winnerNet = winAmount * 0.95;
-                // Credit referrer with 5% of winAmount
-                // We'll do both in a multi-path update or transactions.
-                // Use transactions to be safe.
-                const winnerRef = database.ref('users/' + winner);
+                // First, credit the referrer (atomic)
                 const referrerRef = database.ref('users/' + referrer);
-
-                // Update winner first
-                winnerRef.transaction(current => {
+                referrerRef.transaction(current => {
                     if (current) {
-                        current.mainWallet = (current.mainWallet || 0) + winnerNet;
+                        current.mainWallet = (current.mainWallet || 0) + commission;
+                        current.referralEarnings = (current.referralEarnings || 0) + commission;
                     }
                     return current;
                 }, (error, committed, snap) => {
                     if (error) {
-                        console.error('Error crediting winner:', error);
-                    } else if (committed) {
-                        console.log(`✅ Winner ${winner} credited with ${winnerNet} Birr (after 5% commission)`);
-                        // Now credit referrer
-                        referrerRef.transaction(current => {
-                            if (current) {
-                                current.mainWallet = (current.mainWallet || 0) + commission;
-                                current.referralEarnings = (current.referralEarnings || 0) + commission;
-                            }
-                            return current;
-                        }, (error2, committed2, snap2) => {
-                            if (error2) {
-                                console.error('Error crediting referrer:', error2);
-                            } else if (committed2) {
-                                console.log(`✅ Referrer ${referrer} credited with ${commission} Birr`);
-                                // Update UI if referrer is current user
-                                if (referrer === currentUser) {
-                                    syncWalletFromFirebase();
-                                }
-                            } else {
-                                console.warn('Referrer commission transaction not committed.');
-                            }
-                        });
+                        console.error('Referrer commission transaction failed:', error);
+                        // Fallback: credit winner full amount
+                        creditWinningsToMain(winner, winAmount);
+                        return;
+                    }
+                    if (committed) {
+                        console.log(`✅ Referrer ${referrer} credited with ${commission} Birr`);
+                        if (referrer === currentUser) syncWalletFromFirebase();
+                        // Now credit winner with the remaining 95%
+                        const winnerNet = winAmount - commission;
+                        creditWinningsToMain(winner, winnerNet);
+                        // Show a toast to the referrer if they are the current user
+                        if (referrer === currentUser) {
+                            showToast(`🎉 You earned ${commission.toFixed(2)} Birr commission from @${winner}'s win!`);
+                        }
                     } else {
-                        console.warn('Winner credit transaction not committed.');
+                        console.warn('Referrer commission transaction not committed.');
+                        // Fallback: credit winner full amount
+                        creditWinningsToMain(winner, winAmount);
                     }
                 });
             });
         }
 
-        // Helper to credit winnings without commission (for no-referrer case)
-        function creditWinningsToMain(username, winAmount) {
-            if (!username || winAmount <= 0) return;
+        // Helper to credit winnings (single transaction)
+        function creditWinningsToMain(username, amount) {
+            if (!username || amount <= 0) return;
             const userRef = database.ref('users/' + username);
             userRef.transaction(current => {
                 if (current) {
-                    current.mainWallet = (current.mainWallet || 0) + winAmount;
+                    current.mainWallet = (current.mainWallet || 0) + amount;
                 }
                 return current;
             }, (error, committed, snap) => {
-                if (error) {
-                    console.error('Error crediting winnings:', error);
-                } else if (committed) {
-                    console.log(`✅ ${username} credited with ${winAmount} Birr`);
-                    if (username === currentUser) {
-                        syncWalletFromFirebase();
-                    }
+                if (error) console.error('Error crediting winnings:', error);
+                else if (committed) {
+                    console.log(`✅ ${username} credited with ${amount} Birr`);
+                    if (username === currentUser) syncWalletFromFirebase();
                 }
             });
         }
-
         // ============================================================
         //  NETWORK DISCONNECTION LISTENER
         // ============================================================
@@ -3017,6 +2887,7 @@
         const closeWaitingBtn = $('closeWaitingBtn');
         const welcomeToast = $('welcomeToast');
 
+        // Referral modal
         const referralModal = $('referralModal');
         const referralLinkInput = $('referralLinkInput');
         const copyReferralBtn = $('copyReferralBtn');
@@ -3028,6 +2899,7 @@
         const wheelContainer = $('wheelContainer');
         const spinResults = $('spinResults');
         const wheelNumbers = $('wheelNumbers');
+        const arrowContainer = $('arrowContainer');
         const arrowCenter = $('arrowCenter');
         const spinningIndicator = $('spinningIndicator');
         const statusEl = $('statusMessage');
@@ -3079,6 +2951,7 @@
                     if (transactionModal.classList.contains('active')) {
                         checkPendingTransactionStatus();
                     }
+                    // Update referral UI if modal is open or visible
                     updateReferralUI();
                 }
             });
@@ -3226,6 +3099,9 @@
             }
         }
 
+        // ============================================================
+        //  AUTO‑OCR ON IMAGE UPLOAD
+        // ============================================================
         depositImage.addEventListener('change', async function() {
             const file = this.files[0];
             if (!file) {
@@ -3514,6 +3390,7 @@
                 pendingTxListener = null; }
             attemptTelegramDetection();
             detectReferral();
+            // If referral detected and no user logged in, show a toast
             if (referralParam) {
                 setTimeout(() => {
                     showToast(`🔗 Referred by @${referralParam}! Sign up to get started.`);
@@ -3552,6 +3429,7 @@
                 }, 5000);
             }
 
+            // If there's a referral, show it on welcome too
             if (referralParam) {
                 setTimeout(() => {
                     showToast(`🔗 You were referred by @${referralParam}!`);
@@ -3588,7 +3466,7 @@
         }
 
         // ============================================================
-        //  LOGIN / SIGNUP
+        //  LOGIN / SIGNUP – with referral integration
         // ============================================================
         function handleLogin() {
             const username = authUsername.value.trim();
@@ -3657,6 +3535,7 @@
                     authError.textContent = 'Username already exists. Please login.';
                     return;
                 } else {
+                    // Get referral from session or URL
                     const ref = referralParam || sessionStorage.getItem('referral_param') || null;
 
                     const newUserData = {
@@ -3670,8 +3549,10 @@
                         referredBy: ref || null
                     };
 
+                    // If referred, log it
                     if (ref) {
                         console.log('🔗 New user referred by:', ref);
+                        // Clean up after use
                         sessionStorage.removeItem('referral_param');
                     }
 
@@ -3691,6 +3572,7 @@
                             welcomeToast.classList.remove('active');
                         }, 5000);
 
+                        // If referred, show a special toast
                         if (ref) {
                             setTimeout(() => {
                                 showToast(`🎉 You were referred by @${ref}! Welcome!`);
@@ -4186,7 +4068,7 @@
                             stopTimer();
                             if (!audioPlayedThisRound) {
                                 playGetReadyAudio();
-                                speakGetReady();
+                                speakGetReady(); // TTS
                                 audioPlayedThisRound = true;
                             }
                             setTimeout(() => {
@@ -4262,7 +4144,7 @@
         };
 
         // ============================================================
-        //  TIMER – fully driven by Firebase selectionEndsAt
+        //  TIMER
         // ============================================================
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
@@ -4330,14 +4212,7 @@
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = [];
                         audioPlayedThisRound = false;
-                        // Reset wheel rotation
-                        const wheelEl = document.getElementById('wheel');
-                        wheelEl.style.transition = 'none';
-                        wheelEl.style.transform = 'rotate(0deg)';
-                        // Re-enable transition
-                        setTimeout(() => {
-                            wheelEl.style.transition = 'transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-                        }, 50);
+                        arrowContainer.style.transform = 'rotate(0deg)';
                         arrowCenter.textContent = '🎯';
                         arrowCenter.classList.remove('reveal');
                         spinEls.forEach(el => {
@@ -4368,7 +4243,7 @@
         }
 
         // ============================================================
-        //  UI UPDATE – wheel rotation only when not spinning
+        //  UI UPDATE
         // ============================================================
         let updatePending = false;
 
@@ -4397,34 +4272,17 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
-
-                // Only apply rotation from Firebase when NOT spinning (to avoid conflict)
-                const wheelEl = document.getElementById('wheel');
-                if (engineState.gamePhase !== 'spinning') {
-                    if (engineState.cumulativeRotation > 0 && engineState.gamePhase === 'results') {
-                        // Apply the final rotation from Firebase
-                        wheelEl.style.transition = 'none';
-                        wheelEl.style.transform = `rotate(${engineState.cumulativeRotation}deg)`;
-                        // Re-enable transition for next spin
-                        setTimeout(() => {
-                            wheelEl.style.transition = 'transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-                        }, 50);
-                    } else if (engineState.gamePhase === 'selection') {
-                        wheelEl.style.transition = 'none';
-                        wheelEl.style.transform = 'rotate(0deg)';
-                        // Re-enable transition
-                        setTimeout(() => {
-                            wheelEl.style.transition = 'transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-                        }, 50);
-                        arrowCenter.textContent = '🎯';
-                        arrowCenter.classList.remove('reveal');
-                        spinEls.forEach(el => {
-                            el.textContent = '•';
-                            el.classList.remove('active', 'winner', 'reveal');
-                        });
-                    }
+                if (engineState.cumulativeRotation > 0 && (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results')) {
+                    arrowContainer.style.transform = `rotate(${engineState.cumulativeRotation}deg)`;
+                } else if (engineState.gamePhase === 'selection') {
+                    arrowContainer.style.transform = 'rotate(0deg)';
+                    arrowCenter.textContent = '🎯';
+                    arrowCenter.classList.remove('reveal');
+                    spinEls.forEach(el => {
+                        el.textContent = '•';
+                        el.classList.remove('active', 'winner', 'reveal');
+                    });
                 }
-
                 if (engineState.drawnNumbers.length > 0 && (engineState.gamePhase === 'results' || engineState.gamePhase === 'spinning')) {
                     engineState.drawnNumbers.forEach((num, idx) => {
                         if (idx < 3) {
@@ -4578,7 +4436,7 @@
         });
 
         // ============================================================
-        //  WHEEL – place numbers upright (no rotation)
+        //  WHEEL
         // ============================================================
         function updateWheel() {
             const numbers = Array.from(engineState.allTakenNumbers);
@@ -4597,9 +4455,8 @@
                 const x = 50 + radius * Math.sin(rad);
                 const y = 50 - radius * Math.cos(rad);
                 const isHighlighted = engineState.drawnNumbers.includes(num);
-                // No rotation – keep text upright
                 html +=
-                    `<div class="wheel-number ${isHighlighted ? 'highlighted' : ''}" style="left:${x}%;top:${y}%;transform:translate(-50%,-50%) ${isHighlighted ? 'scale(1.3)' : ''};">${num}</div>`;
+                    `<div class="wheel-number ${isHighlighted ? 'highlighted' : ''}" style="left:${x}%;top:${y}%;transform:translate(-50%,-50%);">${num}</div>`;
             });
             wheelNumbers.innerHTML = html;
         }
@@ -4610,7 +4467,7 @@
             const index = numbers.indexOf(targetNumber);
             if (index === -1) return 0;
             const angleStep = 360 / numbers.length;
-            return -(index * angleStep);
+            return index * angleStep;
         }
 
         // ============================================================
@@ -4625,7 +4482,7 @@
         }
 
         // ============================================================
-        //  SPIN EXECUTION – rotates the wheel, arrow stays fixed
+        //  SPIN EXECUTION
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning) {
@@ -4652,19 +4509,75 @@
                     return;
                 }
 
-                const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
-                const angle = getAngleForNumber(winningNumber);
-                const fullRotations = 4 + Math.floor(Math.random() * 2);
-                const extraDegrees = fullRotations * 360 + angle;
+                if (numbers.length < 2) {
+                    const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
+                    const targetAngle = getAngleForNumber(winningNumber);
+                    const fullRotations = 4 + Math.floor(Math.random() * 2);
+                    const extraDegrees = 360 * fullRotations + targetAngle;
 
-                const wheelEl = document.getElementById('wheel');
-                // Reset transition to avoid glitch
-                wheelEl.style.transition = 'none';
-                wheelEl.style.transform = 'rotate(0deg)';
-                void wheelEl.offsetHeight;
-                // Set transition and target rotation
-                wheelEl.style.transition = `transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
-                wheelEl.style.transform = `rotate(${extraDegrees}deg)`;
+                    arrowContainer.style.transition = 'none';
+                    arrowContainer.style.transform = 'rotate(0deg)';
+                    void arrowContainer.offsetHeight;
+
+                    arrowContainer.style.transition = `transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
+                    arrowContainer.style.transform = `rotate(${extraDegrees}deg)`;
+
+                    engineState.cumulativeRotation = extraDegrees;
+
+                    gameRef.update({
+                        cumulativeRotation: extraDegrees,
+                        spinCount: engineState.spinCount + 1,
+                        timer: 5,
+                        potAmount: 0
+                    });
+
+                    if (spinTimeout) {
+                        clearTimeout(spinTimeout);
+                        spinTimeout = null;
+                    }
+
+                    spinTimeout = setTimeout(() => {
+                        engineState.drawnNumbers.push(winningNumber);
+                        engineState.spinCount++;
+
+                        gameRef.update({
+                            drawnNumbers: engineState.drawnNumbers,
+                            spinCount: engineState.spinCount,
+                            gameState: 'results'
+                        });
+
+                        arrowCenter.textContent = winningNumber;
+                        arrowCenter.classList.add('reveal');
+                        spinEls[0].textContent = winningNumber;
+                        spinEls[0].classList.add('reveal', 'active');
+
+                        updateStatus(`🎯 Winning number: <span class="highlight">${winningNumber}</span>`);
+                        updateWheel();
+
+                        spinningIndicator.classList.remove('active');
+                        engineState.isSpinning = false;
+                        engineState.spinInProgress = false;
+                        spinTimeout = null;
+
+                        setTimeout(() => {
+                            showNoGameMessage();
+                        }, 1000);
+                    }, 4200);
+                    return;
+                }
+
+                // Normal round (2+ players)
+                const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
+                const targetAngle = getAngleForNumber(winningNumber);
+                const fullRotations = 4 + Math.floor(Math.random() * 2);
+                const extraDegrees = 360 * fullRotations + targetAngle;
+
+                arrowContainer.style.transition = 'none';
+                arrowContainer.style.transform = 'rotate(0deg)';
+                void arrowContainer.offsetHeight;
+
+                arrowContainer.style.transition = `transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
+                arrowContainer.style.transform = `rotate(${extraDegrees}deg)`;
 
                 engineState.cumulativeRotation = extraDegrees;
 
@@ -4700,7 +4613,7 @@
                     spinEls[0].classList.add('reveal', 'active');
 
                     playWinningAudio();
-                    speakWinningNumber(winningNumber);
+                    speakWinningNumber(winningNumber); // TTS
                     updateStatus(`🎯 Winning number: <span class="highlight">${winningNumber}</span>`);
                     updateWheel();
 
@@ -4746,7 +4659,7 @@
         }
 
         // ============================================================
-        //  WINNERS – with commission distribution
+        //  WINNERS – with delayed modal, commission distribution, referral reward
         // ============================================================
         function checkAndAnnounceWinners(prizePool) {
             try {
@@ -4767,34 +4680,33 @@
 
                 gameRef.update({ winners: winners });
 
-                // Calculate total win amount per winner (before commission)
-                const rawWinAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
+                const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
-                // For each winner, credit them (or their referrer) accordingly
+                // Credit winners and distribute commission
                 winners.forEach(name => {
-                    if (rawWinAmount > 0) {
-                        // Use distributeCommission which handles the deduction and referral
-                        distributeCommission(name, rawWinAmount);
-                    } else {
-                        // No win amount, just update status for the current user if they are winner
-                        if (name === currentUser) {
-                            updateStatus(`🎉 You won! (0 coins)`, true);
-                        }
+                    if (name === currentUser) {
+                        creditWinningsToMain(winAmount);
+                        updateStatus(`🎉 You won! +${winAmount} coins (${takenCount} players × ${currentBet} − 15% fee)`,
+                            true);
                     }
+                    // Distribute 10% commission to referrers (up the tree)
+                    if (winAmount > 0) {
+                        distributeCommission(name, winAmount);
+                    }
+                    // Process referral reward for the winner (the referrer gets referral count increment)
+                    processReferralReward(name);
                 });
 
-                // Update winners list display (show raw win amount, but commission info in status)
+                // Update winners list
                 if (winners.length === 0) {
                     winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
                 } else {
                     let html = '';
                     winners.forEach(name => {
-                        // For display, show raw win amount (before commission) but note the commission
-                        const displayAmount = rawWinAmount;
                         html += `
                                 <div class="winner-entry">
                                     <span class="player-name">${name}</span>
-                                    <span class="winning-nums">🎯 ${winningNumber} · ${displayAmount} Birr</span>
+                                    <span class="winning-nums">🎯 ${winningNumber} · ${winAmount} Birr</span>
                                 </div>
                             `;
                     });
@@ -4838,6 +4750,21 @@
         }
 
         // ============================================================
+        //  CREDIT WINNINGS
+        // ============================================================
+        function creditWinningsToMain(winAmount) {
+            if (!currentUser) return false;
+            const userRef = database.ref('users/' + currentUser);
+            userRef.transaction(current => {
+                if (current) {
+                    current.mainWallet = (current.mainWallet || 0) + winAmount;
+                }
+                return current;
+            });
+            return true;
+        }
+
+        // ============================================================
         //  TRANSACTION MODAL CLOSE
         // ============================================================
         transactionCloseBtn.onclick = () => {
@@ -4858,6 +4785,7 @@
             if (!currentUser) return;
             const link = getReferralLink(currentUser);
             referralLinkInput.value = link;
+            // Update stats
             updateReferralUI();
             referralModal.classList.add('active');
             closeMoreDropdown();
@@ -4869,6 +4797,7 @@
                 navigator.clipboard.writeText(link).then(() => {
                     showToast('📋 Referral link copied!');
                 }).catch(() => {
+                    // Fallback
                     referralLinkInput.select();
                     document.execCommand('copy');
                     showToast('📋 Referral link copied!');
@@ -4878,6 +4807,7 @@
                 document.execCommand('copy');
                 showToast('📋 Referral link copied!');
             }
+            // After copy, open Telegram contact list
             setTimeout(() => {
                 if (tg && tg.openTelegramLink) {
                     tg.openTelegramLink(`https://t.me/WinzoBettingBot?start=ref_${currentUser}`);
@@ -4896,6 +4826,7 @@
                     url: link
                 }).catch(() => {});
             } else {
+                // Fallback: copy and open telegram
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(link).then(() => {
                         showToast('📋 Referral link copied!');
@@ -5022,7 +4953,10 @@
                 closeMoreDropdown();
             };
 
+            // Referral button
             referralBtn.onclick = openReferralModal;
+
+            // Support button
             supportBtn.onclick = openSupport;
 
             switchBet15.onclick = () => { switchBet(15); };
@@ -5091,6 +5025,7 @@
 
         // Start the app
         init();
+        // ==========)
     </script>
 </body>
 </html>
