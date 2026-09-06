@@ -683,6 +683,7 @@
             justify-content: center;
             pointer-events: none;
             z-index: 15;
+            /* No transform transition – stays fixed */
         }
         .arrow-shaft {
             position: absolute;
@@ -755,6 +756,8 @@
             z-index: 6;
             transition: all 0.5s ease;
             opacity: 0.7;
+            /* Keep text upright – no rotation applied */
+            transform: translate(-50%, -50%);
         }
         .wheel-number.highlighted {
             color: #e05555;
@@ -762,7 +765,7 @@
             text-shadow: 0 0 30px rgba(255, 80, 80, 0.4);
             font-weight: 900;
             opacity: 1;
-            transform: scale(1.3);
+            transform: translate(-50%, -50%) scale(1.3);
         }
 
         .spin-results {
@@ -1936,13 +1939,13 @@
             <div class="wheel-container hidden" id="wheelContainer">
                 <div class="wheel" id="wheel">
                     <div class="wheel-numbers" id="wheelNumbers"></div>
-                    <!-- arrow container stays fixed -->
+                    <!-- arrow container stays fixed at top -->
                     <div class="arrow-container">
                         <div class="arrow-shaft"></div>
                         <div class="arrow-head"></div>
                     </div>
                     <div class="arrow-center-circle" id="arrowCenter">🎯</div>
-                    <div class="spinning-indicator" id="spinningIndicator">🎡 SPINNING...</div>
+                    <div class="spinning-indicator" id="spinningIndicator"></div>
                 </div>
             </div>
 
@@ -2551,7 +2554,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.6';
+        const APP_VERSION = '5.7';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2654,16 +2657,24 @@
             });
         }
 
+        // Commission: 5% of the winner's win amount goes to the referrer (direct inviter)
         function distributeCommission(winner, winAmount) {
             if (!winner || !database || winAmount <= 0) return;
-            const commission = winAmount * 0.05;   // 5% commission
+            const commission = winAmount * 0.05;   // 5%
             if (commission < 0.01) return;
 
+            // Get winner's data to find their referrer
             const userRef = database.ref('users/' + winner);
             userRef.once('value', snap => {
                 const data = snap.val();
-                if (!data || !data.referredBy) return;
+                if (!data || !data.referredBy) {
+                    console.log(`ℹ️ ${winner} has no referrer, commission skipped.`);
+                    return;
+                }
                 const referrer = data.referredBy;
+                console.log(`💸 Commission of ${commission} Birr from ${winner}'s win to ${referrer}`);
+
+                // Credit commission to referrer's main wallet and referralEarnings
                 const referrerRef = database.ref('users/' + referrer);
                 referrerRef.transaction(current => {
                     if (current) {
@@ -2675,7 +2686,13 @@
                     if (error) {
                         console.error('Error crediting commission:', error);
                     } else if (committed) {
-                        console.log(`✅ Commission of ${commission} Birr credited to ${referrer} for ${winner}'s win.`);
+                        console.log(`✅ Commission of ${commission} Birr credited to ${referrer}`);
+                        // Update wallet UI of the referrer if they are the current user
+                        if (referrer === currentUser) {
+                            syncWalletFromFirebase();
+                        }
+                    } else {
+                        console.warn('Commission transaction not committed.');
                     }
                 });
             });
@@ -3601,8 +3618,8 @@
                         playWallet: 30,
                         pendingWithdrawal: 0,
                         bonusClaimed: true,
-                        referralCount: 0,
-                        referralEarnings: 0,
+                        referralCount: 0,          // number of direct referrals
+                        referralEarnings: 0,       // total commission earned from referrals
                         referredBy: ref || null
                     };
 
@@ -4270,6 +4287,10 @@
                         const wheelEl = document.getElementById('wheel');
                         wheelEl.style.transition = 'none';
                         wheelEl.style.transform = 'rotate(0deg)';
+                        // Re-enable transition
+                        setTimeout(() => {
+                            wheelEl.style.transition = 'transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                        }, 50);
                         arrowCenter.textContent = '🎯';
                         arrowCenter.classList.remove('reveal');
                         spinEls.forEach(el => {
@@ -4300,7 +4321,7 @@
         }
 
         // ============================================================
-        //  UI UPDATE – only set wheel transform when not spinning
+        //  UI UPDATE – wheel rotation only when not spinning
         // ============================================================
         let updatePending = false;
 
@@ -4331,8 +4352,8 @@
                 updateWheel();
 
                 // Only apply rotation from Firebase when NOT spinning (to avoid conflict)
+                const wheelEl = document.getElementById('wheel');
                 if (engineState.gamePhase !== 'spinning') {
-                    const wheelEl = document.getElementById('wheel');
                     if (engineState.cumulativeRotation > 0 && engineState.gamePhase === 'results') {
                         // Apply the final rotation from Firebase
                         wheelEl.style.transition = 'none';
@@ -4344,16 +4365,16 @@
                     } else if (engineState.gamePhase === 'selection') {
                         wheelEl.style.transition = 'none';
                         wheelEl.style.transform = 'rotate(0deg)';
+                        // Re-enable transition
+                        setTimeout(() => {
+                            wheelEl.style.transition = 'transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                        }, 50);
                         arrowCenter.textContent = '🎯';
                         arrowCenter.classList.remove('reveal');
                         spinEls.forEach(el => {
                             el.textContent = '•';
                             el.classList.remove('active', 'winner', 'reveal');
                         });
-                        // Re-enable transition
-                        setTimeout(() => {
-                            wheelEl.style.transition = 'transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-                        }, 50);
                     }
                 }
 
@@ -4510,7 +4531,7 @@
         });
 
         // ============================================================
-        //  WHEEL – update the numbers shown on the wheel
+        //  WHEEL – place numbers upright (no rotation)
         // ============================================================
         function updateWheel() {
             const numbers = Array.from(engineState.allTakenNumbers);
@@ -4529,8 +4550,9 @@
                 const x = 50 + radius * Math.sin(rad);
                 const y = 50 - radius * Math.cos(rad);
                 const isHighlighted = engineState.drawnNumbers.includes(num);
+                // No rotation – keep text upright
                 html +=
-                    `<div class="wheel-number ${isHighlighted ? 'highlighted' : ''}" style="left:${x}%;top:${y}%;transform:translate(-50%,-50%);">${num}</div>`;
+                    `<div class="wheel-number ${isHighlighted ? 'highlighted' : ''}" style="left:${x}%;top:${y}%;transform:translate(-50%,-50%) ${isHighlighted ? 'scale(1.3)' : ''};">${num}</div>`;
             });
             wheelNumbers.innerHTML = html;
         }
@@ -4542,9 +4564,8 @@
             if (index === -1) return 0;
             const angleStep = 360 / numbers.length;
             // Return the angle that will bring this number to the top (0°)
-            // The number is placed at angle = index * angleStep (measured from top, clockwise)
-            // We need to rotate the wheel by -angle to bring it to top.
-            return - (index * angleStep);
+            // The number is placed at angle = index * angleStep (from top, clockwise)
+            return -(index * angleStep);
         }
 
         // ============================================================
@@ -4587,19 +4608,15 @@
                 }
 
                 const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
-                // Get the angle for this number (its position on the wheel)
                 const angle = getAngleForNumber(winningNumber);
-                // Full rotations + angle to stop at the top (0°)
                 const fullRotations = 4 + Math.floor(Math.random() * 2);
-                const extraDegrees = fullRotations * 360 + angle; // accumulate rotations
+                const extraDegrees = fullRotations * 360 + angle;
 
-                // Get the wheel element
                 const wheelEl = document.getElementById('wheel');
                 // Reset transition to avoid glitch
                 wheelEl.style.transition = 'none';
                 wheelEl.style.transform = 'rotate(0deg)';
-                // Force reflow
-                void wheelEl.offsetHeight;
+                void wheelEl.offsetHeight; // force reflow
                 // Set transition and target rotation
                 wheelEl.style.transition = `transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
                 wheelEl.style.transform = `rotate(${extraDegrees}deg)`;
@@ -4684,7 +4701,7 @@
         }
 
         // ============================================================
-        //  WINNERS
+        //  WINNERS – with commission distribution
         // ============================================================
         function checkAndAnnounceWinners(prizePool) {
             try {
@@ -4707,17 +4724,20 @@
 
                 const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
+                // Credit winners and distribute commission
                 winners.forEach(name => {
                     if (name === currentUser) {
                         creditWinningsToMain(winAmount);
                         updateStatus(`🎉 You won! +${winAmount} coins (${takenCount} players × ${currentBet} − 15% fee)`,
                             true);
                     }
+                    // Give commission to the referrer (if any) – 5% of winAmount
                     if (winAmount > 0) {
                         distributeCommission(name, winAmount);
                     }
                 });
 
+                // Update winners list
                 if (winners.length === 0) {
                     winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
                 } else {
