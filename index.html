@@ -660,6 +660,7 @@
             aspect-ratio: 1/1;
             flex-shrink: 0;
         }
+        /* Wheel rotates, arrow container stays fixed */
         .wheel {
             width: 100%;
             height: 100%;
@@ -672,6 +673,7 @@
             justify-content: center;
             transition: transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99);
         }
+        /* Arrow container – fixed, positioned absolutely over the wheel */
         .arrow-container {
             position: absolute;
             width: 100%;
@@ -683,7 +685,6 @@
             justify-content: center;
             pointer-events: none;
             z-index: 15;
-            /* No transform transition – stays fixed */
         }
         .arrow-shaft {
             position: absolute;
@@ -756,7 +757,7 @@
             z-index: 6;
             transition: all 0.5s ease;
             opacity: 0.7;
-            /* Keep text upright – no rotation applied */
+            /* No rotation – keep upright */
             transform: translate(-50%, -50%);
         }
         .wheel-number.highlighted {
@@ -1937,15 +1938,16 @@
             <div class="pick-status" id="pickStatus"><span>🎯 Pick <span class="highlight">one</span> number</span></div>
 
             <div class="wheel-container hidden" id="wheelContainer">
+                <!-- Arrow is outside the wheel, so it stays fixed -->
+                <div class="arrow-container">
+                    <div class="arrow-shaft"></div>
+                    <div class="arrow-head"></div>
+                    <div class="arrow-center-circle" id="arrowCenter">🎯</div>
+                </div>
+                <!-- Wheel rotates -->
                 <div class="wheel" id="wheel">
                     <div class="wheel-numbers" id="wheelNumbers"></div>
-                    <!-- arrow container stays fixed at top -->
-                    <div class="arrow-container">
-                        <div class="arrow-shaft"></div>
-                        <div class="arrow-head"></div>
-                    </div>
-                    <div class="arrow-center-circle" id="arrowCenter">🎯</div>
-                    <div class="spinning-indicator" id="spinningIndicator"></div>
+                    <div class="spinning-indicator" id="spinningIndicator">🎡 SPINNING...</div>
                 </div>
             </div>
 
@@ -2554,7 +2556,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.7';
+        const APP_VERSION = '5.8';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2637,7 +2639,7 @@
         let syncInProgress = false;
 
         // ============================================================
-        //  REFERRAL SYSTEM – Only commission (5%) on invited player's win
+        //  REFERRAL SYSTEM – commission (5%) deducted from winner's prize
         // ============================================================
         function getReferralLink(username) {
             return `https://t.me/WinzoBettingBot?start=ref_${username}`;
@@ -2657,7 +2659,8 @@
             });
         }
 
-        // Commission: 5% of the winner's win amount goes to the referrer (direct inviter)
+        // Commission: 5% of the winner's win amount is deducted from the winner and given to the referrer.
+        // Winner receives winAmount * 0.95, referrer receives winAmount * 0.05.
         function distributeCommission(winner, winAmount) {
             if (!winner || !database || winAmount <= 0) return;
             const commission = winAmount * 0.05;   // 5%
@@ -2669,32 +2672,77 @@
                 const data = snap.val();
                 if (!data || !data.referredBy) {
                     console.log(`ℹ️ ${winner} has no referrer, commission skipped.`);
+                    // Winner gets full amount (no deduction)
+                    creditWinningsToMain(winner, winAmount);
                     return;
                 }
                 const referrer = data.referredBy;
                 console.log(`💸 Commission of ${commission} Birr from ${winner}'s win to ${referrer}`);
 
-                // Credit commission to referrer's main wallet and referralEarnings
+                // Credit winner with 95% of winAmount
+                const winnerNet = winAmount * 0.95;
+                // Credit referrer with 5% of winAmount
+                // We'll do both in a multi-path update or transactions.
+                // Use transactions to be safe.
+                const winnerRef = database.ref('users/' + winner);
                 const referrerRef = database.ref('users/' + referrer);
-                referrerRef.transaction(current => {
+
+                // Update winner first
+                winnerRef.transaction(current => {
                     if (current) {
-                        current.mainWallet = (current.mainWallet || 0) + commission;
-                        current.referralEarnings = (current.referralEarnings || 0) + commission;
+                        current.mainWallet = (current.mainWallet || 0) + winnerNet;
                     }
                     return current;
                 }, (error, committed, snap) => {
                     if (error) {
-                        console.error('Error crediting commission:', error);
+                        console.error('Error crediting winner:', error);
                     } else if (committed) {
-                        console.log(`✅ Commission of ${commission} Birr credited to ${referrer}`);
-                        // Update wallet UI of the referrer if they are the current user
-                        if (referrer === currentUser) {
-                            syncWalletFromFirebase();
-                        }
+                        console.log(`✅ Winner ${winner} credited with ${winnerNet} Birr (after 5% commission)`);
+                        // Now credit referrer
+                        referrerRef.transaction(current => {
+                            if (current) {
+                                current.mainWallet = (current.mainWallet || 0) + commission;
+                                current.referralEarnings = (current.referralEarnings || 0) + commission;
+                            }
+                            return current;
+                        }, (error2, committed2, snap2) => {
+                            if (error2) {
+                                console.error('Error crediting referrer:', error2);
+                            } else if (committed2) {
+                                console.log(`✅ Referrer ${referrer} credited with ${commission} Birr`);
+                                // Update UI if referrer is current user
+                                if (referrer === currentUser) {
+                                    syncWalletFromFirebase();
+                                }
+                            } else {
+                                console.warn('Referrer commission transaction not committed.');
+                            }
+                        });
                     } else {
-                        console.warn('Commission transaction not committed.');
+                        console.warn('Winner credit transaction not committed.');
                     }
                 });
+            });
+        }
+
+        // Helper to credit winnings without commission (for no-referrer case)
+        function creditWinningsToMain(username, winAmount) {
+            if (!username || winAmount <= 0) return;
+            const userRef = database.ref('users/' + username);
+            userRef.transaction(current => {
+                if (current) {
+                    current.mainWallet = (current.mainWallet || 0) + winAmount;
+                }
+                return current;
+            }, (error, committed, snap) => {
+                if (error) {
+                    console.error('Error crediting winnings:', error);
+                } else if (committed) {
+                    console.log(`✅ ${username} credited with ${winAmount} Birr`);
+                    if (username === currentUser) {
+                        syncWalletFromFirebase();
+                    }
+                }
             });
         }
 
@@ -2980,7 +3028,6 @@
         const wheelContainer = $('wheelContainer');
         const spinResults = $('spinResults');
         const wheelNumbers = $('wheelNumbers');
-        const arrowContainer = $('arrowContainer');
         const arrowCenter = $('arrowCenter');
         const spinningIndicator = $('spinningIndicator');
         const statusEl = $('statusMessage');
@@ -3618,8 +3665,8 @@
                         playWallet: 30,
                         pendingWithdrawal: 0,
                         bonusClaimed: true,
-                        referralCount: 0,          // number of direct referrals
-                        referralEarnings: 0,       // total commission earned from referrals
+                        referralCount: 0,
+                        referralEarnings: 0,
                         referredBy: ref || null
                     };
 
@@ -4563,8 +4610,6 @@
             const index = numbers.indexOf(targetNumber);
             if (index === -1) return 0;
             const angleStep = 360 / numbers.length;
-            // Return the angle that will bring this number to the top (0°)
-            // The number is placed at angle = index * angleStep (from top, clockwise)
             return -(index * angleStep);
         }
 
@@ -4616,7 +4661,7 @@
                 // Reset transition to avoid glitch
                 wheelEl.style.transition = 'none';
                 wheelEl.style.transform = 'rotate(0deg)';
-                void wheelEl.offsetHeight; // force reflow
+                void wheelEl.offsetHeight;
                 // Set transition and target rotation
                 wheelEl.style.transition = `transform 3.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
                 wheelEl.style.transform = `rotate(${extraDegrees}deg)`;
@@ -4722,31 +4767,34 @@
 
                 gameRef.update({ winners: winners });
 
-                const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
+                // Calculate total win amount per winner (before commission)
+                const rawWinAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
-                // Credit winners and distribute commission
+                // For each winner, credit them (or their referrer) accordingly
                 winners.forEach(name => {
-                    if (name === currentUser) {
-                        creditWinningsToMain(winAmount);
-                        updateStatus(`🎉 You won! +${winAmount} coins (${takenCount} players × ${currentBet} − 15% fee)`,
-                            true);
-                    }
-                    // Give commission to the referrer (if any) – 5% of winAmount
-                    if (winAmount > 0) {
-                        distributeCommission(name, winAmount);
+                    if (rawWinAmount > 0) {
+                        // Use distributeCommission which handles the deduction and referral
+                        distributeCommission(name, rawWinAmount);
+                    } else {
+                        // No win amount, just update status for the current user if they are winner
+                        if (name === currentUser) {
+                            updateStatus(`🎉 You won! (0 coins)`, true);
+                        }
                     }
                 });
 
-                // Update winners list
+                // Update winners list display (show raw win amount, but commission info in status)
                 if (winners.length === 0) {
                     winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
                 } else {
                     let html = '';
                     winners.forEach(name => {
+                        // For display, show raw win amount (before commission) but note the commission
+                        const displayAmount = rawWinAmount;
                         html += `
                                 <div class="winner-entry">
                                     <span class="player-name">${name}</span>
-                                    <span class="winning-nums">🎯 ${winningNumber} · ${winAmount} Birr</span>
+                                    <span class="winning-nums">🎯 ${winningNumber} · ${displayAmount} Birr</span>
                                 </div>
                             `;
                     });
@@ -4787,21 +4835,6 @@
             } catch (error) {
                 handleError(error, 'Check Winners');
             }
-        }
-
-        // ============================================================
-        //  CREDIT WINNINGS
-        // ============================================================
-        function creditWinningsToMain(winAmount) {
-            if (!currentUser) return false;
-            const userRef = database.ref('users/' + currentUser);
-            userRef.transaction(current => {
-                if (current) {
-                    current.mainWallet = (current.mainWallet || 0) + winAmount;
-                }
-                return current;
-            });
-            return true;
         }
 
         // ============================================================
