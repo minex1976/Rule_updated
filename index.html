@@ -499,7 +499,7 @@
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
-            padding: 2px 2px 2px 6px;
+            padding: 2px 0 2px 4px;
             gap: 6px;
             flex-wrap: wrap;
         }
@@ -520,6 +520,18 @@
             display: block;
             font-weight: 400;
             color: #b8a0d0;
+        }
+        .game-header .room-badge {
+            display: inline-block;
+            background: rgba(255, 204, 68, 0.12);
+            padding: 1px 10px;
+            border-radius: 20px;
+            font-size: 0.55rem;
+            color: #ffcc44;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-left: 4px;
+            flex-shrink: 0;
         }
 
         /* ===== SWITCH ROOM BUTTON – golden gradient, right top ===== */
@@ -1855,13 +1867,14 @@
 
         <!-- ===== GAME SCREEN ===== -->
         <div id="gameScreen">
-            <!-- Game Header: title + switch room button (right top corner) -->
+            <!-- Game Header: title + room badge + switch room button -->
             <div class="game-header">
                 <div class="title">
                     🏆 <span style="color:#ffcc44;">WINZO</span> 🏆
                     <small id="modeLabel">15 Birr</small>
+                    <span class="room-badge" id="gameRoomBadge">💰 Bet: 15 Birr</span>
                 </div>
-                <button class="switch-room-btn" id="switchRoomBtn"> Switch Room</button>
+                <button class="switch-room-btn" id="switchRoomBtn">🔄 Switch Room</button>
             </div>
 
             <div class="wallet-bar">
@@ -2803,6 +2816,7 @@
         const moreDropdown = $('moreDropdown');
         const statusDot = $('statusDot');
         const modeLabel = $('modeLabel');
+        const gameRoomBadge = $('gameRoomBadge');
         const betDisplay = $('betDisplay');
         const pickStatus = $('pickStatus');
 
@@ -3389,6 +3403,7 @@
             welcomeScreen.style.display = 'none';
             gameScreen.style.display = 'flex';
             modeLabel.textContent = currentBet + ' Birr';
+            gameRoomBadge.textContent = '💰 Bet: ' + currentBet + ' Birr';
             betDisplay.textContent = currentBet;
             updateWalletUI();
             updatePickStatus();
