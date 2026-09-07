@@ -2067,7 +2067,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Real‑time Taken Numbers   -->
+    <!-- JAVASCRIPT – Complete Game Code with Auto‑Restart Fix         -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -3304,7 +3304,6 @@
         }
 
         function performLogout() {
-            // Detach numbersTaken listener
             detachNumbersTakenListener();
 
             if (gameRef) {
@@ -3494,7 +3493,6 @@
                 alert('⚠️ Insufficient play balance. Please deposit.');
                 return;
             }
-            // Clean up previous room listeners
             detachNumbersTakenListener();
             if (gameRef) {
                 if (currentUser && engineState.players[currentUser]) {
@@ -3700,7 +3698,6 @@
                     }
                 });
                 engineState.allTakenNumbers = newSet;
-                // Update UI
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
@@ -3745,7 +3742,6 @@
             ref.on('child_changed', onChildChanged);
             ref.on('child_removed', onChildRemoved);
 
-            // store references for detach
             numbersTakenListenerRef._handlers = { onChildAdded, onChildChanged, onChildRemoved };
             numbersTakenInitialized = true;
         }
@@ -3757,7 +3753,6 @@
                 if (handlers.onChildAdded) ref.off('child_added', handlers.onChildAdded);
                 if (handlers.onChildChanged) ref.off('child_changed', handlers.onChildChanged);
                 if (handlers.onChildRemoved) ref.off('child_removed', handlers.onChildRemoved);
-                // also remove any other listeners
                 ref.off();
                 numbersTakenListenerRef = null;
                 numbersTakenInitialized = false;
@@ -3795,7 +3790,6 @@
             }
             const roomPath = currentRoom;
             gameRef = database.ref('rooms/' + roomPath);
-            // Initialize numbersTaken if empty
             gameRef.child('numbersTaken').set({});
             database.ref('.info/serverTimeOffset').once('value').then(snap => { serverTimeOffset = Number(snap.val()) || 0;
                 ensureSelectionDeadline(); });
@@ -3831,10 +3825,8 @@
                 }
             });
 
-            // Attach the dedicated numbersTaken listener
             attachNumbersTakenListener();
 
-            // Still need the main value listener for other state (players, game state, etc.)
             gameRef.on('value', snapshot => {
                 if (syncInProgress) return;
                 const data = snapshot.val();
@@ -3858,14 +3850,13 @@
             isGameInitialized = true;
             setConnectionStatus(true, '🔑 Connected to ' + currentBet + ' Birr room');
 
-            // Render after a short delay
             setTimeout(() => {
                 renderNumberPicker();
             }, 500);
         }
 
         // ============================================================
-        //  SYNC GAME STATE (excluding numbersTaken – handled separately)
+        //  SYNC GAME STATE
         // ============================================================
         function syncGameState(data) {
             if (syncInProgress) return;
@@ -3889,10 +3880,6 @@
                 engineState.activePlayersCount = playerNames.length;
                 engineState.gameStarted = data.gameStarted || true;
                 engineState.potAmount = data.potAmount || 0;
-
-                // numbersTaken is handled by the dedicated listener, so we don't override here.
-                // However, we may need to ensure the Set is in sync if we missed any events.
-                // We'll do a one-time re-sync if needed, but the listener should catch all.
 
                 updatePrizeDisplay();
                 updateBetsForRoom();
@@ -4090,7 +4077,7 @@
         }
 
         // ============================================================
-        //  RESULTS COUNTDOWN
+        //  RESULTS COUNTDOWN – FIXED with full reset and timer restart
         // ============================================================
         function startResultsCountdown() {
             if (isResultsCountdownRunning) return;
@@ -4102,6 +4089,8 @@
                 if (timerDisplay) timerDisplay.textContent = countdown;
                 if (countdown <= 0) {
                     stopResultsCountdown();
+
+                    // Reset the room for the next round
                     if (gameRef) {
                         const updates = {
                             gameState: 'selection',
@@ -4125,12 +4114,24 @@
                             updates['players/' + name + '/round'] = null;
                         });
                         gameRef.update(updates);
-                        resetNumbersTaken();
 
+                        // Reset local state
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = [];
-                        audioPlayedThisRound = false;
+                        engineState.winners = [];
+                        engineState.spinCount = 0;
+                        engineState.isSpinning = false;
+                        engineState.gamePhase = 'selection';
+                        engineState.spinInProgress = false;
+                        engineState.waitingModalShown = false;
+                        engineState.potAmount = 0;
+                        engineState.totalBetsPlaced = 0;
                         engineState.winnersModalShown = false;
+
+                        // Close the winners modal
+                        if (winnersModal) winnersModal.classList.remove('active');
+
+                        // Reset UI elements
                         if (arrowContainer) arrowContainer.style.transform = 'rotate(0deg)';
                         if (arrowCenter) {
                             arrowCenter.textContent = '🎯';
@@ -4144,25 +4145,18 @@
                         });
                         if (wheelContainer) wheelContainer.classList.add('hidden');
                         if (spinResults) spinResults.classList.add('hidden');
-                        updateStatus(`⏳ Round ${engineState.roundNumber + 1}: Pick numbers for ${currentBet} Birr each`);
-                        engineState.waitingModalShown = false;
-                        updatePrizeDisplay();
                         if (timerDisplay) timerDisplay.textContent = '30';
+                        updatePrizeDisplay();
+                        updatePickStatus();
+                        renderNumberPicker();
+
+                        // Start the timer for the new round
+                        startTimer();
+                        updateStatus(`⏳ Round ${engineState.roundNumber + 1}: Pick numbers for ${currentBet} Birr each`);
                         if (engineState.activePlayersCount === 1) {
                             showWaitingModal();
                         }
                         stopFireworks();
-                        if (winnersModal) winnersModal.classList.remove('active');
-                        if (currentUser && engineState.players[currentUser]) {
-                            engineState.players[currentUser].picks = [];
-                            engineState.players[currentUser].pick = null;
-                            engineState.players[currentUser].ready = false;
-                            engineState.players[currentUser].betDeducted = false;
-                            engineState.players[currentUser].betSources = {};
-                            engineState.players[currentUser].round = engineState.roundNumber + 1;
-                        }
-                        renderNumberPicker();
-                        updatePickStatus();
                     }
                 }
             }, 1000);
@@ -4442,7 +4436,6 @@
                         engineState.players[currentUser].ready = remaining.length > 0;
                     }
                     refundPickBetFast(currentUser, currentBet);
-                    // The number will be removed from allTakenNumbers via the listener
                     if (engineState.players[currentUser]?.betSources) {
                         delete engineState.players[currentUser].betSources[num];
                     }
@@ -4467,9 +4460,6 @@
                     return;
                 }
 
-                // Optimistic UI update – we add it locally, but the listener will confirm.
-                // To avoid double-add, we add to the Set but it will be overwritten by the listener.
-                // However, if the claim fails, the listener will remove it.
                 engineState.allTakenNumbers.add(num);
                 renderNumberPicker();
                 updatePickStatus();
@@ -4477,7 +4467,6 @@
 
                 claimNumber(num, function(success) {
                     if (!success) {
-                        // The listener will remove it, but we also remove optimistically.
                         engineState.allTakenNumbers.delete(num);
                         const rollbackPicks = getMyPicks().filter(n => n !== num);
                         if (engineState.players[currentUser]) {
@@ -4499,10 +4488,8 @@
                         return;
                     }
 
-                    // claim succeeded – now deduct bet
                     deductPickBetFast(currentUser, currentBet).then(success => {
                         if (!success) {
-                            // Release the number if deduction fails
                             releaseNumber(num);
                             const rollbackPicks = getMyPicks().filter(n => n !== num);
                             if (engineState.players[currentUser]) {
@@ -4524,8 +4511,7 @@
                             return;
                         }
 
-                        // Update Firebase player picks
-                        const newPicks = getMyPicks(); // already includes the new number because we added optimistically
+                        const newPicks = getMyPicks();
                         if (gameRef) {
                             gameRef.child('players/' + currentUser + '/picks').set(newPicks);
                             gameRef.child('players/' + currentUser + '/pick').set(num);
@@ -4648,7 +4634,7 @@
                             spinCount: engineState.spinCount + 1,
                             timer: 5,
                             potAmount: 0,
-                            winners: []  // no winners
+                            winners: []
                         });
                     }
 
@@ -4666,7 +4652,7 @@
                                 drawnNumbers: engineState.drawnNumbers,
                                 spinCount: engineState.spinCount,
                                 gameState: 'results',
-                                winners: []  // no winners
+                                winners: []
                             });
                         }
 
@@ -4687,7 +4673,6 @@
                         engineState.spinInProgress = false;
                         spinTimeout = null;
 
-                        // No winners – show message after a moment
                         setTimeout(() => {
                             if (winnersList) {
                                 winnersList.innerHTML = `
@@ -4729,7 +4714,6 @@
                 const totalPot = totalPicks * currentBet;
                 const prizePool = Math.floor(totalPot * 0.85);
 
-                // Compute winners locally (will be stored in Firebase)
                 const players = engineState.players;
                 const playerNames = Object.keys(players);
                 const winners = [];
@@ -4748,7 +4732,7 @@
                         spinCount: engineState.spinCount + 1,
                         timer: 5,
                         potAmount: totalPot,
-                        winners: winners  // store winners in Firebase
+                        winners: winners
                     });
                 }
 
@@ -4787,7 +4771,6 @@
                     engineState.spinInProgress = false;
                     spinTimeout = null;
 
-                    // Credit winners and send notifications
                     const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
                     winners.forEach(name => {
                         creditWinnerAndReferral(name, winAmount).then(success => {
@@ -4821,7 +4804,7 @@
         }
 
         // ============================================================
-        //  WINNERS + REFERRAL COMMISSION (crediting only)
+        //  WINNERS + REFERRAL COMMISSION
         // ============================================================
         function creditWinnerAndReferral(winnerName, winAmount) {
             if (!database || !winnerName || winAmount <= 0) return Promise.resolve(false);
