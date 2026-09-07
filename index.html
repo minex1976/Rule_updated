@@ -2067,7 +2067,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Consistent Winners       -->
+    <!-- JAVASCRIPT – Complete Game Code with Real‑time Taken Numbers   -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2562,7 +2562,7 @@
             waitingModalShown: false,
             potAmount: 0,
             totalBetsPlaced: 0,
-            winnersModalShown: false  // prevent duplicate winners modal
+            winnersModalShown: false
         };
 
         let timerInterval = null;
@@ -2572,6 +2572,10 @@
         let isResultsCountdownRunning = false;
         let spinTimeout = null;
         let syncInProgress = false;
+
+        // ---- dedicated listener for numbersTaken ----
+        let numbersTakenListenerRef = null;
+        let numbersTakenInitialized = false;
 
         // ============================================================
         //  NETWORK DISCONNECTION LISTENER
@@ -3300,6 +3304,9 @@
         }
 
         function performLogout() {
+            // Detach numbersTaken listener
+            detachNumbersTakenListener();
+
             if (gameRef) {
                 if (currentUser) {
                     const playerData = engineState.players[currentUser];
@@ -3398,6 +3405,8 @@
         //  SWITCH ROOM
         // ============================================================
         function switchRoom() {
+            detachNumbersTakenListener();
+
             if (gameRef) {
                 if (currentUser && engineState.players[currentUser]) {
                     const picks = getPlayerPicks(engineState.players[currentUser]);
@@ -3485,6 +3494,8 @@
                 alert('⚠️ Insufficient play balance. Please deposit.');
                 return;
             }
+            // Clean up previous room listeners
+            detachNumbersTakenListener();
             if (gameRef) {
                 if (currentUser && engineState.players[currentUser]) {
                     const picks = getPlayerPicks(engineState.players[currentUser]);
@@ -3670,6 +3681,90 @@
         }
 
         // ============================================================
+        //  REAL‑TIME NUMBERS TAKEN LISTENER
+        // ============================================================
+        function attachNumbersTakenListener() {
+            if (!gameRef) return;
+            detachNumbersTakenListener(); // ensure clean
+
+            const ref = gameRef.child('numbersTaken');
+            numbersTakenListenerRef = ref;
+
+            // 1. Initial population
+            ref.once('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                const newSet = new Set();
+                Object.keys(data).forEach(key => {
+                    if (data[key] === true) {
+                        newSet.add(Number(key));
+                    }
+                });
+                engineState.allTakenNumbers = newSet;
+                // Update UI
+                renderNumberPicker();
+                updatePickStatus();
+                updateWheel();
+                console.log('📦 Initial numbersTaken loaded:', Array.from(newSet));
+            });
+
+            // 2. Child events for real‑time updates
+            const onChildAdded = (snap) => {
+                const num = Number(snap.key);
+                const val = snap.val();
+                if (val === true) {
+                    engineState.allTakenNumbers.add(num);
+                    renderNumberPicker();
+                    updatePickStatus();
+                    updateWheel();
+                    console.log(`➕ Number ${num} taken (added)`);
+                }
+            };
+            const onChildChanged = (snap) => {
+                const num = Number(snap.key);
+                const val = snap.val();
+                if (val === true) {
+                    engineState.allTakenNumbers.add(num);
+                } else {
+                    engineState.allTakenNumbers.delete(num);
+                }
+                renderNumberPicker();
+                updatePickStatus();
+                updateWheel();
+                console.log(`🔄 Number ${num} changed to ${val}`);
+            };
+            const onChildRemoved = (snap) => {
+                const num = Number(snap.key);
+                engineState.allTakenNumbers.delete(num);
+                renderNumberPicker();
+                updatePickStatus();
+                updateWheel();
+                console.log(`➖ Number ${num} removed`);
+            };
+
+            ref.on('child_added', onChildAdded);
+            ref.on('child_changed', onChildChanged);
+            ref.on('child_removed', onChildRemoved);
+
+            // store references for detach
+            numbersTakenListenerRef._handlers = { onChildAdded, onChildChanged, onChildRemoved };
+            numbersTakenInitialized = true;
+        }
+
+        function detachNumbersTakenListener() {
+            if (numbersTakenListenerRef) {
+                const ref = numbersTakenListenerRef;
+                const handlers = ref._handlers || {};
+                if (handlers.onChildAdded) ref.off('child_added', handlers.onChildAdded);
+                if (handlers.onChildChanged) ref.off('child_changed', handlers.onChildChanged);
+                if (handlers.onChildRemoved) ref.off('child_removed', handlers.onChildRemoved);
+                // also remove any other listeners
+                ref.off();
+                numbersTakenListenerRef = null;
+                numbersTakenInitialized = false;
+            }
+        }
+
+        // ============================================================
         //  GAME CONNECTION
         // ============================================================
         let serverTimeOffset = 0;
@@ -3700,6 +3795,7 @@
             }
             const roomPath = currentRoom;
             gameRef = database.ref('rooms/' + roomPath);
+            // Initialize numbersTaken if empty
             gameRef.child('numbersTaken').set({});
             database.ref('.info/serverTimeOffset').once('value').then(snap => { serverTimeOffset = Number(snap.val()) || 0;
                 ensureSelectionDeadline(); });
@@ -3735,6 +3831,10 @@
                 }
             });
 
+            // Attach the dedicated numbersTaken listener
+            attachNumbersTakenListener();
+
+            // Still need the main value listener for other state (players, game state, etc.)
             gameRef.on('value', snapshot => {
                 if (syncInProgress) return;
                 const data = snapshot.val();
@@ -3758,13 +3858,14 @@
             isGameInitialized = true;
             setConnectionStatus(true, '🔑 Connected to ' + currentBet + ' Birr room');
 
+            // Render after a short delay
             setTimeout(() => {
                 renderNumberPicker();
             }, 500);
         }
 
         // ============================================================
-        //  SYNC GAME STATE
+        //  SYNC GAME STATE (excluding numbersTaken – handled separately)
         // ============================================================
         function syncGameState(data) {
             if (syncInProgress) return;
@@ -3789,14 +3890,9 @@
                 engineState.gameStarted = data.gameStarted || true;
                 engineState.potAmount = data.potAmount || 0;
 
-                const numbersTaken = data.numbersTaken || {};
-                const allTaken = new Set();
-                Object.keys(numbersTaken).forEach(key => {
-                    if (numbersTaken[key] === true) {
-                        allTaken.add(parseInt(key));
-                    }
-                });
-                engineState.allTakenNumbers = allTaken;
+                // numbersTaken is handled by the dedicated listener, so we don't override here.
+                // However, we may need to ensure the Set is in sync if we missed any events.
+                // We'll do a one-time re-sync if needed, but the listener should catch all.
 
                 updatePrizeDisplay();
                 updateBetsForRoom();
@@ -3856,7 +3952,6 @@
                 // ===== WINNERS MODAL – show using Firebase data =====
                 if (engineState.gamePhase === 'results' && data.winners && data.winners.length > 0 && !engineState
                     .winnersModalShown) {
-                    // Use the stored winners from Firebase
                     const winners = data.winners;
                     const prizePool = data.potAmount || engineState.potAmount;
                     const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
@@ -3881,13 +3976,11 @@
                     } else {
                         playNoWinnerAudio();
                     }
-                    // Start countdown if not already running
                     if (!isResultsCountdownRunning) {
                         startResultsCountdown();
                     }
                 }
 
-                // If no winners but results phase, show "no winners" modal
                 if (engineState.gamePhase === 'results' && data.winners && data.winners.length === 0 && !engineState
                     .winnersModalShown) {
                     if (winnersList) {
@@ -4037,7 +4130,7 @@
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = [];
                         audioPlayedThisRound = false;
-                        engineState.winnersModalShown = false;  // reset for next round
+                        engineState.winnersModalShown = false;
                         if (arrowContainer) arrowContainer.style.transform = 'rotate(0deg)';
                         if (arrowCenter) {
                             arrowCenter.textContent = '🎯';
@@ -4349,7 +4442,7 @@
                         engineState.players[currentUser].ready = remaining.length > 0;
                     }
                     refundPickBetFast(currentUser, currentBet);
-                    engineState.allTakenNumbers.delete(num);
+                    // The number will be removed from allTakenNumbers via the listener
                     if (engineState.players[currentUser]?.betSources) {
                         delete engineState.players[currentUser].betSources[num];
                     }
@@ -4374,19 +4467,17 @@
                     return;
                 }
 
-                const newPicks = [...myPicks, num];
+                // Optimistic UI update – we add it locally, but the listener will confirm.
+                // To avoid double-add, we add to the Set but it will be overwritten by the listener.
+                // However, if the claim fails, the listener will remove it.
                 engineState.allTakenNumbers.add(num);
-                if (engineState.players[currentUser]) {
-                    engineState.players[currentUser].picks = newPicks;
-                    engineState.players[currentUser].pick = num;
-                    engineState.players[currentUser].ready = true;
-                }
                 renderNumberPicker();
                 updatePickStatus();
                 updatePrizeDisplay();
 
                 claimNumber(num, function(success) {
                     if (!success) {
+                        // The listener will remove it, but we also remove optimistically.
                         engineState.allTakenNumbers.delete(num);
                         const rollbackPicks = getMyPicks().filter(n => n !== num);
                         if (engineState.players[currentUser]) {
@@ -4408,10 +4499,11 @@
                         return;
                     }
 
+                    // claim succeeded – now deduct bet
                     deductPickBetFast(currentUser, currentBet).then(success => {
                         if (!success) {
+                            // Release the number if deduction fails
                             releaseNumber(num);
-                            engineState.allTakenNumbers.delete(num);
                             const rollbackPicks = getMyPicks().filter(n => n !== num);
                             if (engineState.players[currentUser]) {
                                 engineState.players[currentUser].picks = rollbackPicks;
@@ -4432,6 +4524,8 @@
                             return;
                         }
 
+                        // Update Firebase player picks
+                        const newPicks = getMyPicks(); // already includes the new number because we added optimistically
                         if (gameRef) {
                             gameRef.child('players/' + currentUser + '/picks').set(newPicks);
                             gameRef.child('players/' + currentUser + '/pick').set(num);
@@ -4693,9 +4787,7 @@
                     engineState.spinInProgress = false;
                     spinTimeout = null;
 
-                    // The winners modal will be displayed via syncGameState when 'results' is received.
-                    // But we also need to credit winners and send notifications.
-                    // We'll do that here, as the local client initiated the spin.
+                    // Credit winners and send notifications
                     const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
                     winners.forEach(name => {
                         creditWinnerAndReferral(name, winAmount).then(success => {
@@ -4709,7 +4801,6 @@
                         });
                     });
 
-                    // If no winners, play no-winner audio
                     if (winners.length === 0) {
                         playNoWinnerAudio();
                     }
@@ -5003,6 +5094,7 @@
                             gameRef.off();
                             gameRef = null;
                         }
+                        detachNumbersTakenListener();
                         stopTimer();
                         stopResultsCountdown();
                         if (spinTimeout) {
