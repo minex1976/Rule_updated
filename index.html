@@ -2067,7 +2067,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Fixed Number Picker      -->
+    <!-- JAVASCRIPT – Complete Game Code with Consistent Winners       -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2561,7 +2561,8 @@
             spinInProgress: false,
             waitingModalShown: false,
             potAmount: 0,
-            totalBetsPlaced: 0
+            totalBetsPlaced: 0,
+            winnersModalShown: false  // prevent duplicate winners modal
         };
 
         let timerInterval = null;
@@ -2945,325 +2946,65 @@
         }
 
         // ============================================================
-        //  OCR FUNCTION – extract reference and amount
+        //  NOTIFICATION SYSTEM – for referral commissions
         // ============================================================
-        async function extractReferenceFromImage(file) {
-            if (!file) {
-                if (ocrStatus) ocrStatus.textContent = '⚠️ No image selected.';
-                return null;
-            }
-
-            if (ocrProgressModal) ocrProgressModal.classList.add('active');
-            if (ocrSpinner) ocrSpinner.style.display = 'block';
-            if (ocrDoneIcon) ocrDoneIcon.classList.remove('show');
-            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Initializing OCR...';
-            if (ocrProgressSub) ocrProgressSub.textContent = 'Please wait, this may take a few seconds.';
-
-            try {
-                const imageUrl = URL.createObjectURL(file);
-                const result = await Tesseract.recognize(imageUrl, 'eng', {
-                    logger: m => {
-                        if (m.status === 'recognizing text') {
-                            const progress = Math.round(m.progress * 100);
-                            if (ocrProgressStatus) ocrProgressStatus.textContent =
-                            `Extracting text... ${progress}%`;
-                            if (ocrProgressSub) ocrProgressSub.textContent = `Processing image...`;
-                        } else if (m.status === 'loading tesseract core') {
-                            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Loading OCR engine...';
-                            if (ocrProgressSub) ocrProgressSub.textContent = 'This may take a moment.';
-                        } else if (m.status === 'initializing tesseract') {
-                            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Initializing...';
-                            if (ocrProgressSub) ocrProgressSub.textContent = 'Preparing OCR engine.';
-                        }
-                    }
-                });
-                URL.revokeObjectURL(imageUrl);
-                const text = result.data.text;
-
-                const refMatch = text.match(/\b[A-Z0-9]{10}\b/);
-
-                let amount = null;
-                const lines = text.split('\n');
-                let amountLine = null;
-                for (const line of lines) {
-                    if (line.match(/ETB|Birr/i)) {
-                        amountLine = line;
-                        break;
-                    }
-                }
-
-                if (amountLine) {
-                    const numberMatch = amountLine.match(/-?\s*([\d,]+\.?\d*)/);
-                    if (numberMatch) {
-                        const numStr = numberMatch[1].replace(/,/g, '');
-                        const parsed = parseFloat(numStr);
-                        if (!isNaN(parsed) && parsed > 0) {
-                            amount = parsed;
-                        }
-                    }
-                }
-
-                if (amount === null) {
-                    const decimalRegex = /\b(\d+\.\d{2})\b/g;
-                    let matches = [];
-                    let m;
-                    while ((m = decimalRegex.exec(text)) !== null) {
-                        const val = parseFloat(m[1]);
-                        if (val < 1900 || val > 2100) {
-                            matches.push(val);
-                        }
-                    }
-                    if (matches.length > 0) {
-                        amount = Math.max(...matches);
-                    } else {
-                        const intRegex = /\b(\d{2,4})\b/g;
-                        let intMatches = [];
-                        while ((m = intRegex.exec(text)) !== null) {
-                            const val = parseInt(m[1]);
-                            if (val < 1900 || val > 2100) {
-                                intMatches.push(val);
-                            }
-                        }
-                        if (intMatches.length > 0) {
-                            amount = Math.max(...intMatches);
-                        }
-                    }
-                }
-
-                if (ocrSpinner) ocrSpinner.style.display = 'none';
-                if (ocrDoneIcon) ocrDoneIcon.classList.add('show');
-
-                let resultObj = { reference: null, amount: null };
-                if (refMatch) {
-                    resultObj.reference = refMatch[0];
-                    if (ocrProgressStatus) ocrProgressStatus.textContent = '✅ Reference found!';
-                } else {
-                    if (ocrProgressStatus) ocrProgressStatus.textContent = '⚠️ No reference found.';
-                }
-                if (amount !== null && amount > 0) {
-                    resultObj.amount = amount;
-                    if (ocrProgressStatus) ocrProgressStatus.textContent += ' ✅ Amount found!';
-                } else {
-                    if (ocrProgressStatus) ocrProgressStatus.textContent += ' ⚠️ No amount found.';
-                }
-
-                if (ocrProgressSub) {
-                    ocrProgressSub.textContent = `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
-                }
-
-                setTimeout(() => {
-                    if (ocrProgressModal) ocrProgressModal.classList.remove('active');
-                }, 1500);
-
-                return resultObj;
-
-            } catch (e) {
-                console.error('OCR error:', e);
-                if (ocrSpinner) ocrSpinner.style.display = 'none';
-                if (ocrDoneIcon) ocrDoneIcon.classList.add('show');
-                if (ocrProgressStatus) ocrProgressStatus.textContent = '❌ OCR failed.';
-                if (ocrProgressSub) ocrProgressSub.textContent = 'Please enter data manually.';
-                setTimeout(() => {
-                    if (ocrProgressModal) ocrProgressModal.classList.remove('active');
-                }, 1500);
-                return { reference: null, amount: null };
-            }
+        function sendNotification(username, message) {
+            if (!database || !username) return;
+            const notifRef = database.ref('notifications/' + username).push();
+            notifRef.set({
+                message: message,
+                timestamp: Date.now(),
+                read: false
+            });
         }
 
-        if (depositImage) {
-            depositImage.addEventListener('change', async function() {
-                const file = this.files[0];
-                if (!file) {
-                    if (ocrStatus) ocrStatus.textContent = '';
-                    return;
-                }
-                const result = await extractReferenceFromImage(file);
-                if (result) {
-                    if (result.reference && depositReference) {
-                        depositReference.value = result.reference;
-                    }
-                    if (result.amount && depositAmount) {
-                        depositAmount.value = result.amount;
-                    }
-                    if (ocrStatus) ocrStatus.textContent = '✅ Extracted data.';
-                } else {
-                    if (ocrStatus) ocrStatus.textContent = '⚠️ No data extracted. You can type manually.';
+        let notificationListener = null;
+
+        function listenNotifications(username) {
+            if (!database || !username) return;
+            if (notificationListener) {
+                notificationListener.off();
+                notificationListener = null;
+            }
+            const notifRef = database.ref('notifications/' + username);
+            notificationListener = notifRef.orderByChild('read').equalTo(false).on('child_added', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    showToast(data.message, 'info');
+                    snapshot.ref.update({ read: true });
                 }
             });
         }
 
-        if (extractRefBtn) {
-            extractRefBtn.onclick = async function() {
-                const file = depositImage ? depositImage.files[0] : null;
-                if (!file) {
-                    if (ocrStatus) ocrStatus.textContent = '⚠️ Please select an image first.';
-                    return;
-                }
-                const result = await extractReferenceFromImage(file);
-                if (result) {
-                    if (result.reference && depositReference) {
-                        depositReference.value = result.reference;
-                    }
-                    if (result.amount && depositAmount) {
-                        depositAmount.value = result.amount;
-                    }
-                    if (ocrStatus) ocrStatus.textContent = '✅ Extracted data.';
-                } else {
-                    if (ocrStatus) ocrStatus.textContent = '⚠️ No data extracted. You can type manually.';
-                }
-            };
+        function stopNotificationListener() {
+            if (notificationListener && database && currentUser) {
+                database.ref('notifications/' + currentUser).off();
+                notificationListener = null;
+            }
         }
 
         // ============================================================
-        //  TRANSACTION SYSTEM
+        //  GENERIC TOAST FUNCTION
         // ============================================================
-        function requestTransaction(type, amount, reference = '', imageFile = null, extra = {}) {
-            if (!currentUser) return false;
-            return safeExecute(() => {
-                const txRef = database.ref('transactions').push();
-                let txData = {
-                    id: txRef.key,
-                    username: currentUser,
-                    type: type,
-                    amount: parseInt(amount),
-                    status: 'pending',
-                    timestamp: Date.now(),
-                    playerMainWallet: walletData.main,
-                    playerPlayWallet: walletData.play,
-                    pendingWithdrawal: walletData.pending
-                };
-
-                if (type === 'deposit') {
-                    if (reference) txData.reference = reference;
-                    if (imageFile && storage) {
-                        const storageRef = storage.ref(`deposits/${currentUser}/${txRef.key}.jpg`);
-                        const uploadTask = storageRef.put(imageFile);
-                        uploadTask.then(snapshot => {
-                            return snapshot.ref.getDownloadURL();
-                        }).then(url => {
-                            txData.imageUrl = url;
-                            txRef.update({ imageUrl: url });
-                        }).catch(err => {
-                            console.warn('Image upload failed:', err);
-                        });
-                    }
-                } else if (type === 'withdraw') {
-                    if (extra.name) txData.fullName = extra.name;
-                    if (extra.phone) txData.phoneNumber = extra.phone;
-                }
-
-                txRef.set(txData);
-
-                if (transactionStatus) {
-                    transactionStatus.textContent = '⏳ Pending admin approval...';
-                    transactionStatus.className = 'status-text pending';
-                }
-                if (transactionModal) transactionModal.classList.add('active');
-
-                const listener = txRef.on('value', snapshot => {
-                    const data = snapshot.val();
-                    if (!data) return;
-
-                    if (data.status === 'approved') {
-                        if (data.type === 'withdraw') {
-                            const userRef = database.ref('users/' + data.username);
-                            userRef.transaction(current => {
-                                if (current) {
-                                    const pending = current.pendingWithdrawal || 0;
-                                    const amt = data.amount || 0;
-                                    current.mainWallet = (current.mainWallet || 0) - amt;
-                                    current.pendingWithdrawal = Math.max(0, pending - amt);
-                                }
-                                return current;
-                            }, (error, committed, snap) => {
-                                if (error) {
-                                    console.error('Error processing withdrawal approval:', error);
-                                } else if (committed && snap) {
-                                    const updated = snap.val();
-                                    walletData.main = updated.mainWallet || 0;
-                                    walletData.play = updated.playWallet || 0;
-                                    walletData.pending = updated.pendingWithdrawal || 0;
-                                    updateWalletUI();
-                                    updateWelcomeUI();
-                                }
-                            });
-                            if (transactionStatus) {
-                                transactionStatus.textContent = '✅ Withdrawal approved.';
-                                transactionStatus.className = 'status-text approved';
-                            }
-                        } else if (data.type === 'deposit') {
-                            const userRef = database.ref('users/' + data.username);
-                            userRef.transaction(current => {
-                                if (current) {
-                                    const amt = data.amount || 0;
-                                    current.playWallet = (current.playWallet || 0) + amt;
-                                }
-                                return current;
-                            }, (error, committed, snap) => {
-                                if (error) {
-                                    console.error('Error crediting deposit:', error);
-                                } else if (committed && snap) {
-                                    const updated = snap.val();
-                                    walletData.main = updated.mainWallet || 0;
-                                    walletData.play = updated.playWallet || 0;
-                                    walletData.pending = updated.pendingWithdrawal || 0;
-                                    updateWalletUI();
-                                    updateWelcomeUI();
-                                }
-                            });
-                            if (transactionStatus) {
-                                transactionStatus.textContent = '✅ Deposit approved. Balance updated.';
-                                transactionStatus.className = 'status-text approved';
-                            }
-                        }
-                        setTimeout(() => {
-                            if (transactionModal) transactionModal.classList.remove('active');
-                        }, 2000);
-                    } else if (data.status === 'rejected') {
-                        if (data.type === 'withdraw') {
-                            const userRef = database.ref('users/' + data.username);
-                            userRef.transaction(current => {
-                                if (current) {
-                                    const pending = current.pendingWithdrawal || 0;
-                                    const amt = data.amount || 0;
-                                    current.pendingWithdrawal = Math.max(0, pending - amt);
-                                }
-                                return current;
-                            }, (error, committed, snap) => {
-                                if (error) {
-                                    console.error('Error clearing pending on rejection:', error);
-                                } else if (committed && snap) {
-                                    const updated = snap.val();
-                                    walletData.main = updated.mainWallet || 0;
-                                    walletData.play = updated.playWallet || 0;
-                                    walletData.pending = updated.pendingWithdrawal || 0;
-                                    updateWalletUI();
-                                    updateWelcomeUI();
-                                }
-                            });
-                            if (transactionStatus) {
-                                transactionStatus.textContent = '❌ Withdrawal rejected.';
-                                transactionStatus.className = 'status-text rejected';
-                            }
-                        } else if (data.type === 'deposit') {
-                            if (transactionStatus) {
-                                transactionStatus.textContent = '❌ Deposit rejected.';
-                                transactionStatus.className = 'status-text rejected';
-                            }
-                        }
-                        setTimeout(() => {
-                            if (transactionModal) transactionModal.classList.remove('active');
-                        }, 2000);
-                    }
-
-                    if (data.status !== 'pending') {
-                        txRef.off();
-                        delete transactionListeners[txRef.key];
-                    }
-                });
-                transactionListeners[txRef.key] = listener;
-                return true;
-            }, 'Transaction request', false);
+        function showToast(message, type = 'info') {
+            if (!welcomeToast) return;
+            const iconMap = {
+                'info': 'ℹ️',
+                'success': '✅',
+                'warning': '⚠️',
+                'error': '❌'
+            };
+            const iconEl = welcomeToast.querySelector('.icon');
+            const titleEl = welcomeToast.querySelector('h3');
+            const msgEl = welcomeToast.querySelector('p');
+            if (iconEl) iconEl.textContent = iconMap[type] || 'ℹ️';
+            if (titleEl) titleEl.textContent = type === 'info' ? 'Notification' : 'Alert';
+            if (msgEl) msgEl.innerHTML = message;
+            welcomeToast.classList.add('active');
+            clearTimeout(welcomeToast._hideTimer);
+            welcomeToast._hideTimer = setTimeout(() => {
+                welcomeToast.classList.remove('active');
+            }, 5000);
         }
 
         // ============================================================
@@ -3347,7 +3088,7 @@
             }
             if (!reference && !imageFile) {
                 if (depositError) depositError.textContent =
-                'Please provide a reference number or upload a screenshot.';
+                    'Please provide a reference number or upload a screenshot.';
                 return false;
             }
             if (depositError) depositError.textContent = '';
@@ -3372,6 +3113,7 @@
                 userWalletRef = null; }
             if (pendingTxListener) { pendingTxListener.off();
                 pendingTxListener = null; }
+            stopNotificationListener();
             attemptTelegramDetection();
         }
 
@@ -3389,6 +3131,7 @@
 
             if (currentUser) {
                 startSessionListener(currentUser);
+                listenNotifications(currentUser);
             }
 
             if (!DB.getToastShown()) {
@@ -3413,7 +3156,6 @@
             DB.setSavedBet(currentBet);
             enableNetworkListener();
 
-            // Force render after DOM update
             requestAnimationFrame(() => {
                 renderNumberPicker(true);
             });
@@ -3503,6 +3245,11 @@
                     if (authError) authError.textContent = 'Username already exists. Please login.';
                     return;
                 } else {
+                    let refCode = pendingReferralCode;
+                    if (!refCode) {
+                        const saved = localStorage.getItem('winzo_pending_referral');
+                        if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) refCode = saved;
+                    }
                     const newUserData = {
                         password: password,
                         mainWallet: 0,
@@ -3511,10 +3258,11 @@
                         bonusClaimed: true
                     };
 
-                    if (pendingReferralCode && pendingReferralCode !== username) {
-                        newUserData.referredBy = pendingReferralCode;
+                    if (refCode && refCode !== username) {
+                        newUserData.referredBy = refCode;
                         newUserData.referralJoinedAt = firebase.database.ServerValue.TIMESTAMP;
                     }
+
                     usersRef.child(username).set(newUserData).then(() => {
                         if (authError) authError.textContent = '✅ Account created! +30 Birr bonus.';
                         currentUser = username;
@@ -3589,6 +3337,7 @@
 
             stopNetworkListener();
             stopSessionListener();
+            stopNotificationListener();
 
             clearAllLocalData();
 
@@ -3617,7 +3366,8 @@
                 spinInProgress: false,
                 waitingModalShown: false,
                 potAmount: 0,
-                totalBetsPlaced: 0
+                totalBetsPlaced: 0,
+                winnersModalShown: false
             };
 
             closeMoreDropdown();
@@ -3645,7 +3395,7 @@
         }
 
         // ============================================================
-        //  SWITCH ROOM – FIXED
+        //  SWITCH ROOM
         // ============================================================
         function switchRoom() {
             if (gameRef) {
@@ -3685,6 +3435,7 @@
             engineState.waitingModalShown = false;
             engineState.potAmount = 0;
             engineState.totalBetsPlaced = 0;
+            engineState.winnersModalShown = false;
 
             DB.setSavedBet(null);
 
@@ -3770,13 +3521,13 @@
             engineState.waitingModalShown = false;
             engineState.potAmount = 0;
             engineState.totalBetsPlaced = 0;
+            engineState.winnersModalShown = false;
 
             currentBet = amount;
             currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
             showGameScreen();
 
-            // Show loading state immediately
             renderNumberPicker(true);
 
             initGameConnection();
@@ -4007,7 +3758,6 @@
             isGameInitialized = true;
             setConnectionStatus(true, '🔑 Connected to ' + currentBet + ' Birr room');
 
-            // Render after a short delay to ensure data is synced
             setTimeout(() => {
                 renderNumberPicker();
             }, 500);
@@ -4103,9 +3853,54 @@
                     }
                 }
 
-                if (engineState.gamePhase === 'results' && !isResultsCountdownRunning) {
-                    startResultsCountdown();
+                // ===== WINNERS MODAL – show using Firebase data =====
+                if (engineState.gamePhase === 'results' && data.winners && data.winners.length > 0 && !engineState
+                    .winnersModalShown) {
+                    // Use the stored winners from Firebase
+                    const winners = data.winners;
+                    const prizePool = data.potAmount || engineState.potAmount;
+                    const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
+
+                    if (winnersList) {
+                        let html = '';
+                        winners.forEach(name => {
+                            html += `
+                                <div class="winner-entry">
+                                    <span class="player-name">${name}</span>
+                                    <span class="winning-nums">🎯 ${engineState.drawnNumbers[0] || '?'} · ${winAmount} Birr</span>
+                                </div>
+                            `;
+                        });
+                        winnersList.innerHTML = html;
+                    }
+                    if (winnersModal) winnersModal.classList.add('active');
+                    engineState.winnersModalShown = true;
+                    if (winners.length > 0) {
+                        startFireworks();
+                        playWinningAudio();
+                    } else {
+                        playNoWinnerAudio();
+                    }
+                    // Start countdown if not already running
+                    if (!isResultsCountdownRunning) {
+                        startResultsCountdown();
+                    }
                 }
+
+                // If no winners but results phase, show "no winners" modal
+                if (engineState.gamePhase === 'results' && data.winners && data.winners.length === 0 && !engineState
+                    .winnersModalShown) {
+                    if (winnersList) {
+                        winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
+                    }
+                    if (winnersModal) winnersModal.classList.add('active');
+                    engineState.winnersModalShown = true;
+                    playNoWinnerAudio();
+                    if (!isResultsCountdownRunning) {
+                        startResultsCountdown();
+                    }
+                }
+
             } finally {
                 syncInProgress = false;
             }
@@ -4242,6 +4037,7 @@
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = [];
                         audioPlayedThisRound = false;
+                        engineState.winnersModalShown = false;  // reset for next round
                         if (arrowContainer) arrowContainer.style.transform = 'rotate(0deg)';
                         if (arrowCenter) {
                             arrowCenter.textContent = '🎯';
@@ -4263,6 +4059,7 @@
                             showWaitingModal();
                         }
                         stopFireworks();
+                        if (winnersModal) winnersModal.classList.remove('active');
                         if (currentUser && engineState.players[currentUser]) {
                             engineState.players[currentUser].picks = [];
                             engineState.players[currentUser].pick = null;
@@ -4364,10 +4161,9 @@
         }
 
         // ============================================================
-        //  NUMBER PICKER – FIXED: renders reliably
+        //  NUMBER PICKER
         // ============================================================
         function renderNumberPicker(showLoading = false) {
-            // Ensure numPicker exists
             if (!numPicker) {
                 console.warn('numPicker element not found!');
                 return;
@@ -4379,7 +4175,6 @@
                 return;
             }
 
-            // If game not initialized or no data yet, show loading
             if (showLoading || !isGameInitialized || Object.keys(engineState.players).length === 0) {
                 let loadingHtml = '';
                 for (let i = 1; i <= 40; i++) {
@@ -4414,7 +4209,6 @@
                 }
             }
 
-            // Scroll to keep selected numbers visible
             if (myPicks.size > 0 && numPickerWrapper) {
                 const firstSelected = Math.min(...myPicks);
                 const btnIndex = firstSelected - 1;
@@ -4427,7 +4221,9 @@
             }
         }
 
-        // Optimized bet deduction – fast local update then Firebase sync
+        // ============================================================
+        //  BET DEDUCTION / REFUND
+        // ============================================================
         function deductPickBetFast(username, betAmount) {
             if (!username || !database) return Promise.resolve(false);
             return new Promise((resolve) => {
@@ -4514,20 +4310,17 @@
         }
 
         // ============================================================
-        //  NUMBER PICK CLICK HANDLER – optimized & fixed
+        //  NUMBER PICK CLICK HANDLER
         // ============================================================
         if (numPicker) {
             numPicker.addEventListener('click', function(e) {
                 const btn = e.target.closest('.num-btn');
                 if (!btn || btn.disabled) return;
-
-                // If loading state, ignore
                 if (btn.classList.contains('loading')) return;
 
                 const num = parseInt(btn.dataset.num);
                 if (isNaN(num)) return;
 
-                // Show waiting modal if single player, but still allow picking
                 if (engineState.activePlayersCount <= 1) {
                     showWaitingModal();
                 }
@@ -4581,7 +4374,6 @@
                     return;
                 }
 
-                // Optimistic UI update
                 const newPicks = [...myPicks, num];
                 engineState.allTakenNumbers.add(num);
                 if (engineState.players[currentUser]) {
@@ -4733,7 +4525,7 @@
                 const numbers = Array.from(engineState.allTakenNumbers);
                 if (numbers.length === 0) {
                     updateStatus('❌ No numbers chosen!');
-                    if (gameRef) gameRef.update({ gameState: 'results', timer: 5 });
+                    if (gameRef) gameRef.update({ gameState: 'results', timer: 5, winners: [] });
                     engineState.isSpinning = false;
                     engineState.spinInProgress = false;
                     if (spinningIndicator) spinningIndicator.classList.remove('active');
@@ -4761,7 +4553,8 @@
                             cumulativeRotation: extraDegrees,
                             spinCount: engineState.spinCount + 1,
                             timer: 5,
-                            potAmount: 0
+                            potAmount: 0,
+                            winners: []  // no winners
                         });
                     }
 
@@ -4778,7 +4571,8 @@
                             gameRef.update({
                                 drawnNumbers: engineState.drawnNumbers,
                                 spinCount: engineState.spinCount,
-                                gameState: 'results'
+                                gameState: 'results',
+                                winners: []  // no winners
                             });
                         }
 
@@ -4799,13 +4593,29 @@
                         engineState.spinInProgress = false;
                         spinTimeout = null;
 
+                        // No winners – show message after a moment
                         setTimeout(() => {
-                            showNoGameMessage();
+                            if (winnersList) {
+                                winnersList.innerHTML = `
+                                    <div style="padding:20px;text-align:center;">
+                                        <div style="font-size:2rem;margin-bottom:8px;">😔</div>
+                                        <div style="color:#ffd866;font-weight:600;">Only one player – no game this round.</div>
+                                        <div style="color:#b8a0d0;font-size:0.8rem;margin-top:4px;">Winning number: ${winningNumber}</div>
+                                    </div>
+                                `;
+                            }
+                            if (winnersModal) winnersModal.classList.add('active');
+                            engineState.winnersModalShown = true;
+                            playNoWinnerAudio();
+                            if (!isResultsCountdownRunning) {
+                                startResultsCountdown();
+                            }
                         }, 1000);
                     }, 4200);
                     return;
                 }
 
+                // Normal round (2+ players)
                 const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
                 const targetAngle = getAngleForNumber(winningNumber);
                 const fullRotations = 4 + Math.floor(Math.random() * 2);
@@ -4825,12 +4635,26 @@
                 const totalPot = totalPicks * currentBet;
                 const prizePool = Math.floor(totalPot * 0.85);
 
+                // Compute winners locally (will be stored in Firebase)
+                const players = engineState.players;
+                const playerNames = Object.keys(players);
+                const winners = [];
+                playerNames.forEach(name => {
+                    const player = players[name];
+                    const picks = getPlayerPicks(player);
+                    const round = player?.round;
+                    if (picks.includes(Number(winningNumber)) && round === engineState.roundNumber) {
+                        winners.push(name);
+                    }
+                });
+
                 if (gameRef) {
                     gameRef.update({
                         cumulativeRotation: extraDegrees,
                         spinCount: engineState.spinCount + 1,
                         timer: 5,
-                        potAmount: totalPot
+                        potAmount: totalPot,
+                        winners: winners  // store winners in Firebase
                     });
                 }
 
@@ -4869,9 +4693,27 @@
                     engineState.spinInProgress = false;
                     spinTimeout = null;
 
-                    setTimeout(() => {
-                        checkAndAnnounceWinners(prizePool, winningNumber);
-                    }, 1000);
+                    // The winners modal will be displayed via syncGameState when 'results' is received.
+                    // But we also need to credit winners and send notifications.
+                    // We'll do that here, as the local client initiated the spin.
+                    const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
+                    winners.forEach(name => {
+                        creditWinnerAndReferral(name, winAmount).then(success => {
+                            if (success && name === currentUser) {
+                                updateWalletUI();
+                                updateWelcomeUI();
+                                updateStatus(
+                                    `🎉 You won! +${winAmount} coins (${prizePool} pool / ${winners.length} winners)`,
+                                    true);
+                            }
+                        });
+                    });
+
+                    // If no winners, play no-winner audio
+                    if (winners.length === 0) {
+                        playNoWinnerAudio();
+                    }
+
                 }, 4200);
 
             } catch (error) {
@@ -4887,27 +4729,8 @@
             }
         }
 
-        function showNoGameMessage() {
-            const winningNumber = engineState.drawnNumbers[0] || '?';
-            if (winnersList) {
-                winnersList.innerHTML = `
-                    <div style="padding:20px;text-align:center;">
-                        <div style="font-size:2rem;margin-bottom:8px;">😔</div>
-                        <div style="color:#ffd866;font-weight:600;">Only one player – no game this round.</div>
-                        <div style="color:#b8a0d0;font-size:0.8rem;margin-top:4px;">Winning number: ${winningNumber}</div>
-                    </div>
-                `;
-            }
-            if (winnersModal) winnersModal.classList.add('active');
-            playNoWinnerAudio();
-            setTimeout(() => {
-                if (winnersModal) winnersModal.classList.remove('active');
-                stopFireworks();
-            }, 4000);
-        }
-
         // ============================================================
-        //  WINNERS + REFERRAL COMMISSION – FIXED
+        //  WINNERS + REFERRAL COMMISSION (crediting only)
         // ============================================================
         function creditWinnerAndReferral(winnerName, winAmount) {
             if (!database || !winnerName || winAmount <= 0) return Promise.resolve(false);
@@ -4948,6 +4771,8 @@
                             return current;
                         }).then(refResult => {
                             if (!refResult.committed) throw new Error('Referral wallet update failed');
+                            sendNotification(referrer,
+                                `🎉 You earned ${commission} Birr commission from ${winnerName}'s win!`);
                             return commission;
                         });
                     }
@@ -4967,82 +4792,6 @@
                 console.error('Payout claim error:', err);
                 return false;
             });
-        }
-
-        function checkAndAnnounceWinners(prizePool, winningNumber) {
-            try {
-                const players = engineState.players;
-                const playerNames = Object.keys(players);
-                const winners = [];
-
-                playerNames.forEach(name => {
-                    const player = players[name];
-                    const picks = getPlayerPicks(player);
-                    const round = player?.round;
-                    if (picks.includes(Number(winningNumber)) && round === engineState.roundNumber) {
-                        winners.push(name);
-                    }
-                });
-
-                if (gameRef) gameRef.update({ winners: winners });
-
-                const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
-
-                winners.forEach(name => {
-                    creditWinnerAndReferral(name, winAmount).then(success => {
-                        if (success && name === currentUser) {
-                            updateWalletUI();
-                            updateWelcomeUI();
-                            updateStatus(
-                                `🎉 You won! +${winAmount} coins (${prizePool} pool / ${winners.length} winners)`,
-                                true);
-                        }
-                    });
-                });
-
-                if (winners.length > 0) {
-                    startFireworks();
-                    playWinningAudio();
-                } else {
-                    playNoWinnerAudio();
-                }
-
-                if (winnersList) {
-                    if (winners.length === 0) {
-                        winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
-                    } else {
-                        let html = '';
-                        winners.forEach(name => {
-                            html += `
-                                <div class="winner-entry">
-                                    <span class="player-name">${name}</span>
-                                    <span class="winning-nums">🎯 ${winningNumber} · ${winAmount} Birr</span>
-                                </div>
-                            `;
-                        });
-                        winnersList.innerHTML = html;
-                    }
-                }
-                if (winnersModal) winnersModal.classList.add('active');
-                if (tg && tg.HapticFeedback && winners.includes(currentUser)) {
-                    tg.HapticFeedback.notificationOccurred('success');
-                }
-                setTimeout(() => {
-                    if (!isResultsCountdownRunning && engineState.gamePhase === 'results') {
-                        startResultsCountdown();
-                    }
-                }, 500);
-                setTimeout(() => {
-                    if (winnersModal) winnersModal.classList.remove('active');
-                    stopFireworks();
-                }, 4500);
-            } catch (error) {
-                handleError(error, 'Check Winners');
-            }
-        }
-
-        function creditWinningsToMain(winAmount) {
-            return currentUser ? creditWinnerAndReferral(currentUser, winAmount) : false;
         }
 
         // ============================================================
