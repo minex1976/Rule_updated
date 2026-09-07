@@ -576,7 +576,6 @@
             transform: scale(0.95);
         }
 
-        /* Switch Room uses the same position and overall size as the old room buttons. */
         .switch-room-btn {
             background: linear-gradient(135deg, #ffdf6b, #f5b52e 52%, #d98a16) !important;
             border: 2px solid #ffcc44 !important;
@@ -911,6 +910,7 @@
             padding: 1px 0;
             min-height: 0;
             scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
         }
         .num-picker-wrapper::-webkit-scrollbar {
             width: 4px;
@@ -932,16 +932,16 @@
             width: 100%;
             min-height: max-content;
             grid-template-columns: repeat(8, 1fr);
-            gap: 2px;
-            padding: 2px;
+            gap: 3px;
+            padding: 3px;
         }
         .num-btn {
             background: #6a3a9a;
-            border: 2px solid #f0e6ff;
+            border: 2px solid rgba(240, 230, 255, 0.3);
             border-radius: 6px;
             padding: 0;
             font-weight: 800;
-            font-size: 1rem;
+            font-size: 0.85rem;
             color: #f0e6ff;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             cursor: pointer;
@@ -955,6 +955,8 @@
             min-height: 0;
             line-height: 1;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .num-btn:hover:not(:disabled) {
             background: #8a5aba;
@@ -980,6 +982,7 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
             opacity: 0.6;
+            transform: scale(0.95);
         }
         .num-btn.taken.owner {
             background: #2a6a4a;
@@ -989,9 +992,28 @@
         }
         .num-btn:disabled {
             opacity: 0.35;
-            transform: translateY(2px);
+            transform: scale(0.92);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             pointer-events: none;
+            cursor: not-allowed;
+        }
+        .num-btn.loading {
+            background: #3a2a4a;
+            color: #5a4a6a;
+            border-color: rgba(120, 80, 200, 0.05);
+            animation: shimmer 1.2s ease-in-out infinite;
+            cursor: default;
+        }
+        @keyframes shimmer {
+            0% {
+                opacity: 0.4;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                opacity: 0.4;
+            }
         }
 
         .footer {
@@ -1040,7 +1062,7 @@
             }
         }
 
-        /* ===== Modals – vibrant glass, more transparent ===== */
+        /* ===== Modals ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -1635,6 +1657,7 @@
             color: #d4c0f0;
             border: 1px solid rgba(120, 80, 200, 0.18);
         }
+
         /* ===== Responsive ===== */
         @media (max-height:700px) {
             .game-wrapper {
@@ -1665,7 +1688,9 @@
                 padding: 3px 8px;
             }
             .num-btn {
-                font-size: 0.45rem;
+                font-size: 0.55rem;
+                border-radius: 4px;
+                border-width: 1.5px;
             }
             .profile-area {
                 padding: 3px 4px;
@@ -1737,7 +1762,9 @@
                 max-width: 120px;
             }
             .num-btn {
-                font-size: 0.4rem;
+                font-size: 0.45rem;
+                border-radius: 3px;
+                border-width: 1px;
             }
             .wheel-number {
                 font-size: 0.4rem;
@@ -1802,6 +1829,18 @@
                 font-size: 0.6rem;
                 padding: 1px 8px;
             }
+        }
+
+        /* ===== Scrollable number picker on mobile ===== */
+        .num-picker-wrapper {
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+        .num-picker {
+            touch-action: pan-y;
+        }
+        .num-btn {
+            touch-action: manipulation;
         }
     </style>
 </head>
@@ -1963,7 +2002,7 @@
         </div>
     </div>
 
-    <!-- DEPOSIT MODAL with amount and reference auto-extraction -->
+    <!-- DEPOSIT MODAL -->
     <div class="deposit-modal" id="depositModal">
         <div class="modal-content">
             <h3>💰 Deposit to Play</h3>
@@ -2034,7 +2073,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Atomic Number Claims    -->
+    <!-- JAVASCRIPT – Complete Game Code with Fixed Number Picker      -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -3566,9 +3605,7 @@
         //  SWITCH ROOM – FIXED
         // ============================================================
         function switchRoom() {
-            // Clean up all game state
             if (gameRef) {
-                // Release all numbers this user has claimed
                 if (currentUser && engineState.players[currentUser]) {
                     const picks = getPlayerPicks(engineState.players[currentUser]);
                     picks.forEach(num => { releaseNumber(num); });
@@ -3587,7 +3624,6 @@
             audioPlayedThisRound = false;
             syncInProgress = false;
 
-            // Reset engine state for this user
             if (currentUser && engineState.players[currentUser]) {
                 engineState.players[currentUser].picks = [];
                 engineState.players[currentUser].pick = null;
@@ -3596,7 +3632,6 @@
                 engineState.players[currentUser].betSources = {};
             }
 
-            // Reset taken numbers for this user's numbers (they were released above)
             engineState.allTakenNumbers = new Set();
             engineState.drawnNumbers = [];
             engineState.winners = [];
@@ -3608,16 +3643,13 @@
             engineState.potAmount = 0;
             engineState.totalBetsPlaced = 0;
 
-            // Clear the room badge and UI
             DB.setSavedBet(null);
 
-            // Show the welcome screen so user can pick a new room
             showWelcomeScreen();
             updateStatus('🔄 Choose your room.');
             closeMoreDropdown();
             hideWaitingModal();
 
-            // Reset wheel and spin display
             arrowContainer.style.transform = 'rotate(0deg)';
             arrowCenter.textContent = '🎯';
             arrowCenter.classList.remove('reveal');
@@ -3655,7 +3687,6 @@
                 alert('⚠️ Insufficient play balance. Please deposit.');
                 return;
             }
-            // Clean up any existing game state before joining a new room
             if (gameRef) {
                 if (currentUser && engineState.players[currentUser]) {
                     const picks = getPlayerPicks(engineState.players[currentUser]);
@@ -3675,7 +3706,6 @@
             audioPlayedThisRound = false;
             syncInProgress = false;
 
-            // Reset state
             if (currentUser && engineState.players[currentUser]) {
                 engineState.players[currentUser].picks = [];
                 engineState.players[currentUser].pick = null;
@@ -3698,6 +3728,10 @@
             currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
             showGameScreen();
+
+            // Force render the number picker immediately with a loading state
+            renderNumberPicker(true);
+
             initGameConnection();
             updateStatus(`🔄 Joined ${amount} Birr room. Pick numbers!`);
         }
@@ -3919,6 +3953,11 @@
 
             isGameInitialized = true;
             setConnectionStatus(true, '🔑 Connected to ' + currentBet + ' Birr room');
+
+            // Force render after player is added
+            setTimeout(() => {
+                renderNumberPicker();
+            }, 300);
         }
 
         // ============================================================
@@ -4039,11 +4078,9 @@
                 const singlePlayer = playersWithPicks[0];
                 const playerData = engineState.players[singlePlayer];
                 const picks = getPlayerPicks(playerData);
-                // Refund each pick
                 picks.forEach(() => {
                     refundBetImmediately(singlePlayer, currentBet).catch(() => {});
                 });
-                // Release each number
                 picks.forEach(num => {
                     releaseNumber(num);
                 });
@@ -4167,7 +4204,6 @@
                             showWaitingModal();
                         }
                         stopFireworks();
-                        // Reset picks for current user
                         if (currentUser && engineState.players[currentUser]) {
                             engineState.players[currentUser].picks = [];
                             engineState.players[currentUser].pick = null;
@@ -4262,24 +4298,52 @@
         }
 
         // ============================================================
-        //  NUMBER PICKER – responsive with optimistic updates
+        //  NUMBER PICKER – FIXED: renders reliably, shows loading state
         // ============================================================
-        function renderNumberPicker() {
-            if (!currentUser) return;
+        function renderNumberPicker(showLoading = false) {
+            // Safety: ensure numPicker exists
+            if (!numPicker) {
+                console.warn('numPicker element not found!');
+                return;
+            }
+
+            if (!currentUser) {
+                numPicker.innerHTML =
+                    '<div style="color:#7a6a9a;font-size:0.7rem;text-align:center;padding:20px;">Please log in</div>';
+                return;
+            }
+
+            // If game not initialized or no data yet, show loading
+            if (showLoading || !isGameInitialized || Object.keys(engineState.players).length === 0) {
+                let loadingHtml = '';
+                for (let i = 1; i <= 40; i++) {
+                    loadingHtml += `<div class="num-btn loading">•</div>`;
+                }
+                numPicker.innerHTML = loadingHtml;
+                return;
+            }
+
             const myPicks = new Set(getMyPicks());
             const isLocked = engineState.gamePhase !== 'selection';
+            // Allow picking even with 1 player (waiting modal will show, but buttons are clickable)
+            // This way the user can pre-select numbers while waiting for others
             const isSinglePlayer = engineState.activePlayersCount <= 1;
+
             let html = '';
             for (let i = 1; i <= 200; i++) {
                 const isSelected = myPicks.has(i);
                 const isTaken = engineState.allTakenNumbers.has(i) && !isSelected;
-                const disabled = isTaken || isLocked || isSinglePlayer;
+                // Disable if taken OR locked (spinning/results)
+                // But allow selection when single player (just show waiting modal on click)
+                const disabled = isTaken || isLocked;
                 let cls = 'num-btn';
                 if (isSelected) cls += ' selected';
                 if (isTaken) cls += ' taken';
+                // If single player and not taken/selected, still show as interactive but will show waiting modal on click
                 html += `<button class="${cls}" data-num="${i}" ${disabled ? 'disabled' : ''}>${i}</button>`;
             }
             numPicker.innerHTML = html;
+
             if (myPicks.size) {
                 selectedCountSpan.textContent = Array.from(myPicks).join(', ');
                 selectedCountSpan.style.color = '#ffcc44';
@@ -4287,13 +4351,24 @@
                 selectedCountSpan.textContent = 'None';
                 selectedCountSpan.style.color = '#b8a0d0';
             }
+
+            // Scroll to keep selected numbers visible
+            if (myPicks.size > 0 && numPickerWrapper) {
+                const firstSelected = Math.min(...myPicks);
+                const btnIndex = firstSelected - 1;
+                const btns = numPicker.querySelectorAll('.num-btn');
+                if (btns && btns[btnIndex]) {
+                    setTimeout(() => {
+                        btns[btnIndex].scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    }, 100);
+                }
+            }
         }
 
         // Optimized bet deduction – fast local update then Firebase sync
         function deductPickBetFast(username, betAmount) {
             if (!username || !database) return Promise.resolve(false);
             return new Promise((resolve) => {
-                // Optimistic local update
                 if (walletData.play >= betAmount) {
                     walletData.play -= betAmount;
                     updateWalletUI();
@@ -4307,7 +4382,6 @@
                     return;
                 }
 
-                // Sync to Firebase
                 const userRef = database.ref('users/' + username);
                 userRef.transaction(current => {
                     if (!current) return current;
@@ -4323,7 +4397,6 @@
                     return undefined;
                 }, (error, committed, snap) => {
                     if (!committed || error) {
-                        // Rollback local update
                         walletData.play += betAmount;
                         updateWalletUI();
                         updateWelcomeUI();
@@ -4343,7 +4416,6 @@
         function refundPickBetFast(username, betAmount) {
             if (!username || !database) return Promise.resolve(false);
             return new Promise((resolve) => {
-                // Optimistic local update
                 walletData.play += betAmount;
                 updateWalletUI();
                 updateWelcomeUI();
@@ -4371,7 +4443,6 @@
             });
         }
 
-        // Backward compatibility
         function deductBetImmediately(username, betAmount) {
             return deductPickBetFast(username, betAmount);
         }
@@ -4381,20 +4452,27 @@
         }
 
         // ============================================================
-        //  NUMBER PICK CLICK HANDLER – optimized
+        //  NUMBER PICK CLICK HANDLER – optimized & fixed
         // ============================================================
         numPicker.addEventListener('click', function(e) {
             const btn = e.target.closest('.num-btn');
             if (!btn || btn.disabled) return;
+
+            // If loading state, ignore
+            if (btn.classList.contains('loading')) return;
+
             const num = parseInt(btn.dataset.num);
             if (isNaN(num)) return;
 
+            // Show waiting modal if single player, but still allow picking
             if (engineState.activePlayersCount <= 1) {
                 showWaitingModal();
-                return;
+                // Still allow picking so they can pre-select
             }
+
             if (engineState.gamePhase !== 'selection') {
                 updateStatus('⛔ Cannot pick numbers now.');
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                 return;
             }
 
@@ -4402,7 +4480,6 @@
             const alreadySelected = myPicks.includes(num);
 
             if (alreadySelected) {
-                // Unselect – optimistic update
                 releaseNumber(num);
                 const remaining = myPicks.filter(n => n !== num);
                 if (gameRef) {
@@ -4416,9 +4493,7 @@
                     engineState.players[currentUser].pick = remaining.length ? remaining[0] : null;
                     engineState.players[currentUser].ready = remaining.length > 0;
                 }
-                // Refund
                 refundPickBetFast(currentUser, currentBet);
-                // Update taken set
                 engineState.allTakenNumbers.delete(num);
                 if (engineState.players[currentUser]?.betSources) {
                     delete engineState.players[currentUser].betSources[num];
@@ -4427,6 +4502,7 @@
                 updatePickStatus();
                 updatePrizeDisplay();
                 updateStatus(`↩️ Removed ${num}.`);
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
                 return;
             }
 
@@ -4436,7 +4512,6 @@
                 return;
             }
 
-            // Check balance optimistically
             const totalCost = (myPicks.length + 1) * currentBet;
             if (walletData.play + walletData.main < totalCost) {
                 updateStatus(`⚠️ Insufficient balance. Need ${totalCost} Birr.`);
@@ -4444,7 +4519,7 @@
                 return;
             }
 
-            // Optimistic UI update – add the number immediately
+            // Optimistic UI update
             const newPicks = [...myPicks, num];
             engineState.allTakenNumbers.add(num);
             if (engineState.players[currentUser]) {
@@ -4456,10 +4531,8 @@
             updatePickStatus();
             updatePrizeDisplay();
 
-            // Now claim the number in Firebase
             claimNumber(num, function(success) {
                 if (!success) {
-                    // Rollback – number was taken by someone else
                     engineState.allTakenNumbers.delete(num);
                     const rollbackPicks = getMyPicks().filter(n => n !== num);
                     if (engineState.players[currentUser]) {
@@ -4470,7 +4543,7 @@
                     if (gameRef) {
                         gameRef.child('players/' + currentUser + '/picks').set(rollbackPicks);
                         gameRef.child('players/' + currentUser + '/pick').set(rollbackPicks.length ? rollbackPicks[0] :
-                        null);
+                            null);
                         gameRef.child('players/' + currentUser + '/ready').set(rollbackPicks.length > 0);
                     }
                     renderNumberPicker();
@@ -4480,10 +4553,8 @@
                     return;
                 }
 
-                // Successfully claimed – deduct bet
                 deductPickBetFast(currentUser, currentBet).then(success => {
                     if (!success) {
-                        // Deduction failed – release number and rollback
                         releaseNumber(num);
                         engineState.allTakenNumbers.delete(num);
                         const rollbackPicks = getMyPicks().filter(n => n !== num);
@@ -4504,14 +4575,12 @@
                         return;
                     }
 
-                    // Update Firebase with the successful pick
                     if (gameRef) {
                         gameRef.child('players/' + currentUser + '/picks').set(newPicks);
                         gameRef.child('players/' + currentUser + '/pick').set(num);
                         gameRef.child('players/' + currentUser + '/ready').set(true);
                         gameRef.child('players/' + currentUser + '/betDeducted').set(true);
                         gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
-                        // Track bet source
                         const sources = getBetSources(engineState.players[currentUser]);
                         sources[num] = 'play';
                         gameRef.child('players/' + currentUser + '/betSources').set(sources);
@@ -4658,7 +4727,6 @@
                     return;
                 }
 
-                // Normal round (2+ players)
                 const winningNumber = numbers[Math.floor(Math.random() * numbers.length)];
                 const targetAngle = getAngleForNumber(winningNumber);
                 const fullRotations = 4 + Math.floor(Math.random() * 2);
@@ -4830,7 +4898,6 @@
 
                 const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
-                // Only credit winners – each winner gets the prize
                 winners.forEach(name => {
                     creditWinnerAndReferral(name, winAmount).then(success => {
                         if (success && name === currentUser) {
@@ -4973,7 +5040,6 @@
                 closeMoreDropdown();
             };
 
-            // Switch Room button – fixed
             switchRoomBtn.onclick = function() {
                 if (currentUser) {
                     const picks = getMyPicks();
@@ -5017,7 +5083,7 @@
                 const link = referralLink.value;
                 const shareText = `Join Winzo and play games with me! ${link}`;
                 const shareUrl =
-                `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`;
+                    `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`;
                 if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
                 else window.open(shareUrl, '_blank');
             };
@@ -5057,7 +5123,6 @@
             if (tg && tg.BackButton) {
                 tg.BackButton.onClick(() => {
                     if (gameScreen.style.display !== 'none') {
-                        // Clean up and go to welcome
                         if (currentUser && engineState.players[currentUser]) {
                             const picks = getPlayerPicks(engineState.players[currentUser]);
                             picks.forEach(num => { releaseNumber(num); });
