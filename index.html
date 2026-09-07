@@ -4181,7 +4181,7 @@
                     if (timerDisplay) timerDisplay.textContent = engineState.timer;
                 }
                 if (playerCountEl) playerCountEl.textContent = engineState.activePlayersCount;
-                const phaseLabels = { 'selection': '⏳ Selecting', 'spinning': '🎡 Spinning', 'results': '🏆 Results' };
+                const phaseLabels = { 'selection': '⏳ Selecting', 'spinning': 'Spinning', 'results': '🏆 Results' };
                 if (gamePhaseLabel) gamePhaseLabel.textContent = phaseLabels[engineState.gamePhase] || '⏳';
                 if (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results') {
                     if (wheelContainer) wheelContainer.classList.remove('hidden');
