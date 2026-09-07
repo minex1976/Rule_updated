@@ -238,8 +238,13 @@
             animation-delay: 0.5s;
         }
         @keyframes floatBet {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-8px);
+            }
         }
         .welcome-screen .bet-options button:hover {
             background: rgba(80, 40, 160, 0.8);
@@ -527,8 +532,8 @@
             margin-top: 1px;
         }
 
-        /* ===== Bet Switcher ===== */
-        .bet-switcher {
+        /* ===== Switch Room Button ===== */
+        .switch-room-row {
             display: flex;
             justify-content: center;
             align-items: center;
@@ -536,38 +541,43 @@
             background: rgba(20, 10, 40, 0.5);
             backdrop-filter: blur(8px);
             border-radius: 30px;
-            padding: 3px 12px;
+            padding: 4px 12px;
             margin: 2px 0 3px;
             border: 1px solid rgba(120, 80, 200, 0.1);
             flex-shrink: 0;
         }
-        .bet-switcher .label {
+        .switch-room-row .label {
             color: #b8a0d0;
             font-size: 0.6rem;
             font-weight: 600;
         }
-        .bet-switcher .bet-btn {
-            background: rgba(120, 80, 200, 0.1);
-            border: 2px solid rgba(120, 80, 200, 0.15);
+        .switch-room-btn {
+            background: rgba(120, 80, 200, 0.15);
+            border: 2px solid rgba(120, 80, 200, 0.2);
             border-radius: 20px;
-            padding: 2px 14px;
-            color: #b8a0d0;
+            padding: 4px 18px;
+            color: #d4c0f0;
             font-size: 0.75rem;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.3px;
         }
-        .bet-switcher .bet-btn:hover {
-            background: rgba(120, 80, 200, 0.2);
+        .switch-room-btn:hover {
+            background: rgba(120, 80, 200, 0.25);
+            border-color: rgba(120, 80, 200, 0.35);
+            color: #f0e6ff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(120, 80, 200, 0.15);
         }
-        .bet-switcher .bet-btn.active {
-            background: rgba(255, 204, 68, 0.15);
-            border-color: #ffcc44;
-            color: #ffcc44;
-            box-shadow: 0 0 24px rgba(255, 204, 68, 0.08);
-        }
-        .bet-switcher .bet-btn:active {
+        .switch-room-btn:active {
             transform: scale(0.95);
+        }
+        .switch-room-btn .icon {
+            font-size: 0.85rem;
         }
 
         /* ===== Game Info Bar ===== */
@@ -623,20 +633,29 @@
             margin: 2px 0 3px;
             text-align: center;
             font-weight: 600;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: #b8a0d0;
             border: 1px solid rgba(120, 80, 200, 0.1);
-            min-height: 1.8rem;
+            min-height: 2.2rem;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
             gap: 4px;
             flex-shrink: 0;
+            line-height: 1.4;
         }
         .pick-status .highlight {
             color: #ffcc44;
             font-weight: 800;
+        }
+        .pick-status .selected-nums {
+            color: #8affb0;
+            font-weight: 700;
+        }
+        .pick-status .total-bet {
+            color: #ffd866;
+            font-weight: 700;
         }
 
         /* ===== Wheel ===== */
@@ -923,6 +942,7 @@
             min-height: 0;
             line-height: 1;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            position: relative;
         }
         .num-btn:hover:not(:disabled) {
             background: #8a5aba;
@@ -942,21 +962,18 @@
             transform: scale(1.06);
         }
         .num-btn.taken {
-            background: red;
+            background: #4a2a5a;
             color: #5a4a6a;
             border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
-            opacity: 100;
-            position: relative;
+            opacity: 0.6;
         }
-        .num-btn.taken::after {
-            content: "";
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            font-size: 1rem;
-            color: #ff6b6b;
+        .num-btn.taken.owner {
+            background: #2a6a4a;
+            border-color: #4caf84;
+            color: #8affb0;
+            opacity: 0.9;
         }
         .num-btn:disabled {
             opacity: 0.35;
@@ -1019,7 +1036,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(10, 5, 20, 0.35); /* reduced opacity */
+            background: rgba(10, 5, 20, 0.35);
             backdrop-filter: blur(6px);
             justify-content: center;
             align-items: center;
@@ -1416,8 +1433,12 @@
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
         }
         .ocr-progress-modal .status-text {
             color: #f0e6ff;
@@ -1551,58 +1572,6 @@
             box-shadow: 0 1px 0 #8a2a2a;
         }
 
-
-        /* ===== Referral modal ===== */
-        .referral-box {
-            background: rgba(20, 10, 40, 0.5);
-            border: 1px solid rgba(120, 80, 200, 0.15);
-            border-radius: 18px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-        .referral-box .referral-stat {
-            text-align: center;
-            color: #b8a0d0;
-            font-size: 0.75rem;
-            margin-bottom: 10px;
-        }
-        .referral-box .referral-stat strong {
-            color: #ffcc44;
-            font-size: 1.1rem;
-        }
-        .referral-link {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 14px;
-            border: 1px solid rgba(120, 80, 200, 0.2);
-            background: rgba(0, 0, 0, 0.3);
-            color: #8affb0;
-            font-size: 0.7rem;
-            outline: none;
-            margin-bottom: 8px;
-        }
-        .referral-actions {
-            display: flex;
-            gap: 8px;
-        }
-        .referral-actions button {
-            flex: 1;
-            padding: 9px;
-            border: none;
-            border-radius: 22px;
-            font-weight: 700;
-            cursor: pointer;
-            font-size: 0.78rem;
-        }
-        .referral-actions .share {
-            background: linear-gradient(135deg, #ffcc44, #f5a623);
-            color: #1a0a2e;
-        }
-        .referral-actions .copy {
-            background: rgba(120, 80, 200, 0.18);
-            color: #d4c0f0;
-            border: 1px solid rgba(120, 80, 200, 0.18);
-        }
         /* ===== Responsive ===== */
         @media (max-height:700px) {
             .game-wrapper {
@@ -1680,12 +1649,17 @@
             .game-info-bar .info-item .value.timer {
                 font-size: 0.85rem;
             }
-            .bet-switcher {
-                padding: 2px 8px;
+            .switch-room-row {
+                padding: 3px 8px;
             }
-            .bet-switcher .bet-btn {
+            .switch-room-btn {
                 font-size: 0.65rem;
-                padding: 1px 10px;
+                padding: 3px 12px;
+            }
+            .pick-status {
+                font-size: 0.55rem;
+                min-height: 1.8rem;
+                padding: 3px 8px;
             }
         }
         @media (max-width:380px) {
@@ -1758,12 +1732,16 @@
             .game-info-bar .info-item .value.timer {
                 font-size: 0.8rem;
             }
-            .bet-switcher {
+            .switch-room-row {
                 padding: 2px 6px;
             }
-            .bet-switcher .bet-btn {
+            .switch-room-btn {
                 font-size: 0.6rem;
-                padding: 1px 8px;
+                padding: 2px 10px;
+            }
+            .pick-status {
+                font-size: 0.5rem;
+                min-height: 1.6rem;
             }
         }
     </style>
@@ -1792,7 +1770,7 @@
         <!-- ===== AUTH SCREEN ===== -->
         <div id="authScreen" class="auth-screen">
             <div class="logo"><h2>🏆 <span>WINZO</span> 🏆</h2></div>
-            <div class="subtitle">Bet 15 or 30 Birr</div>
+            <div class="subtitle">Bet 15 or 30 Birr · Pick multiple numbers!</div>
             <div id="authError" class="auth-error"></div>
             <div class="telegram-info" id="telegramInfo">📱 Detecting Telegram user...</div>
             <input type="text" id="authUsername" placeholder="Username" maxlength="20" autocomplete="username">
@@ -1808,14 +1786,14 @@
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo">
                 <h2>🏆 <span>WINZO</span> 🏆</h2>
-                <div style="color:#b8a0d0;font-size:0.8rem;letter-spacing:1px;margin-top:4px;">Choose your bet amount</div>
+                <div style="color:#b8a0d0;font-size:0.8rem;letter-spacing:1px;margin-top:4px;">Choose your room &amp; bet</div>
             </div>
             <div class="bet-options">
                 <button id="bet15Btn">15 <span class="label">Birr</span></button>
                 <button id="bet30Btn">30 <span class="label">Birr</span></button>
             </div>
             <div class="wallet-info">Play balance: <span class="amount" id="welcomeBalance">0</span> Birr</div>
-            <div style="display:flex;gap:8px;margin-top:4px;">
+            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:center;">
                 <button class="logout-btn" id="welcomeLogoutBtn">🚪 Logout</button>
                 <button class="logout-btn" id="welcomeDepositBtn" style="border-color:rgba(80,255,160,0.15);color:#8affb0;">💰 Deposit</button>
             </div>
@@ -1824,10 +1802,7 @@
         <!-- ===== GAME SCREEN ===== -->
         <div id="gameScreen">
             <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆 · <small id="modeLabel">15 Birr</small></div>
-            <div style="text-align:center;">
-                <span class="room-badge" id="gameRoomBadge">💰 Bet: 15 Birr</span>
-                <button class="bet-btn" id="switchRoomBtn" style="margin-left:6px;padding:2px 12px;">🔄 Switch Room</button>
-            </div>
+            <div style="text-align:center;"><span class="room-badge" id="gameRoomBadge">💰 Bet: 15 Birr</span></div>
 
             <div class="wallet-bar">
                 <div class="wallet-left">
@@ -1846,13 +1821,19 @@
                                 <button class="dropdown-item deposit" id="depositBtn"><span class="icon">💰</span> Deposit</button>
                                 <button class="dropdown-item withdraw" id="withdrawBtn"><span class="icon">🏦</span> Withdraw</button>
                                 <button class="dropdown-item transfer" id="transferBtn"><span class="icon">↗️</span> Transfer to Play</button>
-                                <button class="dropdown-item" id="referralBtn"><span class="icon">🎁</span> Referral</button>
-                                <button class="dropdown-item" id="customerServiceBtn"><span class="icon">💬</span> Customer Service</button>
                                 <button class="dropdown-item logout" id="gameLogoutBtn"><span class="icon">🚪</span> Logout</button>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Switch Room Row (replaces bet switcher) -->
+            <div class="switch-room-row">
+                <span class="label">🏠</span>
+                <button class="switch-room-btn" id="switchRoomBtn">
+                    <span class="icon">🔄</span> Switch Room
+                </button>
             </div>
 
             <div class="game-info-bar">
@@ -1861,7 +1842,9 @@
                 <div class="info-item">🏆 <span class="value prize" id="prizeDisplay">0</span> Birr</div>
             </div>
 
-            <div class="pick-status" id="pickStatus"><span>🎯 Pick <span class="highlight">one or more</span> numbers</span></div>
+            <div class="pick-status" id="pickStatus">
+                <span>🎯 Pick <span class="highlight">numbers</span> · <span class="selected-nums" id="selectedNumsDisplay">0</span> selected · <span class="total-bet" id="totalBetDisplay">0</span> Birr</span>
+            </div>
 
             <div class="wheel-container hidden" id="wheelContainer">
                 <div class="wheel" id="wheel">
@@ -1882,13 +1865,13 @@
             </div>
 
             <div class="status-area" id="statusMessage">
-                <span>⏳ Pick one number · Bet: <span class="highlight" id="betDisplay">15</span> Birr</span>
+                <span>⏳ Pick numbers · Bet: <span class="highlight" id="betDisplay">15</span> Birr each</span>
             </div>
 
             <div class="profile-area">
                 <div class="profile-row">
                     <span class="profile-label">👤</span>
-                    <span style="color:#b8a0d0;font-size:0.6rem;font-weight:600;">Your pick: <span id="selectedCount" style="color:#ffcc44;font-weight:700;">None</span></span>
+                    <span style="color:#b8a0d0;font-size:0.6rem;font-weight:600;">Your picks: <span id="selectedCount" style="color:#ffcc44;font-weight:700;">None</span></span>
                     <span style="color:#7a6a9a;font-size:0.5rem;margin-left:auto;"><span id="gamePhaseLabel">⏳ Selecting</span></span>
                 </div>
                 <div class="num-picker-wrapper" id="numPickerWrapper">
@@ -1896,29 +1879,11 @@
                 </div>
             </div>
 
-            <div class="footer">✦ pick one or more numbers · each pick = bet · win = 85% prize pool</div>
+            <div class="footer">✦ pick multiple numbers · each costs bet amount · win = bet × total players – 15% fee</div>
         </div>
     </div>
 
     <!-- ===== MODALS ===== -->
-    <div class="modal-overlay" id="referralModal">
-        <div class="modal-content">
-            <h3>🎁 Refer & Earn 5%</h3>
-            <div class="referral-box">
-                <div class="referral-stat">Earn <strong>5%</strong> of every eligible win made by players you refer.</div>
-                <input class="referral-link" id="referralLink" readonly>
-                <div class="referral-actions">
-                    <button class="share" id="referralShareBtn">📤 Share</button>
-                    <button class="copy" id="referralCopyBtn">📋 Copy</button>
-                </div>
-            </div>
-            <div style="color:#b8a0d0;font-size:0.72rem;text-align:center;line-height:1.45;">
-                Your referral link opens @WinzoBettingBot. Your referral is attached when the new player creates an account.
-            </div>
-            <button class="close-btn" id="referralCloseBtn" style="width:100%;padding:10px;border-radius:30px;border:none;background:rgba(120,80,200,0.15);color:#d4c0f0;font-weight:700;cursor:pointer;margin-top:12px;">Close</button>
-        </div>
-    </div>
-
     <div class="modal-overlay" id="winnersModal">
         <div class="modal-content">
             <h2>🏆 WINNERS</h2>
@@ -1998,37 +1963,13 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Atomic Number Claims    -->
+    <!-- JAVASCRIPT – Complete Game Code with Multi-Number Betting    -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
         //  GLOBAL VARIABLES
         // ============================================================
-        let telegramDetectedUsername = null; // For enforcing Telegram username
-        let pendingReferralCode = null;
-        const REFERRAL_COMMISSION_RATE = 0.05;
-        const TELEGRAM_BOT_LINK = 'https://t.me/WinzoBettingBot';
-
-        function captureReferralCode() {
-            try {
-                const urlParams = new URLSearchParams(window.location.search);
-                let ref = urlParams.get('ref') || urlParams.get('start');
-                if (!ref && tg && tg.initDataUnsafe) ref = tg.initDataUnsafe.start_param || null;
-                if (ref && ref.indexOf('ref_') === 0) ref = ref.slice(4);
-                if (ref) {
-                    ref = decodeURIComponent(ref).replace(/^@/, '').trim();
-                    if (/^[A-Za-z0-9_]{1,32}$/.test(ref)) {
-                        pendingReferralCode = ref;
-                        localStorage.setItem('winzo_pending_referral', ref);
-                    }
-                } else if (!pendingReferralCode) {
-                    const saved = localStorage.getItem('winzo_pending_referral');
-                    if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) pendingReferralCode = saved;
-                }
-            } catch (e) {
-                console.warn('Referral capture error:', e);
-            }
-        }
+        let telegramDetectedUsername = null;
 
         // ============================================================
         //  AUDIO – Web Audio API
@@ -2315,16 +2256,13 @@
                     }
                     if (user) {
                         telegramUser = user;
-                        captureReferralCode();
                         const name = user.username || user.first_name || '';
                         const infoEl = document.getElementById('telegramInfo');
                         if (infoEl) {
                             if (name) {
                                 infoEl.textContent = '✅ Detected Telegram: @' + name;
                                 infoEl.className = 'telegram-info detected';
-                                // Store detected username
                                 telegramDetectedUsername = name;
-                                // Auto-fill and lock username, auto-fill password
                                 applyTelegramAutoLogin(name);
                             } else {
                                 infoEl.textContent = '📱 Telegram detected (no username). Enter manually.';
@@ -2367,22 +2305,18 @@
             const passwordInput = document.getElementById('authPassword');
             if (!usernameInput || !passwordInput) return;
 
-            // Set username and lock it
             usernameInput.value = username;
             usernameInput.readOnly = true;
             usernameInput.style.color = '#8affb0';
 
-            // Retrieve saved password if any
             const savedCredentials = DB.getSavedCredentials();
             if (savedCredentials && savedCredentials.password) {
                 passwordInput.value = savedCredentials.password;
             } else {
-                // No saved password – leave field empty so user can type
                 passwordInput.value = '';
                 passwordInput.placeholder = 'Enter your password';
             }
 
-            // Prevent manual changes to username
             usernameInput.addEventListener('focus', function() {
                 this.value = username;
             });
@@ -2417,7 +2351,6 @@
         let userWalletRef = null;
         let pendingTxListener = null;
 
-        // Session management
         let sessionId = null;
         let sessionListener = null;
         let sessionConflictModal = document.getElementById('sessionConflictModal');
@@ -2438,7 +2371,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.1';
+        const APP_VERSION = '5.2';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2676,17 +2609,16 @@
         }
 
         // ============================================================
-        //  ATOMIC NUMBER CLAIM / RELEASE – prevents simultaneous selection
+        //  ATOMIC NUMBER CLAIM / RELEASE – per-number
         // ============================================================
         function claimNumber(number, callback) {
             if (!gameRef) return callback(false);
             const takenRef = gameRef.child('numbersTaken/' + number);
             takenRef.transaction(current => {
-                // current is true if taken, false/undefined if free
                 if (current === true) {
-                    return; // abort – already taken
+                    return;
                 }
-                return true; // claim it
+                return true;
             }, (error, committed, snapshot) => {
                 if (error) {
                     console.error('Claim number error:', error);
@@ -2694,13 +2626,11 @@
                     return;
                 }
                 if (committed) {
-                    // Successfully claimed
                     callback(true);
                 } else {
-                    // Not committed – number was already taken
                     callback(false);
                 }
-            }, false); // apply locally? We'll keep false for consistency
+            }, false);
         }
 
         function releaseNumber(number) {
@@ -2751,13 +2681,6 @@
         const welcomeDepositBtn = $('welcomeDepositBtn');
 
         const switchRoomBtn = $('switchRoomBtn');
-        const referralBtn = $('referralBtn');
-        const customerServiceBtn = $('customerServiceBtn');
-        const referralModal = $('referralModal');
-        const referralLink = $('referralLink');
-        const referralShareBtn = $('referralShareBtn');
-        const referralCopyBtn = $('referralCopyBtn');
-        const referralCloseBtn = $('referralCloseBtn');
 
         const walletUsername = $('walletUsername');
         const mainWalletEl = $('mainWallet');
@@ -2771,6 +2694,8 @@
         const gameRoomBadge = $('gameRoomBadge');
         const betDisplay = $('betDisplay');
         const pickStatus = $('pickStatus');
+        const selectedNumsDisplay = $('selectedNumsDisplay');
+        const totalBetDisplay = $('totalBetDisplay');
 
         const depositBtn = $('depositBtn');
         const withdrawBtn = $('withdrawBtn');
@@ -2859,6 +2784,8 @@
                     if (transactionModal.classList.contains('active')) {
                         checkPendingTransactionStatus();
                     }
+                    // Update pick status UI to reflect balance changes
+                    updatePickStatusUI();
                 }
             });
         }
@@ -2890,7 +2817,7 @@
         }
 
         // ============================================================
-        //  OCR FUNCTION – extract reference and amount (fixed)
+        //  OCR FUNCTION – extract reference and amount
         // ============================================================
         async function extractReferenceFromImage(file) {
             if (!file) {
@@ -2924,15 +2851,9 @@
                 URL.revokeObjectURL(imageUrl);
                 const text = result.data.text;
 
-                // Extract 10-digit alphanumeric reference
                 const refMatch = text.match(/\b[A-Z0-9]{10}\b/);
 
-                // ============================================================
-                //  IMPROVED AMOUNT EXTRACTION – captures full number
-                // ============================================================
                 let amount = null;
-
-                // Split text into lines to find the line containing "ETB" or "Birr"
                 const lines = text.split('\n');
                 let amountLine = null;
                 for (const line of lines) {
@@ -2943,10 +2864,8 @@
                 }
 
                 if (amountLine) {
-                    // Extract the first number (with optional minus, commas, and decimal) from that line
                     const numberMatch = amountLine.match(/-?\s*([\d,]+\.?\d*)/);
                     if (numberMatch) {
-                        // Remove commas and parse as float
                         const numStr = numberMatch[1].replace(/,/g, '');
                         const parsed = parseFloat(numStr);
                         if (!isNaN(parsed) && parsed > 0) {
@@ -2955,15 +2874,12 @@
                     }
                 }
 
-                // If still not found, fallback to scanning all numbers (but avoid years)
                 if (amount === null) {
-                    // Find all decimal numbers (e.g., 100.00)
                     const decimalRegex = /\b(\d+\.\d{2})\b/g;
                     let matches = [];
                     let m;
                     while ((m = decimalRegex.exec(text)) !== null) {
                         const val = parseFloat(m[1]);
-                        // Exclude numbers that look like years (e.g., 2026, 1999)
                         if (val < 1900 || val > 2100) {
                             matches.push(val);
                         }
@@ -2971,7 +2887,6 @@
                     if (matches.length > 0) {
                         amount = Math.max(...matches);
                     } else {
-                        // Fallback to integers (avoid years)
                         const intRegex = /\b(\d{2,4})\b/g;
                         let intMatches = [];
                         while ((m = intRegex.exec(text)) !== null) {
@@ -3003,7 +2918,6 @@
                     ocrProgressStatus.textContent += ' ⚠️ No amount found.';
                 }
 
-                // Show a summary message
                 ocrProgressSub.textContent = `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
 
                 setTimeout(() => {
@@ -3048,9 +2962,6 @@
             }
         });
 
-        // ============================================================
-        //  MANUAL EXTRACT BUTTON
-        // ============================================================
         extractRefBtn.onclick = async function() {
             const file = depositImage.files[0];
             if (!file) {
@@ -3284,7 +3195,7 @@
         }
 
         // ============================================================
-        //  DEPOSIT – now amount and reference can be auto-filled
+        //  DEPOSIT
         // ============================================================
         function depositToPlay(amount, reference, imageFile) {
             if (!currentUser) return false;
@@ -3292,7 +3203,6 @@
                 depositError.textContent = 'Please enter a valid amount.';
                 return false;
             }
-            // Reference is optional, but at least image or reference must be provided
             if (!reference && !imageFile) {
                 depositError.textContent = 'Please provide a reference number or upload a screenshot.';
                 return false;
@@ -3303,7 +3213,7 @@
         }
 
         // ============================================================
-        //  AUTH – with Telegram enforcement
+        //  AUTH
         // ============================================================
         function showAuthScreen() {
             authScreen.style.display = 'flex';
@@ -3330,13 +3240,17 @@
             stopTimer();
             stopResultsCountdown();
             audioPlayedThisRound = false;
-            // Room is selected from this welcome screen. Do not automatically
-            // reopen the previous room when returning via "Switch Room".
+            const savedBet = DB.getSavedBet();
+            if (savedBet && firebaseAvailable) {
+                currentBet = savedBet;
+                currentRoom = savedBet === 15 ? 'room_15' : 'room_30';
+                showGameScreen();
+                initGameConnection();
+            }
             syncWalletFromFirebase();
             checkPendingTransactionStatus();
             enableNetworkListener();
 
-            // Start session management after login
             if (currentUser) {
                 startSessionListener(currentUser);
             }
@@ -3358,21 +3272,93 @@
             gameRoomBadge.textContent = '💰 Bet: ' + currentBet + ' Birr';
             betDisplay.textContent = currentBet;
             updateWalletUI();
-            updatePickStatus();
+            updatePickStatusUI();
             audioPlayedThisRound = false;
             DB.setSavedBet(currentBet);
             enableNetworkListener();
         }
 
         // ============================================================
-        //  LOGIN / SIGNUP – with Telegram enforcement
+        //  SWITCH ROOM – go to welcome screen, clean up selections
+        // ============================================================
+        function goToWelcomeScreen() {
+            if (!currentUser || !gameRef) {
+                showWelcomeScreen();
+                return;
+            }
+
+            // Clear all selections for this user and refund bets
+            const playerData = engineState.players[currentUser];
+            if (playerData) {
+                const picks = playerData.picks || [];
+                if (picks.length > 0) {
+                    // Release each number and refund each bet
+                    picks.forEach(num => {
+                        releaseNumber(num);
+                        refundBetImmediately(currentUser, currentBet).catch(() => {});
+                    });
+                    // Clear picks in Firebase
+                    gameRef.child('players/' + currentUser + '/picks').set([]);
+                    gameRef.child('players/' + currentUser + '/ready').set(false);
+                    gameRef.child('players/' + currentUser + '/betDeducted').set(false);
+                    // Remove from local state
+                    engineState.players[currentUser].picks = [];
+                    engineState.players[currentUser].ready = false;
+                    engineState.players[currentUser].betDeducted = false;
+                    // Update taken numbers set
+                    picks.forEach(num => {
+                        engineState.allTakenNumbers.delete(num);
+                    });
+                }
+            }
+
+            // Reset numbersTaken for this user's numbers (they were already released individually)
+            // But we need to refresh the taken set from Firebase
+            if (gameRef) {
+                gameRef.child('numbersTaken').once('value', snap => {
+                    const data = snap.val();
+                    if (data) {
+                        const taken = new Set();
+                        Object.keys(data).forEach(k => {
+                            if (data[k] === true) taken.add(parseInt(k));
+                        });
+                        engineState.allTakenNumbers = taken;
+                        renderNumberPicker();
+                        updatePickStatusUI();
+                    }
+                });
+            }
+
+            stopTimer();
+            stopResultsCountdown();
+            if (spinTimeout) {
+                clearTimeout(spinTimeout);
+                spinTimeout = null;
+            }
+            isGameInitialized = false;
+            audioPlayedThisRound = false;
+            syncInProgress = false;
+
+            // Clean up game listener but keep the ref for cleanup
+            if (gameRef) {
+                gameRef.off();
+                gameRef = null;
+            }
+
+            // Show welcome screen
+            showWelcomeScreen();
+            updateStatus('🏠 Switched to room selection.');
+            closeMoreDropdown();
+        }
+
+        // ============================================================
+        //  LOGIN / SIGNUP
         // ============================================================
         function handleLogin() {
             const username = authUsername.value.trim();
             const password = authPassword.value.trim();
             if (!username || !password) { authError.textContent = 'Please fill in all fields.'; return; }
 
-            // If Telegram detected, force username to detected one
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
                     authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
@@ -3418,7 +3404,6 @@
             const password = authPassword.value.trim();
             if (!username || !password) { authError.textContent = 'Please fill in all fields.'; return; }
 
-            // If Telegram detected, force username to detected one
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
                     authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
@@ -3439,26 +3424,15 @@
                     const newUserData = {
                         password: password,
                         mainWallet: 0,
-                        playWallet: 30, // bonus
+                        playWallet: 30,
                         pendingWithdrawal: 0,
                         bonusClaimed: true
                     };
-
-                    // Lock referral attribution to the first valid referring user.
-                    // Never allow self-referral.
-                    if (pendingReferralCode && pendingReferralCode !== username) {
-                        newUserData.referredBy = pendingReferralCode;
-                        newUserData.referralJoinedAt = firebase.database.ServerValue.TIMESTAMP;
-                    }
                     usersRef.child(username).set(newUserData).then(() => {
                         authError.textContent = '✅ Account created! +30 Birr bonus.';
                         currentUser = username;
                         DB.setCurrentUser(username);
                         DB.setSavedCredentials(username, password);
-                        if (pendingReferralCode) {
-                            localStorage.removeItem('winzo_pending_referral');
-                            pendingReferralCode = null;
-                        }
                         syncWalletFromFirebase();
                         checkPendingTransactionStatus();
                         showWelcomeScreen();
@@ -3489,6 +3463,13 @@
         function performLogout() {
             if (gameRef) {
                 if (currentUser) {
+                    // Clear picks before removing player
+                    const playerData = engineState.players[currentUser];
+                    if (playerData && playerData.picks) {
+                        playerData.picks.forEach(num => {
+                            releaseNumber(num);
+                        });
+                    }
                     gameRef.child('players/' + currentUser).remove();
                 }
                 gameRef.off();
@@ -3568,18 +3549,39 @@
             }
         }
 
-        // Session conflict OK button
         document.getElementById('sessionConflictOkBtn').onclick = function() {
             sessionConflictModal.classList.remove('active');
             performLogout();
         };
 
         // ============================================================
-        //  ROOM SWITCHER
+        //  ROOM SELECTION (from welcome screen)
         // ============================================================
-        function switchRoom() {
-            if (gameRef) {
-                gameRef.child('players/' + currentUser).remove();
+        function selectBet(amount) {
+            if (!currentUser) return;
+            if (walletData.play < amount) {
+                alert('⚠️ Insufficient play balance. Please deposit.');
+                return;
+            }
+            // If switching rooms, clean up any existing selections
+            if (gameRef && currentUser) {
+                const playerData = engineState.players[currentUser];
+                if (playerData && playerData.picks && playerData.picks.length > 0) {
+                    playerData.picks.forEach(num => {
+                        releaseNumber(num);
+                        refundBetImmediately(currentUser, currentBet).catch(() => {});
+                    });
+                    gameRef.child('players/' + currentUser + '/picks').set([]);
+                    gameRef.child('players/' + currentUser + '/ready').set(false);
+                    gameRef.child('players/' + currentUser + '/betDeducted').set(false);
+                    engineState.players[currentUser].picks = [];
+                    engineState.players[currentUser].ready = false;
+                    engineState.players[currentUser].betDeducted = false;
+                    // Update taken set
+                    playerData.picks.forEach(num => {
+                        engineState.allTakenNumbers.delete(num);
+                    });
+                }
                 gameRef.off();
                 gameRef = null;
             }
@@ -3590,30 +3592,23 @@
                 spinTimeout = null;
             }
             isGameInitialized = false;
-            DB.setSavedBet(null);
-            showWelcomeScreen();
-            updateStatus('🔄 Choose your room.');
-        }
+            audioPlayedThisRound = false;
+            syncInProgress = false;
 
-        // ============================================================
-        //  WELCOME SCREEN
-        // ============================================================
-        function updateWelcomeUI() {
-            if (!currentUser) return;
-            welcomeBalance.textContent = walletData.play;
-        }
-
-        function selectBet(amount) {
-            if (!currentUser) return;
-            if (walletData.play < amount) {
-                alert('⚠️ Insufficient play balance. Please deposit.');
-                return;
-            }
             currentBet = amount;
             currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
             showGameScreen();
             initGameConnection();
+            updateStatus(`🔄 Joined ${amount} Birr room. Pick numbers!`);
+        }
+
+        // ============================================================
+        //  WELCOME SCREEN UI
+        // ============================================================
+        function updateWelcomeUI() {
+            if (!currentUser) return;
+            welcomeBalance.textContent = walletData.play;
         }
 
         // ============================================================
@@ -3622,14 +3617,6 @@
         function toggleMoreDropdown(e) {
             e.stopPropagation();
             moreDropdown.classList.toggle('open');
-        }
-
-        function openReferralModal() {
-            if (!currentUser) return;
-            const link = `${TELEGRAM_BOT_LINK}?start=ref_${encodeURIComponent(currentUser)}`;
-            referralLink.value = link;
-            referralModal.classList.add('active');
-            closeMoreDropdown();
         }
 
         function closeMoreDropdown() { moreDropdown.classList.remove('open'); }
@@ -3671,11 +3658,58 @@
             closeMoreDropdown();
         }
 
-        function getPlayerPicks(player) {
-            if (!player) return [];
-            if (Array.isArray(player.picks)) return player.picks.map(Number).filter(n => Number.isFinite(n));
-            if (player.pick !== null && player.pick !== undefined) return [Number(player.pick)];
-            return [];
+        // ============================================================
+        //  BET DEDUCTION & REFUND (per number)
+        // ============================================================
+        function deductBetImmediately(username, betAmount) {
+            if (!username || !database) return Promise.reject('No user or DB');
+            const userRef = database.ref('users/' + username);
+            return userRef.transaction(current => {
+                if (current) {
+                    const play = current.playWallet || 0;
+                    if (play >= betAmount) {
+                        current.playWallet = play - betAmount;
+                    } else {
+                        return undefined;
+                    }
+                }
+                return current;
+            }).then(result => {
+                if (result.committed) {
+                    walletData.play = result.snapshot.val().playWallet;
+                    updateWalletUI();
+                    updateWelcomeUI();
+                    return true;
+                } else {
+                    console.warn('Deduction failed or aborted');
+                    return false;
+                }
+            }).catch(err => {
+                handleError(err, 'Deduct bet');
+                return false;
+            });
+        }
+
+        function refundBetImmediately(username, betAmount) {
+            if (!username || !database) return Promise.reject('No user or DB');
+            const userRef = database.ref('users/' + username);
+            return userRef.transaction(current => {
+                if (current) {
+                    current.playWallet = (current.playWallet || 0) + betAmount;
+                }
+                return current;
+            }).then(result => {
+                if (result.committed) {
+                    walletData.play = result.snapshot.val().playWallet;
+                    updateWalletUI();
+                    updateWelcomeUI();
+                    return true;
+                }
+                return false;
+            }).catch(err => {
+                handleError(err, 'Refund bet');
+                return false;
+            });
         }
 
         // ============================================================
@@ -3690,11 +3724,14 @@
                 const players = engineState.players;
                 const playerNames = Object.keys(players);
 
-                const playersWithPick = playerNames.filter(name => {
+                let totalPicks = 0;
+                playerNames.forEach(name => {
                     const player = players[name];
-                    return getPlayerPicks(player).length > 0 && player?.round === engineState.roundNumber;
+                    if (player?.picks && player.round === engineState.roundNumber) {
+                        totalPicks += player.picks.length;
+                    }
                 });
-                const totalPicks = playersWithPick.reduce((sum, name) => sum + getPlayerPicks(players[name]).length, 0);
+
                 engineState.totalBetsPlaced = totalPicks;
                 engineState.potAmount = totalPicks * currentBet;
 
@@ -3708,22 +3745,26 @@
         //  UPDATE PRIZE DISPLAY
         // ============================================================
         function updatePrizeDisplay() {
-            const playersWithPick = Object.keys(engineState.players).filter(name => {
-                const player = engineState.players[name];
-                return getPlayerPicks(player).length > 0 && player?.round === engineState.roundNumber;
+            const players = engineState.players;
+            const playerNames = Object.keys(players);
+            let totalPicks = 0;
+            playerNames.forEach(name => {
+                const player = players[name];
+                if (player?.picks && player.round === engineState.roundNumber) {
+                    totalPicks += player.picks.length;
+                }
             });
-            const takenCount = playersWithPick.reduce((sum, name) => sum + getPlayerPicks(engineState.players[name]).length, 0);
 
             if (engineState.gamePhase === 'selection') {
-                if (takenCount >= 2) {
-                    const prize = Math.floor(currentBet * takenCount * 0.85);
+                if (totalPicks >= 2) {
+                    const prize = Math.floor(currentBet * totalPicks * 0.85);
                     prizeDisplay.textContent = prize;
                 } else {
                     prizeDisplay.textContent = '0';
                 }
             } else {
-                if (takenCount >= 2) {
-                    const prize = Math.floor(currentBet * takenCount * 0.85);
+                if (totalPicks >= 2) {
+                    const prize = Math.floor(currentBet * totalPicks * 0.85);
                     prizeDisplay.textContent = prize;
                 } else {
                     prizeDisplay.textContent = '0';
@@ -3762,7 +3803,6 @@
             }
             const roomPath = currentRoom;
             gameRef = database.ref('rooms/' + roomPath);
-            // Ensure numbersTaken node exists
             gameRef.child('numbersTaken').set({});
             database.ref('.info/serverTimeOffset').once('value').then(snap => { serverTimeOffset = Number(snap.val()) || 0;
                 ensureSelectionDeadline(); });
@@ -3809,12 +3849,10 @@
             gameRef.child('players/' + currentUser).onDisconnect().remove();
             gameRef.child('players/' + currentUser).set({
                 name: currentUser,
-                pick: null,
                 picks: [],
                 bet: currentBet,
                 ready: false,
                 betDeducted: false,
-                betSources: {},
                 round: engineState.roundNumber
             });
 
@@ -3823,7 +3861,7 @@
         }
 
         // ============================================================
-        //  SYNC GAME STATE
+        //  SYNC GAME STATE – with multi-pick support
         // ============================================================
         function syncGameState(data) {
             if (syncInProgress) return;
@@ -3858,7 +3896,15 @@
                 });
                 engineState.allTakenNumbers = allTaken;
 
-                const myPick = (players[currentUser] && players[currentUser].pick) || null;
+                // Ensure current user has picks array
+                if (players[currentUser] && !players[currentUser].picks) {
+                    players[currentUser].picks = [];
+                }
+                if (players[currentUser] && !players[currentUser].round) {
+                    players[currentUser].round = engineState.roundNumber;
+                }
+
+                const myPicks = (players[currentUser] && players[currentUser].picks) || [];
                 const myBet = (players[currentUser] && players[currentUser].bet) || currentBet;
                 engineState.userBetAmount = myBet;
 
@@ -3897,11 +3943,11 @@
                 }
 
                 if (engineState.gamePhase === 'selection' && engineState.timer <= 0) {
-                    const playersWithPick = Object.keys(engineState.players).filter(name => {
+                    const playersWithPicks = Object.keys(engineState.players).filter(name => {
                         const p = engineState.players[name];
-                        return p && p.pick !== null && p.round === engineState.roundNumber;
+                        return p && p.picks && p.picks.length > 0 && p.round === engineState.roundNumber;
                     });
-                    if (playersWithPick.length > 0) {
+                    if (playersWithPicks.length > 0) {
                         if (!engineState.isSpinning && !engineState.spinInProgress) {
                             stopTimer();
                             if (!audioPlayedThisRound) {
@@ -3926,39 +3972,40 @@
         }
 
         // ============================================================
-        //  REQUEST SPIN – also reset numbersTaken when resetting round
+        //  REQUEST SPIN
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return;
-            const playersWithPick = Object.keys(engineState.players).filter(name => {
+            const playersWithPicks = Object.keys(engineState.players).filter(name => {
                 const p = engineState.players[name];
-                return p && p.pick !== null && p.round === engineState.roundNumber;
+                return p && p.picks && p.picks.length > 0 && p.round === engineState.roundNumber;
             });
 
-            if (playersWithPick.length === 0) {
+            if (playersWithPicks.length === 0) {
                 gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
                 resetNumbersTaken();
                 return;
             }
 
-            if (playersWithPick.length === 1) {
-                const singlePlayer = playersWithPick[0];
+            if (playersWithPicks.length === 1) {
+                const singlePlayer = playersWithPicks[0];
                 const playerData = engineState.players[singlePlayer];
-                if (playerData.betDeducted) {
-                    refundBetImmediately(singlePlayer, playerData.bet || currentBet).then(() => {
-                        gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
-                        gameRef.child('players/' + singlePlayer + '/pick').set(null);
-                        gameRef.child('players/' + singlePlayer + '/picks').set([]);
-                        gameRef.child('players/' + singlePlayer + '/betDeducted').set(false);
-                        gameRef.child('players/' + singlePlayer + '/betSources').set({});
-                        gameRef.child('players/' + singlePlayer + '/round').set(null);
-                        resetNumbersTaken();
-                        updateStatus('⏳ Only one player. Round reset.');
-                    });
-                } else {
-                    gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
-                    resetNumbersTaken();
-                }
+                const picks = playerData.picks || [];
+                // Refund each pick
+                picks.forEach(() => {
+                    refundBetImmediately(singlePlayer, currentBet).catch(() => {});
+                });
+                // Release each number
+                picks.forEach(num => {
+                    releaseNumber(num);
+                });
+                gameRef.update({ gameState: 'selection', timer: 30, selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000 });
+                gameRef.child('players/' + singlePlayer + '/picks').set([]);
+                gameRef.child('players/' + singlePlayer + '/ready').set(false);
+                gameRef.child('players/' + singlePlayer + '/betDeducted').set(false);
+                gameRef.child('players/' + singlePlayer + '/round').set(null);
+                resetNumbersTaken();
+                updateStatus('⏳ Only one player. Round reset.');
                 return;
             }
 
@@ -4040,11 +4087,9 @@
                         };
                         const playerNames2 = Object.keys(engineState.players);
                         playerNames2.forEach(name => {
-                            updates['players/' + name + '/pick'] = null;
                             updates['players/' + name + '/picks'] = [];
                             updates['players/' + name + '/ready'] = false;
                             updates['players/' + name + '/betDeducted'] = false;
-                            updates['players/' + name + '/betSources'] = {};
                             updates['players/' + name + '/round'] = null;
                         });
                         gameRef.update(updates);
@@ -4062,7 +4107,7 @@
                         });
                         wheelContainer.classList.add('hidden');
                         spinResults.classList.add('hidden');
-                        updateStatus(`⏳ Round ${engineState.roundNumber + 1}: Pick one number for ${currentBet} Birr`);
+                        updateStatus(`⏳ Round ${engineState.roundNumber + 1}: Pick numbers for ${currentBet} Birr each`);
                         engineState.waitingModalShown = false;
                         updatePrizeDisplay();
                         timerDisplay.textContent = '30';
@@ -4070,6 +4115,15 @@
                             showWaitingModal();
                         }
                         stopFireworks();
+                        // Reset picks for current user in local state
+                        if (engineState.players[currentUser]) {
+                            engineState.players[currentUser].picks = [];
+                            engineState.players[currentUser].ready = false;
+                            engineState.players[currentUser].betDeducted = false;
+                            engineState.players[currentUser].round = engineState.roundNumber + 1;
+                        }
+                        renderNumberPicker();
+                        updatePickStatusUI();
                     }
                 }
             }, 1000);
@@ -4111,7 +4165,7 @@
                     spinningIndicator.classList.remove('active');
                 }
                 renderNumberPicker();
-                updatePickStatus();
+                updatePickStatusUI();
                 updateWheel();
                 if (engineState.cumulativeRotation > 0 && (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results')) {
                     arrowContainer.style.transform = `rotate(${engineState.cumulativeRotation}deg)`;
@@ -4137,134 +4191,56 @@
         }
 
         // ============================================================
-        //  PICK STATUS – MULTIPLE NUMBERS
+        //  PICK STATUS UI – shows selected numbers and total bet
         // ============================================================
-        function getMyPicks() {
-            const player = engineState.players[currentUser];
-            if (!player) return [];
-            if (Array.isArray(player.picks)) return player.picks.map(Number).filter(n => Number.isFinite(n));
-            if (player.pick !== null && player.pick !== undefined) return [Number(player.pick)];
-            return [];
-        }
+        function updatePickStatusUI() {
+            const myPicks = (engineState.players[currentUser] && engineState.players[currentUser].picks) || [];
+            const count = myPicks.length;
+            const totalBet = count * currentBet;
 
-        function updatePickStatus() {
-            const picks = getMyPicks();
-            if (picks.length) {
-                pickStatus.innerHTML = `🎯 Your picks: <span class="highlight">${picks.join(', ')}</span> · ${picks.length * currentBet} Birr`;
-            } else {
-                pickStatus.innerHTML = `🎯 Pick <span class="highlight">one or more</span> numbers`;
-            }
-        }
-
-        // ============================================================
-        //  NUMBER PICKER – multiple atomic claims
-        // ============================================================
-        function renderNumberPicker() {
-            if (!currentUser) return;
-            const myPicks = new Set(getMyPicks());
-            const isLocked = engineState.gamePhase !== 'selection';
-            const isSinglePlayer = engineState.activePlayersCount <= 1;
-            let html = '';
-            for (let i = 1; i <= 200; i++) {
-                const isSelected = myPicks.has(i);
-                const isTaken = engineState.allTakenNumbers.has(i) && !isSelected;
-                const disabled = isTaken || isLocked || isSinglePlayer;
-                let cls = 'num-btn';
-                if (isSelected) cls += ' selected';
-                if (isTaken) cls += ' taken';
-                html += `<button class="${cls}" data-num="${i}" ${disabled ? 'disabled' : ''}>${i}</button>`;
-            }
-            numPicker.innerHTML = html;
-            if (myPicks.size) {
-                selectedCountSpan.textContent = Array.from(myPicks).join(', ');
-                selectedCountSpan.style.color = '#ffcc44';
+            if (count > 0) {
+                const picksStr = myPicks.join(', ');
+                selectedCountSpan.textContent = picksStr;
+                selectedCountSpan.style.color = '#8affb0';
+                selectedNumsDisplay.textContent = count;
+                totalBetDisplay.textContent = totalBet;
+                pickStatus.innerHTML =
+                    `🎯 Your picks: <span class="selected-nums">${picksStr}</span> · <span class="total-bet">${totalBet}</span> Birr`;
             } else {
                 selectedCountSpan.textContent = 'None';
                 selectedCountSpan.style.color = '#b8a0d0';
+                selectedNumsDisplay.textContent = '0';
+                totalBetDisplay.textContent = '0';
+                pickStatus.innerHTML =
+                    `🎯 Pick <span class="highlight">numbers</span> · <span class="selected-nums">0</span> selected · <span class="total-bet">0</span> Birr`;
             }
         }
 
-        function getBetSources(player) {
-            const sources = player && player.betSources ? player.betSources : {};
-            return sources && typeof sources === 'object' ? sources : {};
-        }
-
-        function getTotalPlayerBet(player) {
-            const picks = Array.isArray(player?.picks)
-                ? player.picks.length
-                : (player?.pick !== null && player?.pick !== undefined ? 1 : 0);
-            return picks * currentBet;
-        }
-
-        function deductPickBet(username, betAmount) {
-            if (!username || !database) return Promise.resolve(false);
-            const userRef = database.ref('users/' + username);
-            return userRef.transaction(current => {
-                if (!current) return current;
-                const play = Number(current.playWallet || 0);
-                const main = Number(current.mainWallet || 0);
-                // First pick is funded from Play; additional picks are funded from Main.
-                if (play >= betAmount) {
-                    current.playWallet = play - betAmount;
-                    return current;
-                }
-                if (main >= betAmount) {
-                    current.mainWallet = main - betAmount;
-                    return current;
-                }
-                return undefined;
-            }).then(result => {
-                if (!result.committed) return false;
-                const updated = result.snapshot.val();
-                walletData.play = Number(updated.playWallet || 0);
-                walletData.main = Number(updated.mainWallet || 0);
-                updateWalletUI();
-                updateWelcomeUI();
-                return true;
-            }).catch(err => {
-                handleError(err, 'Deduct pick bet');
-                return false;
-            });
-        }
-
-        function refundPickBet(username, betAmount, source) {
-            if (!username || !database) return Promise.resolve(false);
-            const userRef = database.ref('users/' + username);
-            return userRef.transaction(current => {
-                if (!current) return current;
-                if (source === 'main') {
-                    current.mainWallet = Number(current.mainWallet || 0) + betAmount;
-                } else {
-                    current.playWallet = Number(current.playWallet || 0) + betAmount;
-                }
-                return current;
-            }).then(result => {
-                if (!result.committed) return false;
-                const updated = result.snapshot.val();
-                walletData.play = Number(updated.playWallet || 0);
-                walletData.main = Number(updated.mainWallet || 0);
-                updateWalletUI();
-                updateWelcomeUI();
-                return true;
-            }).catch(err => {
-                handleError(err, 'Refund pick bet');
-                return false;
-            });
-        }
-
-        // Backward-compatible helpers used by the single-player reset logic.
-        function deductBetImmediately(username, betAmount) {
-            return deductPickBet(username, betAmount);
-        }
-
-        function refundBetImmediately(username, betAmount) {
-            const player = engineState.players[username];
-            const sources = getBetSources(player);
-            const picks = Array.isArray(player?.picks) ? player.picks : (player?.pick != null ? [player.pick] : []);
-            if (picks.length <= 1) {
-                return refundPickBet(username, betAmount, sources[picks[0]] || 'play');
+        // ============================================================
+        //  NUMBER PICKER – multi-select with per-number deduction
+        // ============================================================
+        function renderNumberPicker() {
+            if (!currentUser) return;
+            const myPicks = (engineState.players[currentUser] && engineState.players[currentUser].picks) || [];
+            const isLocked = engineState.gamePhase !== 'selection';
+            const bet = currentBet;
+            const isSinglePlayer = engineState.activePlayersCount <= 1;
+            let html = '';
+            for (let i = 1; i <= 200; i++) {
+                const isSelected = myPicks.includes(i);
+                const isTaken = engineState.allTakenNumbers.has(i) && !isSelected;
+                // Check if user has enough balance to pick another number
+                const totalCost = (myPicks.length + (isSelected ? 0 : 1)) * bet;
+                const hasEnoughBalance = walletData.play >= totalCost;
+                const disabled = isTaken || isLocked || isSinglePlayer || (!isSelected && !hasEnoughBalance);
+                let cls = 'num-btn';
+                if (isSelected) cls += ' selected';
+                if (isTaken) cls += ' taken';
+                if (isTaken && isSelected) cls += ' owner';
+                html += `<button class="${cls}" data-num="${i}" ${disabled ? 'disabled' : ''}>${i}</button>`;
             }
-            return Promise.all(picks.map(n => refundPickBet(username, betAmount, sources[n] || 'play'))).then(r => r.every(Boolean));
+            numPicker.innerHTML = html;
+            updatePickStatusUI();
         }
 
         numPicker.addEventListener('click', function(e) {
@@ -4277,145 +4253,103 @@
                 showWaitingModal();
                 return;
             }
+
             if (engineState.gamePhase !== 'selection') {
                 updateStatus('⛔ Cannot pick numbers now.');
                 return;
             }
 
-            const myPicks = getMyPicks();
-            const alreadySelected = myPicks.includes(num);
+            const myPicks = (engineState.players[currentUser] && engineState.players[currentUser].picks) || [];
 
-            if (alreadySelected) {
+            // Check if already selected (toggle off)
+            if (myPicks.includes(num)) {
+                // Unselect: release number and refund
                 releaseNumber(num);
-                const remaining = myPicks.filter(n => n !== num);
-                if (gameRef) {
-                    gameRef.child('players/' + currentUser + '/picks').set(remaining);
-                    gameRef.child('players/' + currentUser + '/pick').set(remaining.length ? remaining[0] : null);
-                    gameRef.child('players/' + currentUser + '/ready').set(remaining.length > 0);
-                    gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
-                }
-                if (engineState.players[currentUser]) {
-                    engineState.players[currentUser].picks = remaining;
-                    engineState.players[currentUser].pick = remaining.length ? remaining[0] : null;
-                    engineState.players[currentUser].ready = remaining.length > 0;
-                }
-                const source = getBetSources(engineState.players[currentUser])[num] || 'play';
-                refundPickBet(currentUser, currentBet, source);
-                if (engineState.players[currentUser]?.betSources) {
-                    delete engineState.players[currentUser].betSources[num];
-                }
-                updatePickStatus();
-                renderNumberPicker();
-                updatePrizeDisplay();
-                updateStatus(`↩️ Removed ${num}.`);
+                refundBetImmediately(currentUser, currentBet).then(() => {
+                    // Update local state
+                    const idx = myPicks.indexOf(num);
+                    if (idx > -1) {
+                        myPicks.splice(idx, 1);
+                    }
+                    engineState.players[currentUser].picks = myPicks;
+                    engineState.players[currentUser].ready = myPicks.length > 0;
+                    if (gameRef) {
+                        gameRef.child('players/' + currentUser + '/picks').set(myPicks);
+                        gameRef.child('players/' + currentUser + '/ready').set(myPicks.length > 0);
+                    }
+                    // Remove from taken set
+                    engineState.allTakenNumbers.delete(num);
+                    renderNumberPicker();
+                    updatePickStatusUI();
+                    updateStatus(`↩️ Unselected ${num}. Refunded ${currentBet} Birr.`);
+                });
                 return;
             }
 
-            if (engineState.allTakenNumbers.has(num)) {
-                updateStatus(`❌ Number ${num} is already taken!`);
+            // Check balance for adding this number
+            const totalCost = (myPicks.length + 1) * currentBet;
+            if (walletData.play < totalCost) {
+                updateStatus(`⚠️ Insufficient balance. Need ${totalCost} Birr for ${myPicks.length + 1} numbers.`);
                 if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                 return;
             }
 
-            claimNumber(num, async function(success) {
+            // Attempt to claim the number atomically
+            claimNumber(num, function(success) {
                 if (!success) {
                     updateStatus(`❌ Number ${num} was just taken by someone else!`);
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-                    return;
-                }
-
-                const existingPicksBeforeAdd = getMyPicks();
-                const fundingSource = await (async () => {
-                    if (!database) return null;
-                    const userRef = database.ref('users/' + currentUser);
-                    let source = null;
-                    const result = await userRef.transaction(current => {
-                        if (!current) return current;
-                        const play = Number(current.playWallet || 0);
-                        const main = Number(current.mainWallet || 0);
-
-                        if (existingPicksBeforeAdd.length === 0) {
-                            // First pick: 15 Birr comes from Play Wallet.
-                            if (play < currentBet) return undefined;
-                            current.playWallet = play - currentBet;
-                            source = 'play';
-                            return current;
-                        }
-
-                        // Second and subsequent picks: the complete multi-pick
-                        // stake is funded by Main Wallet. Convert any earlier
-                        // pick(s) that were funded from Play into this single
-                        // Main Wallet stake atomically.
-                        const totalStake = (existingPicksBeforeAdd.length + 1) * currentBet;
-                        if (main < totalStake) return undefined;
-
-                        const sources = getBetSources(engineState.players[currentUser]);
-                        let playRefund = 0;
-                        let mainRefund = 0;
-                        existingPicksBeforeAdd.forEach(p => {
-                            if (sources[p] === 'main') mainRefund += currentBet;
-                            else playRefund += currentBet;
+                    if (tg && tg.HapticFeedback) {
+                        tg.HapticFeedback.notificationOccurred('error');
+                    }
+                    if (gameRef) {
+                        gameRef.child('numbersTaken').once('value', snap => {
+                            const data = snap.val();
+                            if (data) {
+                                const taken = new Set();
+                                Object.keys(data).forEach(k => {
+                                    if (data[k] === true) taken.add(parseInt(k));
+                                });
+                                engineState.allTakenNumbers = taken;
+                                renderNumberPicker();
+                            }
                         });
-
-                        current.playWallet = play + playRefund;
-                        current.mainWallet = main + mainRefund - totalStake;
-                        source = 'main';
-                        return current;
-                    }).catch(() => null);
-
-                    if (!result || !result.committed) return null;
-                    const updated = result.snapshot.val();
-                    walletData.play = Number(updated.playWallet || 0);
-                    walletData.main = Number(updated.mainWallet || 0);
-                    updateWalletUI();
-                    updateWelcomeUI();
-                    return source;
-                })();
-
-                if (!fundingSource) {
-                    releaseNumber(num);
-                    updateStatus('⚠️ Insufficient balance for this pick.');
+                    }
                     return;
                 }
 
-                if (!engineState.players[currentUser]) {
-                    engineState.players[currentUser] = {
-                        name: currentUser, pick: null, picks: [], bet: currentBet,
-                        ready: false, betDeducted: false, betSources: {}, round: engineState.roundNumber
-                    };
-                }
-                const player = engineState.players[currentUser];
-                const picks = getMyPicks();
-                picks.push(num);
-                player.picks = picks;
-                player.pick = picks[0];
-                player.ready = true;
-                player.bet = currentBet;
-                player.betDeducted = true;
-                player.betSources = getBetSources(player);
-                if (picks.length >= 2) {
-                    picks.forEach(pickNumber => { player.betSources[pickNumber] = 'main'; });
-                } else {
-                    player.betSources[num] = fundingSource;
-                }
+                // Deduct bet immediately
+                deductBetImmediately(currentUser, currentBet).then(success => {
+                    if (!success) {
+                        // Deduction failed – release the number
+                        releaseNumber(num);
+                        updateStatus('⚠️ Bet deduction failed. Number released.');
+                        return;
+                    }
 
-                if (gameRef) {
-                    gameRef.child('players/' + currentUser).update({
-                        picks: picks,
-                        pick: picks[0],
-                        ready: true,
-                        bet: currentBet,
-                        betDeducted: true,
-                        betSources: player.betSources,
-                        round: engineState.roundNumber
-                    });
-                }
+                    // Update local state
+                    if (!engineState.players[currentUser]) {
+                        engineState.players[currentUser] = { name: currentUser, picks: [], bet: currentBet, ready: false,
+                            betDeducted: false, round: engineState.roundNumber };
+                    }
+                    const picks = engineState.players[currentUser].picks || [];
+                    picks.push(num);
+                    engineState.players[currentUser].picks = picks;
+                    engineState.players[currentUser].ready = true;
+                    engineState.players[currentUser].round = engineState.roundNumber;
 
-                renderNumberPicker();
-                updatePickStatus();
-                updatePrizeDisplay();
-                updateStatus(`✅ ${currentUser} picked ${num} for ${currentBet} Birr!`);
-                if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                    if (gameRef) {
+                        gameRef.child('players/' + currentUser + '/picks').set(picks);
+                        gameRef.child('players/' + currentUser + '/ready').set(true);
+                        gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
+                    }
+
+                    engineState.allTakenNumbers.add(num);
+
+                    renderNumberPicker();
+                    updatePickStatusUI();
+                    updateStatus(`✅ ${currentUser} picked ${num} (${picks.length} total, ${picks.length * currentBet} Birr)`);
+                    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                });
             });
         });
 
@@ -4466,7 +4400,7 @@
         }
 
         // ============================================================
-        //  SPIN EXECUTION
+        //  SPIN EXECUTION – with multi-pick winners
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning) {
@@ -4565,8 +4499,8 @@
 
                 engineState.cumulativeRotation = extraDegrees;
 
-                const totalPlayers = numbers.length;
-                const totalPot = totalPlayers * currentBet;
+                const totalPicks = numbers.length;
+                const totalPot = totalPicks * currentBet;
                 const prizePool = Math.floor(totalPot * 0.85);
 
                 gameRef.update({
@@ -4606,7 +4540,7 @@
                     spinTimeout = null;
 
                     setTimeout(() => {
-                        checkAndAnnounceWinners(prizePool);
+                        checkAndAnnounceWinners(prizePool, winningNumber);
                     }, 1000);
                 }, 4200);
 
@@ -4642,83 +4576,19 @@
         }
 
         // ============================================================
-        //  WINNERS + REFERRAL COMMISSION
+        //  WINNERS – checks multi-picks
         // ============================================================
-        function creditWinnerAndReferral(winnerName, winAmount) {
-            if (!database || !winnerName || winAmount <= 0) return Promise.resolve(false);
-
-            const payoutKey = `${currentRoom}_${engineState.roundNumber}_${winnerName}`;
-            const payoutRef = database.ref('referralPayouts/' + payoutKey);
-
-            // Claim this payout once. This prevents every connected client from
-            // paying the same winner/referrer more than once.
-            return payoutRef.transaction(current => {
-                if (current && current.status === 'paid') return;
-                if (current && current.status === 'processing') return;
-                return {
-                    status: 'processing',
-                    winner: winnerName,
-                    round: engineState.roundNumber,
-                    room: currentRoom,
-                    winAmount: winAmount,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                };
-            }).then(claim => {
-                if (!claim.committed) return false;
-
-                return database.ref('users/' + winnerName).transaction(current => {
-                    if (!current) return current;
-                    current.mainWallet = Number(current.mainWallet || 0) + winAmount;
-                    return current;
-                }).then(winnerResult => {
-                    if (!winnerResult.committed) throw new Error('Winner wallet update failed');
-
-                    const winnerData = winnerResult.snapshot.val();
-                    const referrer = winnerData.referredBy;
-                    const commission = Math.floor(winAmount * REFERRAL_COMMISSION_RATE);
-
-                    if (referrer && referrer !== winnerName && commission > 0) {
-                        return database.ref('users/' + referrer).transaction(current => {
-                            if (!current) return current;
-                            current.mainWallet = Number(current.mainWallet || 0) + commission;
-                            current.referralEarnings = Number(current.referralEarnings || 0) + commission;
-                            return current;
-                        }).then(refResult => {
-                            if (!refResult.committed) throw new Error('Referral wallet update failed');
-                            return commission;
-                        });
-                    }
-                    return 0;
-                }).then(commission => {
-                    return payoutRef.update({
-                        status: 'paid',
-                        commission: commission,
-                        paidAt: firebase.database.ServerValue.TIMESTAMP
-                    }).then(() => true);
-                }).catch(err => {
-                    console.error('Winner/referral payout error:', err);
-                    payoutRef.update({ status: 'failed', error: err.message || String(err) });
-                    return false;
-                });
-            }).catch(err => {
-                console.error('Payout claim error:', err);
-                return false;
-            });
-        }
-
-        function checkAndAnnounceWinners(prizePool) {
+        function checkAndAnnounceWinners(prizePool, winningNumber) {
             try {
                 const players = engineState.players;
                 const playerNames = Object.keys(players);
                 const winners = [];
-                const winningNumber = engineState.drawnNumbers[0] || null;
-                const takenCount = engineState.allTakenNumbers.size;
 
                 playerNames.forEach(name => {
                     const player = players[name];
-                    const picks = getPlayerPicks(player);
+                    const picks = player?.picks || [];
                     const round = player?.round;
-                    if (picks.includes(Number(winningNumber)) && round === engineState.roundNumber) {
+                    if (picks.includes(winningNumber) && round === engineState.roundNumber) {
                         winners.push(name);
                     }
                 });
@@ -4727,17 +4597,12 @@
 
                 const winAmount = winners.length > 0 ? Math.floor(prizePool / winners.length) : 0;
 
-                // All connected clients may execute this function. The payout
-                // claim above makes each winner/referrer reward idempotent.
                 winners.forEach(name => {
-                    creditWinnerAndReferral(name, winAmount).then(success => {
-                        if (success && name === currentUser) {
-                            updateWalletUI();
-                            updateWelcomeUI();
-                        }
-                    });
                     if (name === currentUser) {
-                        updateStatus(`🎉 You won! +${winAmount} coins (${takenCount} picks × ${currentBet} − 15% fee)`, true);
+                        creditWinningsToMain(winAmount);
+                        const totalPicks = engineState.allTakenNumbers.size;
+                        updateStatus(`🎉 You won! +${winAmount} coins (${totalPicks} picks × ${currentBet} − 15% fee)`,
+                            true);
                     }
                 });
 
@@ -4763,8 +4628,10 @@
                     winnersList.innerHTML = html;
                 }
                 winnersModal.classList.add('active');
-                if (tg && tg.HapticFeedback && winners.includes(currentUser)) {
-                    tg.HapticFeedback.notificationOccurred('success');
+                if (tg && tg.HapticFeedback) {
+                    if (winners.includes(currentUser)) {
+                        tg.HapticFeedback.notificationOccurred('success');
+                    }
                 }
                 setTimeout(() => {
                     if (!isResultsCountdownRunning && engineState.gamePhase === 'results') {
@@ -4780,9 +4647,19 @@
             }
         }
 
-        // Kept for compatibility with any existing calls.
+        // ============================================================
+        //  CREDIT WINNINGS
+        // ============================================================
         function creditWinningsToMain(winAmount) {
-            return currentUser ? creditWinnerAndReferral(currentUser, winAmount) : false;
+            if (!currentUser) return false;
+            const userRef = database.ref('users/' + currentUser);
+            userRef.transaction(current => {
+                if (current) {
+                    current.mainWallet = (current.mainWallet || 0) + winAmount;
+                }
+                return current;
+            });
+            return true;
         }
 
         // ============================================================
@@ -4807,7 +4684,7 @@
             updatePlayerList();
             updateTimer(engineState.timer);
             updatePhase(engineState.gamePhase);
-            updatePickStatus();
+            updatePickStatusUI();
             renderNumberPicker();
             updateWheel();
             updatePrizeDisplay();
@@ -4873,41 +4750,21 @@
                 closeMoreDropdown();
             };
 
-            switchRoomBtn.onclick = switchRoom;
-
-            referralBtn.onclick = openReferralModal;
-            customerServiceBtn.onclick = () => {
-                closeMoreDropdown();
-                const url = 'https://t.me/winzosupportcenter';
-                if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
-                else window.open(url, '_blank');
-            };
-
-            referralCloseBtn.onclick = () => referralModal.classList.remove('active');
-
-            referralCopyBtn.onclick = async () => {
-                const link = referralLink.value;
-                try {
-                    await navigator.clipboard.writeText(link);
-                    referralCopyBtn.textContent = '✅ Copied';
-                    setTimeout(() => referralCopyBtn.textContent = '📋 Copy', 1500);
-                } catch (e) {
-                    referralLink.select();
-                    document.execCommand('copy');
-                    referralCopyBtn.textContent = '✅ Copied';
-                    setTimeout(() => referralCopyBtn.textContent = '📋 Copy', 1500);
+            // Switch Room button
+            switchRoomBtn.onclick = function() {
+                if (currentUser) {
+                    if (engineState.players[currentUser] && engineState.players[currentUser].picks &&
+                        engineState.players[currentUser].picks.length > 0) {
+                        if (!confirm('You have active picks. Switching rooms will clear them. Continue?')) {
+                            return;
+                        }
+                    }
+                    goToWelcomeScreen();
+                } else {
+                    showWelcomeScreen();
                 }
+                closeMoreDropdown();
             };
-
-            referralShareBtn.onclick = () => {
-                const link = referralLink.value;
-                const shareText = `Join Winzo and play games with me! ${link}`;
-                const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`;
-                if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
-                else window.open(shareUrl, '_blank');
-            };
-
-            moreBtn.onclick = toggleMoreDropdown;
 
             depositConfirm.onclick = () => {
                 const amount = parseInt(depositAmount.value);
@@ -4917,7 +4774,6 @@
                     depositError.textContent = 'Please enter a valid amount.';
                     return;
                 }
-                // Reference optional if image is provided
                 if (!ref && !file) {
                     depositError.textContent = 'Please provide a reference number or upload a screenshot.';
                     return;
@@ -4944,6 +4800,17 @@
                 tg.BackButton.onClick(() => {
                     if (gameScreen.style.display !== 'none') {
                         if (gameRef) {
+                            // Clear picks before leaving
+                            if (currentUser && engineState.players[currentUser]) {
+                                const picks = engineState.players[currentUser].picks || [];
+                                picks.forEach(num => {
+                                    releaseNumber(num);
+                                    refundBetImmediately(currentUser, currentBet).catch(() => {});
+                                });
+                                gameRef.child('players/' + currentUser + '/picks').set([]);
+                                gameRef.child('players/' + currentUser + '/ready').set(false);
+                                gameRef.child('players/' + currentUser + '/betDeducted').set(false);
+                            }
                             gameRef.child('players/' + currentUser).remove();
                             gameRef.off();
                             gameRef = null;
