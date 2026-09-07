@@ -499,9 +499,9 @@
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
-            padding: 2px 0 2px 4px;
-            gap: 6px;
-            flex-wrap: wrap;
+            padding: 2px 0;
+            gap: 8px;
+            flex-wrap: nowrap;
         }
         .game-header .title {
             font-weight: 800;
@@ -512,14 +512,18 @@
             line-height: 1.2;
             flex: 1;
             min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .game-header .title small {
             font-size: 0.45rem;
             letter-spacing: 2px;
             opacity: 0.6;
-            display: block;
+            display: inline-block;
             font-weight: 400;
             color: #b8a0d0;
+            margin-left: 4px;
         }
         .game-header .room-badge {
             display: inline-block;
@@ -530,7 +534,7 @@
             color: #ffcc44;
             font-weight: 700;
             letter-spacing: 1px;
-            margin-left: 4px;
+            margin-left: 6px;
             flex-shrink: 0;
         }
 
