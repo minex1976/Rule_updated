@@ -2826,7 +2826,6 @@
         const moreDropdown = $('moreDropdown');
         const statusDot = $('statusDot');
         const modeLabel = $('modeLabel');
-        const gameRoomBadge = $('gameRoomBadge');
         const betDisplay = $('betDisplay');
         const pickStatus = $('pickStatus');
 
@@ -3152,7 +3151,6 @@
             if (welcomeScreen) welcomeScreen.style.display = 'none';
             if (gameScreen) gameScreen.style.display = 'flex';
             if (modeLabel) modeLabel.textContent = currentBet + ' Birr';
-            if (gameRoomBadge) gameRoomBadge.textContent = '💰 Bet: ' + currentBet + ' Birr';
             if (betDisplay) betDisplay.textContent = currentBet;
             updateWalletUI();
             updatePickStatus();
@@ -3683,12 +3681,11 @@
         // ============================================================
         function attachNumbersTakenListener() {
             if (!gameRef) return;
-            detachNumbersTakenListener(); // ensure clean
+            detachNumbersTakenListener();
 
             const ref = gameRef.child('numbersTaken');
             numbersTakenListenerRef = ref;
 
-            // 1. Initial population
             ref.once('value', (snapshot) => {
                 const data = snapshot.val() || {};
                 const newSet = new Set();
@@ -3704,7 +3701,6 @@
                 console.log('📦 Initial numbersTaken loaded:', Array.from(newSet));
             });
 
-            // 2. Child events for real‑time updates
             const onChildAdded = (snap) => {
                 const num = Number(snap.key);
                 const val = snap.val();
@@ -3936,7 +3932,7 @@
                     }
                 }
 
-                // ===== WINNERS MODAL – show using Firebase data =====
+                // Winners modal
                 if (engineState.gamePhase === 'results' && data.winners && data.winners.length > 0 && !engineState
                     .winnersModalShown) {
                     const winners = data.winners;
@@ -4052,7 +4048,10 @@
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
             if (!gameRef || engineState.gamePhase !== 'selection') return;
-            if (!phaseDeadline) { ensureSelectionDeadline(); return; }
+            if (!phaseDeadline) {
+                ensureSelectionDeadline();
+                return;
+            }
             isTimerRunning = true;
             const tick = () => {
                 if (engineState.gamePhase !== 'selection') { stopTimer(); return; }
@@ -4077,7 +4076,7 @@
         }
 
         // ============================================================
-        //  RESULTS COUNTDOWN – FIXED with full reset and timer restart
+        //  RESULTS COUNTDOWN – FIXED with immediate timer restart
         // ============================================================
         function startResultsCountdown() {
             if (isResultsCountdownRunning) return;
@@ -4090,7 +4089,6 @@
                 if (countdown <= 0) {
                     stopResultsCountdown();
 
-                    // Reset the room for the next round
                     if (gameRef) {
                         const updates = {
                             gameState: 'selection',
@@ -4128,10 +4126,11 @@
                         engineState.totalBetsPlaced = 0;
                         engineState.winnersModalShown = false;
 
-                        // Close the winners modal
+                        // Set phaseDeadline locally so timer starts immediately
+                        phaseDeadline = getServerNow() + SELECTION_SECONDS * 1000;
+
                         if (winnersModal) winnersModal.classList.remove('active');
 
-                        // Reset UI elements
                         if (arrowContainer) arrowContainer.style.transform = 'rotate(0deg)';
                         if (arrowCenter) {
                             arrowCenter.textContent = '🎯';
@@ -4150,7 +4149,6 @@
                         updatePickStatus();
                         renderNumberPicker();
 
-                        // Start the timer for the new round
                         startTimer();
                         updateStatus(`⏳ Round ${engineState.roundNumber + 1}: Pick numbers for ${currentBet} Birr each`);
                         if (engineState.activePlayersCount === 1) {
