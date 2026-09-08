@@ -571,6 +571,7 @@
             transform: scale(0.95);
         }
 
+        /* Switch Room button – more prominent */
         .switch-room-btn {
             background: linear-gradient(135deg, #ffdf6b, #f5b52e 52%, #d98a16) !important;
             border: 2px solid #ffcc44 !important;
@@ -864,14 +865,8 @@
             font-size: 0.7rem;
         }
         @keyframes pulse {
-            0% {
-                opacity: 0.8;
-                transform: scale(0.97);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1.04);
-            }
+            0% { opacity: 0.8; transform: scale(0.97); }
+            100% { opacity: 1; transform: scale(1.04); }
         }
 
         .profile-area {
@@ -971,7 +966,6 @@
             transform: translateY(2px) scale(0.95);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
-        /* --- FIX: ensure selected class has high visibility --- */
         .num-btn.selected {
             background: linear-gradient(135deg, #f5c542, #e8a020) !important;
             color: #1a0a2e !important;
@@ -1688,7 +1682,7 @@
     </style>
 </head>
 <body>
-    <!-- ===== GAME WRAPPER – same structure ===== -->
+    <!-- ===== GAME WRAPPER ===== -->
     <div class="game-wrapper">
         <!-- Network Offline Overlay -->
         <div class="network-offline-overlay" id="networkOfflineOverlay">
@@ -1916,7 +1910,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Fixed Multi-Number Highlighting & Spin Logic    -->
+    <!-- JAVASCRIPT – Merged logic: play‑wallet‑only deduction, full UI -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2340,7 +2334,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.5';
+        const APP_VERSION = '5.6';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2858,7 +2852,7 @@
         }
 
         // ============================================================
-        //  DEPOSIT / WITHDRAW / TRANSFER
+        //  DEPOSIT / WITHDRAW / TRANSFER (keeping from last working version)
         // ============================================================
         function openDepositModal() {
             if (depositPlayBalance) depositPlayBalance.textContent = walletData.play;
@@ -3736,13 +3730,8 @@
         // ============================================================
         function getPlayerPicks(player) {
             if (!player) return [];
-            // Always return an array. If picks is an array, use it. Otherwise, if pick exists, wrap it.
-            if (Array.isArray(player.picks)) {
-                return player.picks.map(Number).filter(n => Number.isFinite(n));
-            }
-            if (player.pick !== null && player.pick !== undefined) {
-                return [Number(player.pick)];
-            }
+            if (Array.isArray(player.picks)) return player.picks.map(Number).filter(n => Number.isFinite(n));
+            if (player.pick !== null && player.pick !== undefined) return [Number(player.pick)];
             return [];
         }
 
@@ -4386,7 +4375,7 @@
         }
 
         // ============================================================
-        //  NUMBER PICKER – ALL selected numbers get the 'selected' class
+        //  NUMBER PICKER – all selected numbers get the 'selected' class
         // ============================================================
         function renderNumberPicker(showLoading = false) {
             if (!numPicker) return;
@@ -4424,7 +4413,7 @@
         }
 
         // ============================================================
-        //  BET DEDUCTION / REFUND – play wallet only
+        //  BET DEDUCTION / REFUND – play wallet ONLY (fixed)
         // ============================================================
         function deductPickBetFast(username, betAmount) {
             if (!username || !database) return Promise.resolve(false);
@@ -4502,7 +4491,7 @@
         }
 
         // ============================================================
-        //  NUMBER PICK CLICK HANDLER
+        //  NUMBER PICK CLICK HANDLER – with play‑wallet‑only deduction
         // ============================================================
         if (numPicker) {
             numPicker.addEventListener('click', function(e) {
@@ -4565,6 +4554,7 @@
                     return;
                 }
 
+                // Optimistic: add to local state immediately
                 engineState.allTakenNumbers.add(num);
                 renderNumberPicker();
                 updatePickStatus();
@@ -4682,7 +4672,7 @@
         }
 
         // ============================================================
-        //  SPIN EXECUTION – fixed to handle multiple picks per player
+        //  SPIN EXECUTION
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning) {
