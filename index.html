@@ -1895,7 +1895,7 @@
         <div id="gameScreen">
             <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆 · <small id="modeLabel">15 Birr</small></div>
             <div class="bet-switcher">
-                <button class="bet-btn switch-room-btn" id="switchRoomBtn">Switch Room</button>
+                <button class="bet-btn switch-room-btn" id="switchRoomBtn">🔄 Switch Room</button>
             </div>
 
             <div class="wallet-bar">
@@ -2067,7 +2067,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Auto‑Restart Fix         -->
+    <!-- JAVASCRIPT – Complete Game Code with Play‑Wallet‑Only Bets    -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -4076,7 +4076,7 @@
         }
 
         // ============================================================
-        //  RESULTS COUNTDOWN – FIXED with immediate timer restart
+        //  RESULTS COUNTDOWN – with timer restart
         // ============================================================
         function startResultsCountdown() {
             if (isResultsCountdownRunning) return;
@@ -4126,7 +4126,7 @@
                         engineState.totalBetsPlaced = 0;
                         engineState.winnersModalShown = false;
 
-                        // Set phaseDeadline locally so timer starts immediately
+                        // Set phaseDeadline locally
                         phaseDeadline = getServerNow() + SELECTION_SECONDS * 1000;
 
                         if (winnersModal) winnersModal.classList.remove('active');
@@ -4181,7 +4181,7 @@
                     if (timerDisplay) timerDisplay.textContent = engineState.timer;
                 }
                 if (playerCountEl) playerCountEl.textContent = engineState.activePlayersCount;
-                const phaseLabels = { 'selection': '⏳ Selecting', 'spinning': 'Spinning', 'results': '🏆 Results' };
+                const phaseLabels = { 'selection': '⏳ Selecting', 'spinning': '🎡 Spinning', 'results': '🏆 Results' };
                 if (gamePhaseLabel) gamePhaseLabel.textContent = phaseLabels[engineState.gamePhase] || '⏳';
                 if (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results') {
                     if (wheelContainer) wheelContainer.classList.remove('hidden');
@@ -4307,17 +4307,13 @@
         }
 
         // ============================================================
-        //  BET DEDUCTION / REFUND
+        //  BET DEDUCTION / REFUND – now only from play wallet
         // ============================================================
         function deductPickBetFast(username, betAmount) {
             if (!username || !database) return Promise.resolve(false);
             return new Promise((resolve) => {
                 if (walletData.play >= betAmount) {
                     walletData.play -= betAmount;
-                    updateWalletUI();
-                    updateWelcomeUI();
-                } else if (walletData.main >= betAmount) {
-                    walletData.main -= betAmount;
                     updateWalletUI();
                     updateWelcomeUI();
                 } else {
@@ -4329,12 +4325,8 @@
                 userRef.transaction(current => {
                     if (!current) return current;
                     const play = Number(current.playWallet || 0);
-                    const main = Number(current.mainWallet || 0);
                     if (play >= betAmount) {
                         current.playWallet = play - betAmount;
-                        return current;
-                    } else if (main >= betAmount) {
-                        current.mainWallet = main - betAmount;
                         return current;
                     }
                     return undefined;
@@ -4347,7 +4339,6 @@
                     } else {
                         const updated = snap.val();
                         walletData.play = Number(updated.playWallet || 0);
-                        walletData.main = Number(updated.mainWallet || 0);
                         updateWalletUI();
                         updateWelcomeUI();
                         resolve(true);
@@ -4377,7 +4368,6 @@
                     } else {
                         const updated = snap.val();
                         walletData.play = Number(updated.playWallet || 0);
-                        walletData.main = Number(updated.mainWallet || 0);
                         updateWalletUI();
                         updateWelcomeUI();
                         resolve(true);
@@ -4452,8 +4442,9 @@
                 }
 
                 const totalCost = (myPicks.length + 1) * currentBet;
-                if (walletData.play + walletData.main < totalCost) {
-                    updateStatus(`⚠️ Insufficient balance. Need ${totalCost} Birr.`);
+                // Only check play wallet
+                if (walletData.play < totalCost) {
+                    updateStatus(`⚠️ Insufficient play balance. Need ${totalCost} Birr.`);
                     if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                     return;
                 }
