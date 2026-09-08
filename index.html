@@ -571,7 +571,6 @@
             transform: scale(0.95);
         }
 
-        /* Switch Room uses the same position and overall size as the old room buttons. */
         .switch-room-btn {
             background: linear-gradient(135deg, #ffdf6b, #f5b52e 52%, #d98a16) !important;
             border: 2px solid #ffcc44 !important;
@@ -972,12 +971,14 @@
             transform: translateY(2px) scale(0.95);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
+        /* --- FIX: ensure selected class has high visibility --- */
         .num-btn.selected {
-            background: linear-gradient(135deg, #f5c542, #e8a020);
-            color: #1a0a2e;
-            border-color: #ffcc44;
-            box-shadow: 0 0 20px rgba(255, 204, 68, 0.15), 0 4px 12px rgba(255, 204, 68, 0.1);
-            transform: scale(1.06);
+            background: linear-gradient(135deg, #f5c542, #e8a020) !important;
+            color: #1a0a2e !important;
+            border-color: #ffcc44 !important;
+            box-shadow: 0 0 20px rgba(255, 204, 68, 0.25), 0 4px 12px rgba(255, 204, 68, 0.15) !important;
+            transform: scale(1.06) !important;
+            z-index: 2;
         }
         .num-btn.taken {
             background: #4a2a5a;
@@ -1687,7 +1688,7 @@
     </style>
 </head>
 <body>
-    <!-- ===== GAME WRAPPER ===== -->
+    <!-- ===== GAME WRAPPER – same structure ===== -->
     <div class="game-wrapper">
         <!-- Network Offline Overlay -->
         <div class="network-offline-overlay" id="networkOfflineOverlay">
@@ -1805,7 +1806,7 @@
             <div class="profile-area">
                 <div class="profile-row">
                     <span class="profile-label">👤</span>
-                    <span style="color:#b8a0d0;font-size:0.6rem;font-weight:600;">Your pick: <span id="selectedCount" style="color:#ffcc44;font-weight:700;">None</span></span>
+                    <span style="color:#b8a0d0;font-size:0.6rem;font-weight:600;">Your picks: <span id="selectedCount" style="color:#ffcc44;font-weight:700;">None</span></span>
                     <span style="color:#7a6a9a;font-size:0.5rem;margin-left:auto;"><span id="gamePhaseLabel">⏳ Selecting</span></span>
                 </div>
                 <div class="num-picker-wrapper" id="numPickerWrapper">
@@ -1915,7 +1916,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Production Version with fixed multi-pick display -->
+    <!-- JAVASCRIPT – Fixed Multi-Number Highlighting & Spin Logic    -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2339,7 +2340,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.4';
+        const APP_VERSION = '5.5';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -3731,12 +3732,17 @@
         }
 
         // ============================================================
-        //  HELPERS
+        //  HELPERS – ensure picks array is always used
         // ============================================================
         function getPlayerPicks(player) {
             if (!player) return [];
-            if (Array.isArray(player.picks)) return player.picks.map(Number).filter(n => Number.isFinite(n));
-            if (player.pick !== null && player.pick !== undefined) return [Number(player.pick)];
+            // Always return an array. If picks is an array, use it. Otherwise, if pick exists, wrap it.
+            if (Array.isArray(player.picks)) {
+                return player.picks.map(Number).filter(n => Number.isFinite(n));
+            }
+            if (player.pick !== null && player.pick !== undefined) {
+                return [Number(player.pick)];
+            }
             return [];
         }
 
@@ -4349,13 +4355,12 @@
         }
 
         // ============================================================
-        //  PICK STATUS – FIXED to show all picks
+        //  PICK STATUS – shows all picks with comma separation
         // ============================================================
         function updatePickStatus() {
             const picks = getMyPicks();
             if (pickStatus) {
                 if (picks.length) {
-                    // Show all picks comma separated and total bet
                     const picksStr = picks.join(', ');
                     const totalBet = picks.length * currentBet;
                     pickStatus.innerHTML =
@@ -4364,7 +4369,6 @@
                     pickStatus.innerHTML = `🎯 Pick <span class="highlight">one or more</span> numbers`;
                 }
             }
-            // Also update the profile row text
             if (selectedCountSpan) {
                 if (picks.length) {
                     selectedCountSpan.textContent = picks.join(', ');
@@ -4382,7 +4386,7 @@
         }
 
         // ============================================================
-        //  NUMBER PICKER – FIXED to highlight ALL selected numbers
+        //  NUMBER PICKER – ALL selected numbers get the 'selected' class
         // ============================================================
         function renderNumberPicker(showLoading = false) {
             if (!numPicker) return;
@@ -4410,13 +4414,12 @@
                 const isTaken = engineState.allTakenNumbers.has(i) && !isSelected;
                 const disabled = isTaken || isLocked;
                 let cls = 'num-btn';
-                if (isSelected) cls += ' selected';  // All selected get the class
+                if (isSelected) cls += ' selected';
                 if (isTaken) cls += ' taken';
                 html += `<button class="${cls}" data-num="${i}" ${disabled ? 'disabled' : ''}>${i}</button>`;
             }
             numPicker.innerHTML = html;
 
-            // Also update the profile row text (already done in updatePickStatus)
             updatePickStatus();
         }
 
@@ -4499,7 +4502,7 @@
         }
 
         // ============================================================
-        //  NUMBER PICK CLICK HANDLER – ensures picks array is updated
+        //  NUMBER PICK CLICK HANDLER
         // ============================================================
         if (numPicker) {
             numPicker.addEventListener('click', function(e) {
@@ -4524,7 +4527,6 @@
                 const alreadySelected = myPicks.includes(num);
 
                 if (alreadySelected) {
-                    // Unselect: release number and refund
                     releaseNumber(num);
                     const remaining = myPicks.filter(n => n !== num);
                     if (gameRef) {
@@ -4563,7 +4565,6 @@
                     return;
                 }
 
-                // Optimistic: add to local state immediately
                 engineState.allTakenNumbers.add(num);
                 renderNumberPicker();
                 updatePickStatus();
@@ -4681,7 +4682,7 @@
         }
 
         // ============================================================
-        //  SPIN EXECUTION
+        //  SPIN EXECUTION – fixed to handle multiple picks per player
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning) {
@@ -4880,6 +4881,33 @@
 
                     if (winners.length === 0) {
                         playNoWinnerAudio();
+                    }
+
+                    // Show winners modal
+                    if (winnersModal) {
+                        if (winners.length === 0) {
+                            winnersList.innerHTML = `<div class="no-winners">😔 No winners this round.</div>`;
+                        } else {
+                            let html = '';
+                            winners.forEach(name => {
+                                html += `
+                                    <div class="winner-entry">
+                                        <span class="player-name">${name}</span>
+                                        <span class="winning-nums">🎯 ${winningNumber} · ${winAmount} Birr</span>
+                                    </div>
+                                `;
+                            });
+                            winnersList.innerHTML = html;
+                        }
+                        winnersModal.classList.add('active');
+                        engineState.winnersModalShown = true;
+                        if (tg && tg.HapticFeedback && winners.includes(currentUser)) {
+                            tg.HapticFeedback.notificationOccurred('success');
+                        }
+                    }
+
+                    if (!isResultsCountdownRunning) {
+                        startResultsCountdown();
                     }
 
                 }, 4200);
