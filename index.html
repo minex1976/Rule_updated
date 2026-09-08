@@ -2001,8 +2001,8 @@
         <div class="modal-content">
             <h3>💰 Deposit to Play</h3>
             <div class="balance-info">Current Play: <span class="amount" id="depositPlayBalance">0</span></div>
-            <input type="number" class="modal-input" id="depositAmount" placeholder="Amount (auto-extracted)" min="1" step="1">
-            <input type="text" class="modal-input" id="depositReference" placeholder="Reference (auto-extracted)" maxlength="20">
+            <input type="number" class="modal-input" id="depositAmount" placeholder="Amount" min="1" step="1">
+            <input type="text" class="modal-input" id="depositReference" placeholder="Reference number" maxlength="20">
             <div style="margin: 8px 0;">
                 <label style="color:#b8a0d0;font-size:0.8rem;">Upload Screenshot</label>
                 <input type="file" id="depositImage" accept="image/*" style="width:100%;padding:6px;background:rgba(0,0,0,0.3);border:1px solid rgba(120,80,200,0.2);border-radius:30px;color:#f0e6ff;">
@@ -2067,7 +2067,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – Complete Game Code with Play‑Wallet‑Only Bets    -->
+    <!-- JAVASCRIPT – with fixed deposit/withdraw from previous working version -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -2491,7 +2491,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '5.3';
+        const APP_VERSION = '5.4';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -2573,7 +2573,6 @@
         let spinTimeout = null;
         let syncInProgress = false;
 
-        // ---- dedicated listener for numbersTaken ----
         let numbersTakenListenerRef = null;
         let numbersTakenInitialized = false;
 
@@ -2782,7 +2781,7 @@
         }
 
         // ============================================================
-        //  DOM REFS – with safe fallbacks
+        //  DOM REFS
         // ============================================================
         const $ = (id) => {
             const el = document.getElementById(id);
@@ -2790,7 +2789,6 @@
             return el;
         };
 
-        // Core UI elements – all checked
         const authScreen = $('authScreen');
         const welcomeScreen = $('welcomeScreen');
         const gameScreen = $('gameScreen');
@@ -2949,7 +2947,7 @@
         }
 
         // ============================================================
-        //  NOTIFICATION SYSTEM – for referral commissions
+        //  NOTIFICATION SYSTEM
         // ============================================================
         function sendNotification(username, message) {
             if (!database || !username) return;
@@ -2987,7 +2985,7 @@
         }
 
         // ============================================================
-        //  GENERIC TOAST FUNCTION
+        //  TOAST
         // ============================================================
         function showToast(message, type = 'info') {
             if (!welcomeToast) return;
@@ -3011,39 +3009,38 @@
         }
 
         // ============================================================
-        //  INSTANT TRANSFER
+        //  DEPOSIT / WITHDRAW – fixed from previous working version
         // ============================================================
-        function transferToPlay(amount) {
-            if (!currentUser || !database) return false;
-            if (amount <= 0) { alert('Enter a valid amount.'); return false; }
-            const available = walletData.main - walletData.pending;
-            if (available < amount) { alert('Insufficient available main balance.'); return false; }
 
-            const userRef = database.ref('users/' + currentUser);
-            userRef.transaction(current => {
-                if (current) {
-                    const main = current.mainWallet || 0;
-                    const play = current.playWallet || 0;
-                    if (main - (current.pendingWithdrawal || 0) >= amount) {
-                        current.mainWallet = main - amount;
-                        current.playWallet = play + amount;
-                    }
-                }
-                return current;
-            }, (error, committed) => {
-                if (error) {
-                    handleError(error, 'Transfer');
-                } else if (committed) {
-                    updateStatus(`✅ Transferred ${amount} Birr from Main to Play.`);
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                }
-            });
-            return true;
+        // --- DEPOSIT ---
+        function openDepositModal() {
+            if (depositPlayBalance) depositPlayBalance.textContent = walletData.play;
+            if (depositError) depositError.textContent = '';
+            if (depositAmount) depositAmount.value = '';
+            if (depositReference) depositReference.value = '';
+            if (depositImage) depositImage.value = '';
+            if (ocrStatus) ocrStatus.textContent = '';
+            if (depositModal) depositModal.classList.add('active');
+            closeMoreDropdown();
         }
 
-        // ============================================================
-        //  WITHDRAW
-        // ============================================================
+        function depositToPlay(amount, reference, imageFile) {
+            if (!currentUser) return false;
+            if (amount <= 0) {
+                if (depositError) depositError.textContent = 'Please enter a valid amount.';
+                return false;
+            }
+            if (!reference && !imageFile) {
+                if (depositError) depositError.textContent =
+                    'Please provide a reference number or upload a screenshot.';
+                return false;
+            }
+            if (depositError) depositError.textContent = '';
+            if (depositModal) depositModal.classList.remove('active');
+            return requestTransaction('deposit', amount, reference || '', imageFile || null);
+        }
+
+        // --- WITHDRAW ---
         function withdrawFromMain(amount, name, phone) {
             if (!currentUser || !database) return false;
             if (amount <= 0 || !name || !phone) {
@@ -3080,23 +3077,333 @@
             return true;
         }
 
-        // ============================================================
-        //  DEPOSIT
-        // ============================================================
-        function depositToPlay(amount, reference, imageFile) {
+        // --- TRANSACTION REQUEST (core) ---
+        function requestTransaction(type, amount, reference = '', imageFile = null, extra = {}) {
             if (!currentUser) return false;
-            if (amount <= 0) {
-                if (depositError) depositError.textContent = 'Please enter a valid amount.';
-                return false;
+            return safeExecute(() => {
+                const txRef = database.ref('transactions').push();
+                const txData = {
+                    id: txRef.key,
+                    username: currentUser,
+                    type: type,
+                    amount: Number(amount),
+                    status: 'pending',
+                    timestamp: Date.now(),
+                    playerMainWallet: walletData.main,
+                    playerPlayWallet: walletData.play,
+                    pendingWithdrawal: walletData.pending
+                };
+
+                if (type === 'deposit') {
+                    if (reference) txData.reference = reference;
+                    if (imageFile && storage) {
+                        const storageRef = storage.ref(`deposits/${currentUser}/${txRef.key}.jpg`);
+                        const uploadTask = storageRef.put(imageFile);
+                        uploadTask.then(snapshot => snapshot.ref.getDownloadURL())
+                            .then(url => {
+                                txData.imageUrl = url;
+                                txRef.update({ imageUrl: url });
+                            })
+                            .catch(err => console.warn('Image upload failed:', err));
+                    }
+                } else if (type === 'withdraw') {
+                    if (extra.name) txData.fullName = extra.name;
+                    if (extra.phone) txData.phoneNumber = extra.phone;
+                }
+
+                txRef.set(txData);
+
+                transactionStatus.textContent = '⏳ Pending admin approval...';
+                transactionStatus.className = 'status-text pending';
+                transactionModal.classList.add('active');
+
+                const listener = txRef.on('value', snapshot => {
+                    const data = snapshot.val();
+                    if (!data) return;
+
+                    if (data.status === 'approved') {
+                        if (data.type === 'withdraw') {
+                            const userRef = database.ref('users/' + data.username);
+                            userRef.transaction(current => {
+                                if (current) {
+                                    const pending = current.pendingWithdrawal || 0;
+                                    const amt = data.amount || 0;
+                                    current.mainWallet = (current.mainWallet || 0) - amt;
+                                    current.pendingWithdrawal = Math.max(0, pending - amt);
+                                }
+                                return current;
+                            }, (error, committed, snap) => {
+                                if (error) {
+                                    console.error('Error processing withdrawal approval:', error);
+                                } else if (committed && snap) {
+                                    const updated = snap.val();
+                                    walletData.main = updated.mainWallet || 0;
+                                    walletData.play = updated.playWallet || 0;
+                                    walletData.pending = updated.pendingWithdrawal || 0;
+                                    updateWalletUI();
+                                    updateWelcomeUI();
+                                }
+                            });
+                            transactionStatus.textContent = '✅ Withdrawal approved.';
+                            transactionStatus.className = 'status-text approved';
+                        } else if (data.type === 'deposit') {
+                            const userRef = database.ref('users/' + data.username);
+                            userRef.transaction(current => {
+                                if (current) {
+                                    const amt = data.amount || 0;
+                                    current.playWallet = (current.playWallet || 0) + amt;
+                                }
+                                return current;
+                            }, (error, committed, snap) => {
+                                if (error) {
+                                    console.error('Error crediting deposit:', error);
+                                } else if (committed && snap) {
+                                    const updated = snap.val();
+                                    walletData.main = updated.mainWallet || 0;
+                                    walletData.play = updated.playWallet || 0;
+                                    walletData.pending = updated.pendingWithdrawal || 0;
+                                    updateWalletUI();
+                                    updateWelcomeUI();
+                                }
+                            });
+                            transactionStatus.textContent = '✅ Deposit approved. Balance updated.';
+                            transactionStatus.className = 'status-text approved';
+                        }
+                        setTimeout(() => {
+                            transactionModal.classList.remove('active');
+                        }, 2000);
+                    } else if (data.status === 'rejected') {
+                        if (data.type === 'withdraw') {
+                            const userRef = database.ref('users/' + data.username);
+                            userRef.transaction(current => {
+                                if (current) {
+                                    const pending = current.pendingWithdrawal || 0;
+                                    const amt = data.amount || 0;
+                                    current.pendingWithdrawal = Math.max(0, pending - amt);
+                                }
+                                return current;
+                            }, (error, committed, snap) => {
+                                if (error) {
+                                    console.error('Error clearing pending on rejection:', error);
+                                } else if (committed && snap) {
+                                    const updated = snap.val();
+                                    walletData.main = updated.mainWallet || 0;
+                                    walletData.play = updated.playWallet || 0;
+                                    walletData.pending = updated.pendingWithdrawal || 0;
+                                    updateWalletUI();
+                                    updateWelcomeUI();
+                                }
+                            });
+                            transactionStatus.textContent = '❌ Withdrawal rejected.';
+                            transactionStatus.className = 'status-text rejected';
+                        } else if (data.type === 'deposit') {
+                            transactionStatus.textContent = '❌ Deposit rejected.';
+                            transactionStatus.className = 'status-text rejected';
+                        }
+                        setTimeout(() => {
+                            transactionModal.classList.remove('active');
+                        }, 2000);
+                    }
+
+                    if (data.status !== 'pending') {
+                        txRef.off();
+                        delete transactionListeners[txRef.key];
+                    }
+                });
+                transactionListeners[txRef.key] = listener;
+                return true;
+            }, 'Transaction request', false);
+        }
+
+        // --- OCR EXTRACTION ---
+        async function extractReferenceFromImage(file) {
+            if (!file) {
+                if (ocrStatus) ocrStatus.textContent = '⚠️ No image selected.';
+                return null;
             }
-            if (!reference && !imageFile) {
-                if (depositError) depositError.textContent =
-                    'Please provide a reference number or upload a screenshot.';
-                return false;
+
+            if (ocrProgressModal) ocrProgressModal.classList.add('active');
+            if (ocrSpinner) ocrSpinner.style.display = 'block';
+            if (ocrDoneIcon) ocrDoneIcon.classList.remove('show');
+            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Initializing OCR...';
+            if (ocrProgressSub) ocrProgressSub.textContent = 'Please wait, this may take a few seconds.';
+
+            try {
+                const imageUrl = URL.createObjectURL(file);
+                const result = await Tesseract.recognize(imageUrl, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const progress = Math.round(m.progress * 100);
+                            if (ocrProgressStatus) ocrProgressStatus.textContent =
+                                `Extracting text... ${progress}%`;
+                            if (ocrProgressSub) ocrProgressSub.textContent = 'Processing image...';
+                        } else if (m.status === 'loading tesseract core') {
+                            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Loading OCR engine...';
+                            if (ocrProgressSub) ocrProgressSub.textContent = 'This may take a moment.';
+                        } else if (m.status === 'initializing tesseract') {
+                            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Initializing...';
+                            if (ocrProgressSub) ocrProgressSub.textContent = 'Preparing OCR engine.';
+                        }
+                    }
+                });
+                URL.revokeObjectURL(imageUrl);
+                const text = result.data.text;
+
+                const refMatch = text.match(/\b[A-Z0-9]{10}\b/);
+
+                let amount = null;
+                const lines = text.split('\n');
+                let amountLine = null;
+                for (const line of lines) {
+                    if (line.match(/ETB|Birr/i)) {
+                        amountLine = line;
+                        break;
+                    }
+                }
+
+                if (amountLine) {
+                    const numberMatch = amountLine.match(/-?\s*([\d,]+\.?\d*)/);
+                    if (numberMatch) {
+                        const numStr = numberMatch[1].replace(/,/g, '');
+                        const parsed = parseFloat(numStr);
+                        if (!isNaN(parsed) && parsed > 0) {
+                            amount = parsed;
+                        }
+                    }
+                }
+
+                if (amount === null) {
+                    const decimalRegex = /\b(\d+\.\d{2})\b/g;
+                    let matches = [];
+                    let m;
+                    while ((m = decimalRegex.exec(text)) !== null) {
+                        const val = parseFloat(m[1]);
+                        if (val < 1900 || val > 2100) {
+                            matches.push(val);
+                        }
+                    }
+                    if (matches.length > 0) {
+                        amount = Math.max(...matches);
+                    } else {
+                        const intRegex = /\b(\d{2,4})\b/g;
+                        let intMatches = [];
+                        while ((m = intRegex.exec(text)) !== null) {
+                            const val = parseInt(m[1]);
+                            if (val < 1900 || val > 2100) {
+                                intMatches.push(val);
+                            }
+                        }
+                        if (intMatches.length > 0) {
+                            amount = Math.max(...intMatches);
+                        }
+                    }
+                }
+
+                if (ocrSpinner) ocrSpinner.style.display = 'none';
+                if (ocrDoneIcon) ocrDoneIcon.classList.add('show');
+
+                const resultObj = { reference: null, amount: null };
+                if (refMatch) {
+                    resultObj.reference = refMatch[0];
+                    if (ocrProgressStatus) ocrProgressStatus.textContent = '✅ Reference found!';
+                } else {
+                    if (ocrProgressStatus) ocrProgressStatus.textContent = '⚠️ No reference found.';
+                }
+                if (amount !== null && amount > 0) {
+                    resultObj.amount = amount;
+                    if (ocrProgressStatus) ocrProgressStatus.textContent += ' ✅ Amount found!';
+                } else {
+                    if (ocrProgressStatus) ocrProgressStatus.textContent += ' ⚠️ No amount found.';
+                }
+
+                if (ocrProgressSub) ocrProgressSub.textContent =
+                    `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
+
+                setTimeout(() => {
+                    if (ocrProgressModal) ocrProgressModal.classList.remove('active');
+                }, 1500);
+
+                return resultObj;
+
+            } catch (e) {
+                console.error('OCR error:', e);
+                if (ocrSpinner) ocrSpinner.style.display = 'none';
+                if (ocrDoneIcon) ocrDoneIcon.classList.add('show');
+                if (ocrProgressStatus) ocrProgressStatus.textContent = '❌ OCR failed.';
+                if (ocrProgressSub) ocrProgressSub.textContent = 'Please enter data manually.';
+                setTimeout(() => {
+                    if (ocrProgressModal) ocrProgressModal.classList.remove('active');
+                }, 1500);
+                return { reference: null, amount: null };
             }
-            if (depositError) depositError.textContent = '';
-            if (depositModal) depositModal.classList.remove('active');
-            return requestTransaction('deposit', amount, reference || '', imageFile || null);
+        }
+
+        // ----- OCR event handlers -----
+        if (depositImage) {
+            depositImage.addEventListener('change', async function() {
+                const file = this.files[0];
+                if (!file) {
+                    if (ocrStatus) ocrStatus.textContent = '';
+                    return;
+                }
+                const result = await extractReferenceFromImage(file);
+                if (result) {
+                    if (result.reference && depositReference) depositReference.value = result.reference;
+                    if (result.amount && depositAmount) depositAmount.value = result.amount;
+                    if (ocrStatus) ocrStatus.textContent = '✅ Extracted data.';
+                } else {
+                    if (ocrStatus) ocrStatus.textContent = '⚠️ No data extracted. You can type manually.';
+                }
+            });
+        }
+
+        if (extractRefBtn) {
+            extractRefBtn.onclick = async function() {
+                const file = depositImage ? depositImage.files[0] : null;
+                if (!file) {
+                    if (ocrStatus) ocrStatus.textContent = '⚠️ Please select an image first.';
+                    return;
+                }
+                const result = await extractReferenceFromImage(file);
+                if (result) {
+                    if (result.reference && depositReference) depositReference.value = result.reference;
+                    if (result.amount && depositAmount) depositAmount.value = result.amount;
+                    if (ocrStatus) ocrStatus.textContent = '✅ Extracted data.';
+                } else {
+                    if (ocrStatus) ocrStatus.textContent = '⚠️ No data extracted. You can type manually.';
+                }
+            };
+        }
+
+        // ============================================================
+        //  TRANSFER TO PLAY
+        // ============================================================
+        function transferToPlay(amount) {
+            if (!currentUser || !database) return false;
+            if (amount <= 0) { alert('Enter a valid amount.'); return false; }
+            const available = walletData.main - walletData.pending;
+            if (available < amount) { alert('Insufficient available main balance.'); return false; }
+
+            const userRef = database.ref('users/' + currentUser);
+            userRef.transaction(current => {
+                if (current) {
+                    const main = current.mainWallet || 0;
+                    const play = current.playWallet || 0;
+                    if (main - (current.pendingWithdrawal || 0) >= amount) {
+                        current.mainWallet = main - amount;
+                        current.playWallet = play + amount;
+                    }
+                }
+                return current;
+            }, (error, committed) => {
+                if (error) {
+                    handleError(error, 'Transfer');
+                } else if (committed) {
+                    updateStatus(`✅ Transferred ${amount} Birr from Main to Play.`);
+                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                }
+            });
+            return true;
         }
 
         // ============================================================
@@ -3177,7 +3484,7 @@
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
                     if (authError) authError.textContent =
-                    'You must use your Telegram username: @' + telegramDetectedUsername;
+                        'You must use your Telegram username: @' + telegramDetectedUsername;
                     if (authUsername) authUsername.value = telegramDetectedUsername;
                     return;
                 }
@@ -3229,7 +3536,7 @@
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
                     if (authError) authError.textContent =
-                    'You must use your Telegram username: @' + telegramDetectedUsername;
+                        'You must use your Telegram username: @' + telegramDetectedUsername;
                     if (authUsername) authUsername.value = telegramDetectedUsername;
                     return;
                 }
@@ -3587,20 +3894,6 @@
         }
 
         // ============================================================
-        //  DEPOSIT MODAL HANDLERS
-        // ============================================================
-        function openDepositModal() {
-            if (depositPlayBalance) depositPlayBalance.textContent = walletData.play;
-            if (depositError) depositError.textContent = '';
-            if (depositAmount) depositAmount.value = '';
-            if (depositReference) depositReference.value = '';
-            if (depositImage) depositImage.value = '';
-            if (ocrStatus) ocrStatus.textContent = '';
-            if (depositModal) depositModal.classList.add('active');
-            closeMoreDropdown();
-        }
-
-        // ============================================================
         //  HELPERS
         // ============================================================
         function getPlayerPicks(player) {
@@ -3698,7 +3991,6 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
-                console.log('📦 Initial numbersTaken loaded:', Array.from(newSet));
             });
 
             const onChildAdded = (snap) => {
@@ -3709,7 +4001,6 @@
                     renderNumberPicker();
                     updatePickStatus();
                     updateWheel();
-                    console.log(`➕ Number ${num} taken (added)`);
                 }
             };
             const onChildChanged = (snap) => {
@@ -3723,7 +4014,6 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
-                console.log(`🔄 Number ${num} changed to ${val}`);
             };
             const onChildRemoved = (snap) => {
                 const num = Number(snap.key);
@@ -3731,7 +4021,6 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
-                console.log(`➖ Number ${num} removed`);
             };
 
             ref.on('child_added', onChildAdded);
@@ -3932,7 +4221,6 @@
                     }
                 }
 
-                // Winners modal
                 if (engineState.gamePhase === 'results' && data.winners && data.winners.length > 0 && !engineState
                     .winnersModalShown) {
                     const winners = data.winners;
@@ -4076,7 +4364,7 @@
         }
 
         // ============================================================
-        //  RESULTS COUNTDOWN – with timer restart
+        //  RESULTS COUNTDOWN
         // ============================================================
         function startResultsCountdown() {
             if (isResultsCountdownRunning) return;
@@ -4113,7 +4401,6 @@
                         });
                         gameRef.update(updates);
 
-                        // Reset local state
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = [];
                         engineState.winners = [];
@@ -4126,7 +4413,6 @@
                         engineState.totalBetsPlaced = 0;
                         engineState.winnersModalShown = false;
 
-                        // Set phaseDeadline locally
                         phaseDeadline = getServerNow() + SELECTION_SECONDS * 1000;
 
                         if (winnersModal) winnersModal.classList.remove('active');
@@ -4249,10 +4535,7 @@
         //  NUMBER PICKER
         // ============================================================
         function renderNumberPicker(showLoading = false) {
-            if (!numPicker) {
-                console.warn('numPicker element not found!');
-                return;
-            }
+            if (!numPicker) return;
 
             if (!currentUser) {
                 numPicker.innerHTML =
@@ -4307,7 +4590,7 @@
         }
 
         // ============================================================
-        //  BET DEDUCTION / REFUND – now only from play wallet
+        //  BET DEDUCTION / REFUND – play wallet only
         // ============================================================
         function deductPickBetFast(username, betAmount) {
             if (!username || !database) return Promise.resolve(false);
@@ -4442,7 +4725,6 @@
                 }
 
                 const totalCost = (myPicks.length + 1) * currentBet;
-                // Only check play wallet
                 if (walletData.play < totalCost) {
                     updateStatus(`⚠️ Insufficient play balance. Need ${totalCost} Birr.`);
                     if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
