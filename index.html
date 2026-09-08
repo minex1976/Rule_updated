@@ -488,39 +488,34 @@
             margin: 3px 8px;
         }
 
-        /* ===== GAME HEADER – title + switch room button ===== */
-        .game-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-            padding: 2px 0 4px;
-            gap: 8px;
-            flex-wrap: nowrap;
+        /* ===== Game Screen ===== */
+        #gameScreen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            flex: 1;
+            overflow: hidden;
         }
-        .game-header .title {
+        .title {
+            text-align: center;
             font-weight: 800;
             font-size: 1.1rem;
             letter-spacing: 3px;
             color: #f0e6ff;
             text-shadow: 0 0 30px rgba(180, 120, 255, 0.2), 0 2px 0 #6a4a9a;
             line-height: 1.2;
-            flex: 1;
-            min-width: 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            flex-shrink: 0;
+            margin-bottom: 2px;
         }
-        .game-header .title small {
+        .title small {
             font-size: 0.45rem;
             letter-spacing: 2px;
             opacity: 0.6;
-            display: inline-block;
+            display: block;
             font-weight: 400;
             color: #b8a0d0;
-            margin-left: 4px;
         }
-        .game-header .room-badge {
+        .room-badge {
             display: inline-block;
             background: rgba(255, 204, 68, 0.12);
             padding: 1px 10px;
@@ -529,36 +524,50 @@
             color: #ffcc44;
             font-weight: 700;
             letter-spacing: 1px;
-            margin-left: 6px;
-            flex-shrink: 0;
+            margin-top: 1px;
         }
 
-        /* ===== SWITCH ROOM BUTTON – golden gradient, right top ===== */
-        .switch-room-btn {
-            background: linear-gradient(135deg, #ffdf6b, #f5b52e 52%, #d98a16) !important;
-            border: 2px solid #ffcc44 !important;
-            border-radius: 20px !important;
-            padding: 4px 16px !important;
-            color: #2a1600 !important;
-            font-size: 0.7rem !important;
-            font-weight: 800 !important;
-            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
-            box-shadow: 0 3px 10px rgba(255, 180, 40, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.45);
-            cursor: pointer;
-            transition: all 0.2s ease;
+        /* ===== Bet Switcher ===== */
+        .bet-switcher {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            background: rgba(20, 10, 40, 0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 30px;
+            padding: 3px 12px;
+            margin: 2px 0 3px;
+            border: 1px solid rgba(120, 80, 200, 0.1);
             flex-shrink: 0;
-            white-space: nowrap;
-            letter-spacing: 0.3px;
-            line-height: 1.4;
         }
-        .switch-room-btn:hover {
-            background: linear-gradient(135deg, #ffe98f, #ffc43d 52%, #e49a20) !important;
-            border-color: #ffe06a !important;
-            box-shadow: 0 5px 16px rgba(255, 190, 50, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-            transform: scale(1.04);
+        .bet-switcher .label {
+            color: #b8a0d0;
+            font-size: 0.6rem;
+            font-weight: 600;
         }
-        .switch-room-btn:active {
-            transform: scale(0.94);
+        .bet-switcher .bet-btn {
+            background: rgba(120, 80, 200, 0.1);
+            border: 2px solid rgba(120, 80, 200, 0.15);
+            border-radius: 20px;
+            padding: 2px 14px;
+            color: #b8a0d0;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .bet-switcher .bet-btn:hover {
+            background: rgba(120, 80, 200, 0.2);
+        }
+        .bet-switcher .bet-btn.active {
+            background: rgba(255, 204, 68, 0.15);
+            border-color: #ffcc44;
+            color: #ffcc44;
+            box-shadow: 0 0 24px rgba(255, 204, 68, 0.08);
+        }
+        .bet-switcher .bet-btn:active {
+            transform: scale(0.95);
         }
 
         /* ===== Game Info Bar ===== */
@@ -933,22 +942,21 @@
             transform: scale(1.06);
         }
         .num-btn.taken {
-            background: #4a1a2a;
-            color: #6a4a6a;
-            border-color: rgba(120, 80, 200, 0.15);
+            background: red;
+            color: #5a4a6a;
+            border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
-            opacity: 0.55;
+            opacity: 100;
             position: relative;
         }
         .num-btn.taken::after {
-            content: "✕";
+            content: "";
             position: absolute;
-            top: -4px;
+            top: -2px;
             right: -2px;
-            font-size: 0.7rem;
+            font-size: 1rem;
             color: #ff6b6b;
-            opacity: 0.7;
         }
         .num-btn:disabled {
             opacity: 0.35;
@@ -1011,7 +1019,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(10, 5, 20, 0.35);
+            background: rgba(10, 5, 20, 0.35); /* reduced opacity */
             backdrop-filter: blur(6px);
             justify-content: center;
             align-items: center;
@@ -1543,6 +1551,7 @@
             box-shadow: 0 1px 0 #8a2a2a;
         }
 
+
         /* ===== Referral modal ===== */
         .referral-box {
             background: rgba(20, 10, 40, 0.5);
@@ -1594,7 +1603,6 @@
             color: #d4c0f0;
             border: 1px solid rgba(120, 80, 200, 0.18);
         }
-
         /* ===== Responsive ===== */
         @media (max-height:700px) {
             .game-wrapper {
@@ -1602,12 +1610,8 @@
                 max-height: 680px;
                 border-radius: 28px;
             }
-            .game-header .title {
+            .title {
                 font-size: 1rem;
-            }
-            .switch-room-btn {
-                font-size: 0.6rem !important;
-                padding: 3px 12px !important;
             }
             .wheel-container {
                 max-width: 150px;
@@ -1676,51 +1680,12 @@
             .game-info-bar .info-item .value.timer {
                 font-size: 0.85rem;
             }
-        }
-        @media (max-height:600px) {
-            .profile-area {
-                min-height: 100px;
+            .bet-switcher {
+                padding: 2px 8px;
             }
-            .num-btn {
-                font-size: 0.55rem;
-            }
-            .num-picker {
-                gap: 1.5px;
-                padding: 1.5px;
-            }
-            .wheel-container {
-                max-width: 110px;
-            }
-            .game-info-bar {
-                padding: 1px 8px;
-                gap: 8px;
-                min-height: 1.6rem;
-            }
-            .game-info-bar .info-item {
-                font-size: 0.5rem;
-            }
-            .game-info-bar .info-item .value {
+            .bet-switcher .bet-btn {
                 font-size: 0.65rem;
-            }
-            .game-info-bar .info-item .value.timer {
-                font-size: 0.75rem;
-            }
-            .pick-status {
-                font-size: 0.6rem;
-                min-height: 1.4rem;
-                padding: 2px 8px;
-            }
-            .status-area {
-                font-size: 0.55rem;
-                min-height: 1.4rem;
-                padding: 2px 8px;
-            }
-            .game-header .title {
-                font-size: 0.9rem;
-            }
-            .switch-room-btn {
-                font-size: 0.55rem !important;
-                padding: 2px 10px !important;
+                padding: 1px 10px;
             }
         }
         @media (max-width:380px) {
@@ -1728,12 +1693,8 @@
                 padding: 4px 6px 8px;
                 border-radius: 24px;
             }
-            .game-header .title {
+            .title {
                 font-size: 0.85rem;
-            }
-            .switch-room-btn {
-                font-size: 0.55rem !important;
-                padding: 2px 10px !important;
             }
             .wheel-container {
                 max-width: 120px;
@@ -1797,12 +1758,12 @@
             .game-info-bar .info-item .value.timer {
                 font-size: 0.8rem;
             }
-            .profile-area {
-                min-height: 120px;
+            .bet-switcher {
+                padding: 2px 6px;
             }
-            .num-picker {
-                gap: 1.5px;
-                padding: 1.5px;
+            .bet-switcher .bet-btn {
+                font-size: 0.6rem;
+                padding: 1px 8px;
             }
         }
     </style>
@@ -1862,14 +1823,10 @@
 
         <!-- ===== GAME SCREEN ===== -->
         <div id="gameScreen">
-            <!-- Game Header: title + room badge + switch room button -->
-            <div class="game-header">
-                <div class="title">
-                    🏆 <span style="color:#ffcc44;">WINZO</span> 🏆
-                    <small id="modeLabel">15 Birr</small>
-                    <span class="room-badge" id="gameRoomBadge">💰 Bet: 15 Birr</span>
-                </div>
-                <button class="switch-room-btn" id="switchRoomBtn">🔄 Switch Room</button>
+            <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆 · <small id="modeLabel">15 Birr</small></div>
+            <div style="text-align:center;">
+                <span class="room-badge" id="gameRoomBadge">💰 Bet: 15 Birr</span>
+                <button class="bet-btn" id="switchRoomBtn" style="margin-left:6px;padding:2px 12px;">🔄 Switch Room</button>
             </div>
 
             <div class="wallet-bar">
