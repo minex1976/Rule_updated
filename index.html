@@ -238,13 +238,8 @@
             animation-delay: 0.5s;
         }
         @keyframes floatBet {
-            0%,
-            100% {
-                transform: translateY(0px);
-            }
-            50% {
-                transform: translateY(-8px);
-            }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
         }
         .welcome-screen .bet-options button:hover {
             background: rgba(80, 40, 160, 0.8);
@@ -576,6 +571,7 @@
             transform: scale(0.95);
         }
 
+        /* Switch Room uses the same position and overall size as the old room buttons. */
         .switch-room-btn {
             background: linear-gradient(135deg, #ffdf6b, #f5b52e 52%, #d98a16) !important;
             border: 2px solid #ffcc44 !important;
@@ -665,6 +661,14 @@
         .pick-status .highlight {
             color: #ffcc44;
             font-weight: 800;
+        }
+        .pick-status .selected-nums {
+            color: #8affb0;
+            font-weight: 700;
+        }
+        .pick-status .total-bet {
+            color: #ffd866;
+            font-weight: 700;
         }
 
         /* ===== Wheel ===== */
@@ -999,15 +1003,9 @@
             cursor: default;
         }
         @keyframes shimmer {
-            0% {
-                opacity: 0.4;
-            }
-            50% {
-                opacity: 0.8;
-            }
-            100% {
-                opacity: 0.4;
-            }
+            0% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.4; }
         }
 
         .footer {
@@ -1046,14 +1044,8 @@
             animation: pulseText 0.8s infinite alternate;
         }
         @keyframes pulseText {
-            0% {
-                opacity: 0.6;
-                transform: translate(-50%, -50%) scale(0.95);
-            }
-            100% {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1.05);
-            }
+            0% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.95); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
         }
 
         /* ===== Modals ===== */
@@ -1076,14 +1068,8 @@
             display: flex;
         }
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95) translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
         }
         .modal-content {
             background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9));
@@ -1350,14 +1336,8 @@
             background: rgba(120, 80, 200, 0.25);
         }
         @keyframes slideUp {
-            from {
-                transform: translateX(-50%) translateY(20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
+            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
         }
 
         /* ===== Toast ===== */
@@ -1397,14 +1377,8 @@
             line-height: 1.4;
         }
         @keyframes slideDown {
-            from {
-                transform: translateX(-50%) translateY(-20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
+            from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
         }
 
         /* ===== Fireworks Canvas ===== */
@@ -1461,12 +1435,8 @@
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         .ocr-progress-modal .status-text {
             color: #f0e6ff;
@@ -1654,175 +1624,53 @@
 
         /* ===== Responsive ===== */
         @media (max-height:700px) {
-            .game-wrapper {
-                padding: 8px 10px 12px;
-                max-height: 680px;
-                border-radius: 28px;
-            }
-            .title {
-                font-size: 1rem;
-            }
-            .wheel-container {
-                max-width: 150px;
-            }
-            .wheel-number {
-                font-size: 0.45rem;
-            }
-            .wheel-number.highlighted {
-                font-size: 0.75rem;
-            }
-            .spin-ball {
-                font-size: 0.7rem;
-                padding: 2px 10px;
-                min-width: 30px;
-            }
-            .status-area {
-                font-size: 0.6rem;
-                min-height: 1.6rem;
-                padding: 3px 8px;
-            }
-            .num-btn {
-                font-size: 0.55rem;
-                border-radius: 4px;
-                border-width: 1.5px;
-            }
-            .profile-area {
-                padding: 3px 4px;
-                min-height: 190px;
-            }
-            .wallet-item {
-                font-size: 0.5rem;
-                padding: 1px 5px;
-            }
-            .wallet-item .amount {
-                font-size: 0.65rem;
-            }
-            .more-btn {
-                width: 24px;
-                height: 24px;
-                font-size: 0.9rem;
-            }
-            .more-dropdown {
-                min-width: 150px;
-            }
-            .more-dropdown .dropdown-item {
-                font-size: 0.7rem;
-                padding: 5px 10px;
-            }
-            .auth-screen .logo h2 {
-                font-size: 2rem;
-            }
-            .modal-content {
-                padding: 18px 14px 16px;
-            }
-            .welcome-screen .bet-options button {
-                font-size: 1.4rem;
-                padding: 16px;
-            }
-            .game-info-bar {
-                padding: 2px 10px;
-                gap: 12px;
-            }
-            .game-info-bar .info-item {
-                font-size: 0.6rem;
-            }
-            .game-info-bar .info-item .value {
-                font-size: 0.75rem;
-            }
-            .game-info-bar .info-item .value.timer {
-                font-size: 0.85rem;
-            }
-            .bet-switcher {
-                padding: 2px 8px;
-            }
-            .bet-switcher .bet-btn {
-                font-size: 0.65rem;
-                padding: 1px 10px;
-            }
-            .switch-room-btn {
-                font-size: 0.65rem !important;
-                padding: 2px 14px !important;
-            }
+            .game-wrapper { padding: 8px 10px 12px; max-height: 680px; border-radius: 28px; }
+            .title { font-size: 1rem; }
+            .wheel-container { max-width: 150px; }
+            .wheel-number { font-size: 0.45rem; }
+            .wheel-number.highlighted { font-size: 0.75rem; }
+            .spin-ball { font-size: 0.7rem; padding: 2px 10px; min-width: 30px; }
+            .status-area { font-size: 0.6rem; min-height: 1.6rem; padding: 3px 8px; }
+            .num-btn { font-size: 0.55rem; border-radius: 4px; border-width: 1.5px; }
+            .profile-area { padding: 3px 4px; min-height: 190px; }
+            .wallet-item { font-size: 0.5rem; padding: 1px 5px; }
+            .wallet-item .amount { font-size: 0.65rem; }
+            .more-btn { width: 24px; height: 24px; font-size: 0.9rem; }
+            .more-dropdown { min-width: 150px; }
+            .more-dropdown .dropdown-item { font-size: 0.7rem; padding: 5px 10px; }
+            .auth-screen .logo h2 { font-size: 2rem; }
+            .modal-content { padding: 18px 14px 16px; }
+            .welcome-screen .bet-options button { font-size: 1.4rem; padding: 16px; }
+            .game-info-bar { padding: 2px 10px; gap: 12px; }
+            .game-info-bar .info-item { font-size: 0.6rem; }
+            .game-info-bar .info-item .value { font-size: 0.75rem; }
+            .game-info-bar .info-item .value.timer { font-size: 0.85rem; }
+            .bet-switcher { padding: 2px 8px; }
+            .bet-switcher .bet-btn { font-size: 0.65rem; padding: 1px 10px; }
+            .switch-room-btn { font-size: 0.65rem !important; padding: 2px 14px !important; }
         }
         @media (max-width:380px) {
-            .game-wrapper {
-                padding: 4px 6px 8px;
-                border-radius: 24px;
-            }
-            .title {
-                font-size: 0.85rem;
-            }
-            .wheel-container {
-                max-width: 120px;
-            }
-            .num-btn {
-                font-size: 0.45rem;
-                border-radius: 3px;
-                border-width: 1px;
-            }
-            .wheel-number {
-                font-size: 0.4rem;
-            }
-            .wheel-number.highlighted {
-                font-size: 0.65rem;
-            }
-            .spin-ball {
-                font-size: 0.6rem;
-                padding: 2px 8px;
-                min-width: 26px;
-            }
-            .wallet-item {
-                font-size: 0.45rem;
-                padding: 1px 4px;
-            }
-            .wallet-item .amount {
-                font-size: 0.6rem;
-            }
-            .more-btn {
-                width: 22px;
-                height: 22px;
-                font-size: 0.8rem;
-            }
-            .more-dropdown {
-                min-width: 130px;
-                right: -5px;
-            }
-            .more-dropdown .dropdown-item {
-                font-size: 0.65rem;
-                padding: 4px 8px;
-                gap: 6px;
-            }
-            .modal-content {
-                padding: 14px 12px 12px;
-                border-radius: 20px;
-            }
-            .welcome-screen .bet-options button {
-                font-size: 1.2rem;
-                padding: 14px;
-            }
-            .welcome-screen .bet-options {
-                gap: 10px;
-            }
-            .game-info-bar {
-                padding: 2px 8px;
-                gap: 8px;
-            }
-            .game-info-bar .info-item {
-                font-size: 0.55rem;
-            }
-            .game-info-bar .info-item .value {
-                font-size: 0.7rem;
-            }
-            .game-info-bar .info-item .value.timer {
-                font-size: 0.8rem;
-            }
-            .bet-switcher {
-                padding: 2px 6px;
-            }
-            .bet-switcher .bet-btn {
-                font-size: 0.6rem;
-                padding: 1px 8px;
-            }
+            .game-wrapper { padding: 4px 6px 8px; border-radius: 24px; }
+            .title { font-size: 0.85rem; }
+            .wheel-container { max-width: 120px; }
+            .num-btn { font-size: 0.45rem; border-radius: 3px; border-width: 1px; }
+            .wheel-number { font-size: 0.4rem; }
+            .wheel-number.highlighted { font-size: 0.65rem; }
+            .spin-ball { font-size: 0.6rem; padding: 2px 8px; min-width: 26px; }
+            .wallet-item { font-size: 0.45rem; padding: 1px 4px; }
+            .wallet-item .amount { font-size: 0.6rem; }
+            .more-btn { width: 22px; height: 22px; font-size: 0.8rem; }
+            .more-dropdown { min-width: 130px; right: -5px; }
+            .more-dropdown .dropdown-item { font-size: 0.65rem; padding: 4px 8px; gap: 6px; }
+            .modal-content { padding: 14px 12px 12px; border-radius: 20px; }
+            .welcome-screen .bet-options button { font-size: 1.2rem; padding: 14px; }
+            .welcome-screen .bet-options { gap: 10px; }
+            .game-info-bar { padding: 2px 8px; gap: 8px; }
+            .game-info-bar .info-item { font-size: 0.55rem; }
+            .game-info-bar .info-item .value { font-size: 0.7rem; }
+            .game-info-bar .info-item .value.timer { font-size: 0.8rem; }
+            .bet-switcher { padding: 2px 6px; }
+            .bet-switcher .bet-btn { font-size: 0.6rem; padding: 1px 8px; }
         }
 
         /* ===== Scrollable number picker on mobile ===== */
@@ -2067,7 +1915,7 @@
     <canvas id="fireworksCanvas"></canvas>
 
     <!-- ============================================================ -->
-    <!-- JAVASCRIPT – with fixed deposit/withdraw from previous working version -->
+    <!-- JAVASCRIPT – Complete Game Code with fixed multi-pick display -->
     <!-- ============================================================ -->
     <script>
         // ============================================================
@@ -3009,10 +2857,8 @@
         }
 
         // ============================================================
-        //  DEPOSIT / WITHDRAW – fixed from previous working version
+        //  DEPOSIT / WITHDRAW / TRANSFER (kept from working version)
         // ============================================================
-
-        // --- DEPOSIT ---
         function openDepositModal() {
             if (depositPlayBalance) depositPlayBalance.textContent = walletData.play;
             if (depositError) depositError.textContent = '';
@@ -3031,8 +2877,7 @@
                 return false;
             }
             if (!reference && !imageFile) {
-                if (depositError) depositError.textContent =
-                    'Please provide a reference number or upload a screenshot.';
+                if (depositError) depositError.textContent = 'Please provide a reference number or upload a screenshot.';
                 return false;
             }
             if (depositError) depositError.textContent = '';
@@ -3040,7 +2885,6 @@
             return requestTransaction('deposit', amount, reference || '', imageFile || null);
         }
 
-        // --- WITHDRAW ---
         function withdrawFromMain(amount, name, phone) {
             if (!currentUser || !database) return false;
             if (amount <= 0 || !name || !phone) {
@@ -3077,7 +2921,34 @@
             return true;
         }
 
-        // --- TRANSACTION REQUEST (core) ---
+        function transferToPlay(amount) {
+            if (!currentUser || !database) return false;
+            if (amount <= 0) { alert('Enter a valid amount.'); return false; }
+            const available = walletData.main - walletData.pending;
+            if (available < amount) { alert('Insufficient available main balance.'); return false; }
+
+            const userRef = database.ref('users/' + currentUser);
+            userRef.transaction(current => {
+                if (current) {
+                    const main = current.mainWallet || 0;
+                    const play = current.playWallet || 0;
+                    if (main - (current.pendingWithdrawal || 0) >= amount) {
+                        current.mainWallet = main - amount;
+                        current.playWallet = play + amount;
+                    }
+                }
+                return current;
+            }, (error, committed) => {
+                if (error) {
+                    handleError(error, 'Transfer');
+                } else if (committed) {
+                    updateStatus(`✅ Transferred ${amount} Birr from Main to Play.`);
+                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                }
+            });
+            return true;
+        }
+
         function requestTransaction(type, amount, reference = '', imageFile = null, extra = {}) {
             if (!currentUser) return false;
             return safeExecute(() => {
@@ -3215,7 +3086,9 @@
             }, 'Transaction request', false);
         }
 
-        // --- OCR EXTRACTION ---
+        // ============================================================
+        //  OCR EXTRACTION
+        // ============================================================
         async function extractReferenceFromImage(file) {
             if (!file) {
                 if (ocrStatus) ocrStatus.textContent = '⚠️ No image selected.';
@@ -3234,8 +3107,7 @@
                     logger: m => {
                         if (m.status === 'recognizing text') {
                             const progress = Math.round(m.progress * 100);
-                            if (ocrProgressStatus) ocrProgressStatus.textContent =
-                                `Extracting text... ${progress}%`;
+                            if (ocrProgressStatus) ocrProgressStatus.textContent = `Extracting text... ${progress}%`;
                             if (ocrProgressSub) ocrProgressSub.textContent = 'Processing image...';
                         } else if (m.status === 'loading tesseract core') {
                             if (ocrProgressStatus) ocrProgressStatus.textContent = 'Loading OCR engine...';
@@ -3316,8 +3188,7 @@
                     if (ocrProgressStatus) ocrProgressStatus.textContent += ' ⚠️ No amount found.';
                 }
 
-                if (ocrProgressSub) ocrProgressSub.textContent =
-                    `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
+                if (ocrProgressSub) ocrProgressSub.textContent = `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
 
                 setTimeout(() => {
                     if (ocrProgressModal) ocrProgressModal.classList.remove('active');
@@ -3338,7 +3209,6 @@
             }
         }
 
-        // ----- OCR event handlers -----
         if (depositImage) {
             depositImage.addEventListener('change', async function() {
                 const file = this.files[0];
@@ -3373,37 +3243,6 @@
                     if (ocrStatus) ocrStatus.textContent = '⚠️ No data extracted. You can type manually.';
                 }
             };
-        }
-
-        // ============================================================
-        //  TRANSFER TO PLAY
-        // ============================================================
-        function transferToPlay(amount) {
-            if (!currentUser || !database) return false;
-            if (amount <= 0) { alert('Enter a valid amount.'); return false; }
-            const available = walletData.main - walletData.pending;
-            if (available < amount) { alert('Insufficient available main balance.'); return false; }
-
-            const userRef = database.ref('users/' + currentUser);
-            userRef.transaction(current => {
-                if (current) {
-                    const main = current.mainWallet || 0;
-                    const play = current.playWallet || 0;
-                    if (main - (current.pendingWithdrawal || 0) >= amount) {
-                        current.mainWallet = main - amount;
-                        current.playWallet = play + amount;
-                    }
-                }
-                return current;
-            }, (error, committed) => {
-                if (error) {
-                    handleError(error, 'Transfer');
-                } else if (committed) {
-                    updateStatus(`✅ Transferred ${amount} Birr from Main to Play.`);
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                }
-            });
-            return true;
         }
 
         // ============================================================
@@ -3483,8 +3322,7 @@
 
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
-                    if (authError) authError.textContent =
-                        'You must use your Telegram username: @' + telegramDetectedUsername;
+                    if (authError) authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
                     if (authUsername) authUsername.value = telegramDetectedUsername;
                     return;
                 }
@@ -3535,8 +3373,7 @@
 
             if (telegramDetectedUsername) {
                 if (username !== telegramDetectedUsername) {
-                    if (authError) authError.textContent =
-                        'You must use your Telegram username: @' + telegramDetectedUsername;
+                    if (authError) authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
                     if (authUsername) authUsername.value = telegramDetectedUsername;
                     return;
                 }
@@ -4512,16 +4349,29 @@
         }
 
         // ============================================================
-        //  PICK STATUS
+        //  PICK STATUS – FIXED to show all picks
         // ============================================================
         function updatePickStatus() {
             const picks = getMyPicks();
             if (pickStatus) {
                 if (picks.length) {
+                    // Show all picks comma separated and total bet
+                    const picksStr = picks.join(', ');
+                    const totalBet = picks.length * currentBet;
                     pickStatus.innerHTML =
-                        `🎯 Your picks: <span class="highlight">${picks.join(', ')}</span> · ${picks.length * currentBet} Birr`;
+                        `🎯 Your picks: <span class="highlight selected-nums">${picksStr}</span> · <span class="total-bet">${totalBet}</span> Birr`;
                 } else {
                     pickStatus.innerHTML = `🎯 Pick <span class="highlight">one or more</span> numbers`;
+                }
+            }
+            // Also update the profile row text
+            if (selectedCountSpan) {
+                if (picks.length) {
+                    selectedCountSpan.textContent = picks.join(', ');
+                    selectedCountSpan.style.color = '#ffcc44';
+                } else {
+                    selectedCountSpan.textContent = 'None';
+                    selectedCountSpan.style.color = '#b8a0d0';
                 }
             }
         }
@@ -4532,14 +4382,13 @@
         }
 
         // ============================================================
-        //  NUMBER PICKER
+        //  NUMBER PICKER – FIXED to highlight ALL selected numbers
         // ============================================================
         function renderNumberPicker(showLoading = false) {
             if (!numPicker) return;
 
             if (!currentUser) {
-                numPicker.innerHTML =
-                    '<div style="color:#7a6a9a;font-size:0.7rem;text-align:center;padding:20px;">Please log in</div>';
+                numPicker.innerHTML = '<div style="color:#7a6a9a;font-size:0.7rem;text-align:center;padding:20px;">Please log in</div>';
                 return;
             }
 
@@ -4552,41 +4401,23 @@
                 return;
             }
 
-            const myPicks = new Set(getMyPicks());
+            const myPicksSet = new Set(getMyPicks());
             const isLocked = engineState.gamePhase !== 'selection';
 
             let html = '';
             for (let i = 1; i <= 200; i++) {
-                const isSelected = myPicks.has(i);
+                const isSelected = myPicksSet.has(i);
                 const isTaken = engineState.allTakenNumbers.has(i) && !isSelected;
                 const disabled = isTaken || isLocked;
                 let cls = 'num-btn';
-                if (isSelected) cls += ' selected';
+                if (isSelected) cls += ' selected';  // All selected get the class
                 if (isTaken) cls += ' taken';
                 html += `<button class="${cls}" data-num="${i}" ${disabled ? 'disabled' : ''}>${i}</button>`;
             }
             numPicker.innerHTML = html;
 
-            if (selectedCountSpan) {
-                if (myPicks.size) {
-                    selectedCountSpan.textContent = Array.from(myPicks).join(', ');
-                    selectedCountSpan.style.color = '#ffcc44';
-                } else {
-                    selectedCountSpan.textContent = 'None';
-                    selectedCountSpan.style.color = '#b8a0d0';
-                }
-            }
-
-            if (myPicks.size > 0 && numPickerWrapper) {
-                const firstSelected = Math.min(...myPicks);
-                const btnIndex = firstSelected - 1;
-                const btns = numPicker.querySelectorAll('.num-btn');
-                if (btns && btns[btnIndex]) {
-                    setTimeout(() => {
-                        btns[btnIndex].scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    }, 100);
-                }
-            }
+            // Also update the profile row text (already done in updatePickStatus)
+            updatePickStatus();
         }
 
         // ============================================================
@@ -4668,7 +4499,7 @@
         }
 
         // ============================================================
-        //  NUMBER PICK CLICK HANDLER
+        //  NUMBER PICK CLICK HANDLER – ensures picks array is updated
         // ============================================================
         if (numPicker) {
             numPicker.addEventListener('click', function(e) {
@@ -4693,6 +4524,7 @@
                 const alreadySelected = myPicks.includes(num);
 
                 if (alreadySelected) {
+                    // Unselect: release number and refund
                     releaseNumber(num);
                     const remaining = myPicks.filter(n => n !== num);
                     if (gameRef) {
@@ -4731,6 +4563,7 @@
                     return;
                 }
 
+                // Optimistic: add to local state immediately
                 engineState.allTakenNumbers.add(num);
                 renderNumberPicker();
                 updatePickStatus();
@@ -4742,14 +4575,12 @@
                         const rollbackPicks = getMyPicks().filter(n => n !== num);
                         if (engineState.players[currentUser]) {
                             engineState.players[currentUser].picks = rollbackPicks;
-                            engineState.players[currentUser].pick = rollbackPicks.length ? rollbackPicks[0] :
-                            null;
+                            engineState.players[currentUser].pick = rollbackPicks.length ? rollbackPicks[0] : null;
                             engineState.players[currentUser].ready = rollbackPicks.length > 0;
                         }
                         if (gameRef) {
                             gameRef.child('players/' + currentUser + '/picks').set(rollbackPicks);
-                            gameRef.child('players/' + currentUser + '/pick').set(rollbackPicks.length ? rollbackPicks[
-                                0] : null);
+                            gameRef.child('players/' + currentUser + '/pick').set(rollbackPicks.length ? rollbackPicks[0] : null);
                             gameRef.child('players/' + currentUser + '/ready').set(rollbackPicks.length > 0);
                         }
                         renderNumberPicker();
@@ -4765,16 +4596,13 @@
                             const rollbackPicks = getMyPicks().filter(n => n !== num);
                             if (engineState.players[currentUser]) {
                                 engineState.players[currentUser].picks = rollbackPicks;
-                                engineState.players[currentUser].pick = rollbackPicks.length ? rollbackPicks[
-                                    0] : null;
+                                engineState.players[currentUser].pick = rollbackPicks.length ? rollbackPicks[0] : null;
                                 engineState.players[currentUser].ready = rollbackPicks.length > 0;
                             }
                             if (gameRef) {
                                 gameRef.child('players/' + currentUser + '/picks').set(rollbackPicks);
-                                gameRef.child('players/' + currentUser + '/pick').set(rollbackPicks.length ?
-                                    rollbackPicks[0] : null);
-                                gameRef.child('players/' + currentUser + '/ready').set(rollbackPicks.length >
-                                    0);
+                                gameRef.child('players/' + currentUser + '/pick').set(rollbackPicks.length ? rollbackPicks[0] : null);
+                                gameRef.child('players/' + currentUser + '/ready').set(rollbackPicks.length > 0);
                             }
                             renderNumberPicker();
                             updatePickStatus();
@@ -4798,9 +4626,7 @@
                         }
 
                         updatePickStatus();
-                        updateStatus(
-                            `✅ ${currentUser} picked ${num} (${newPicks.length} total, ${newPicks.length * currentBet} Birr)`
-                            );
+                        updateStatus(`✅ ${currentUser} picked ${num} (${newPicks.length} total, ${newPicks.length * currentBet} Birr)`);
                         if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
                     });
                 });
@@ -4828,8 +4654,7 @@
                 const x = 50 + radius * Math.sin(rad);
                 const y = 50 - radius * Math.cos(rad);
                 const isHighlighted = engineState.drawnNumbers.includes(num);
-                html +=
-                    `<div class="wheel-number ${isHighlighted ? 'highlighted' : ''}" style="left:${x}%;top:${y}%;transform:translate(-50%,-50%);">${num}</div>`;
+                html += `<div class="wheel-number ${isHighlighted ? 'highlighted' : ''}" style="left:${x}%;top:${y}%;transform:translate(-50%,-50%);">${num}</div>`;
             });
             wheelNumbers.innerHTML = html;
         }
@@ -5048,9 +4873,7 @@
                             if (success && name === currentUser) {
                                 updateWalletUI();
                                 updateWelcomeUI();
-                                updateStatus(
-                                    `🎉 You won! +${winAmount} coins (${prizePool} pool / ${winners.length} winners)`,
-                                    true);
+                                updateStatus(`🎉 You won! +${winAmount} coins (${prizePool} pool / ${winners.length} winners)`, true);
                             }
                         });
                     });
@@ -5116,8 +4939,7 @@
                             return current;
                         }).then(refResult => {
                             if (!refResult.committed) throw new Error('Referral wallet update failed');
-                            sendNotification(referrer,
-                                `🎉 You earned ${commission} Birr commission from ${winnerName}'s win!`);
+                            sendNotification(referrer, `🎉 You earned ${commission} Birr commission from ${winnerName}'s win!`);
                             return commission;
                         });
                     }
@@ -5265,8 +5087,7 @@
                 };
             }
 
-            if (referralCloseBtn) referralCloseBtn.onclick = () => { if (referralModal) referralModal.classList.remove(
-                    'active'); };
+            if (referralCloseBtn) referralCloseBtn.onclick = () => { if (referralModal) referralModal.classList.remove('active'); };
 
             if (referralCopyBtn) {
                 referralCopyBtn.onclick = async () => {
@@ -5290,8 +5111,7 @@
                 referralShareBtn.onclick = () => {
                     const link = referralLink ? referralLink.value : '';
                     const shareText = `Join Winzo and play games with me! ${link}`;
-                    const shareUrl =
-                        `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`;
+                    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`;
                     if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
                     else window.open(shareUrl, '_blank');
                 };
@@ -5309,8 +5129,7 @@
                         return;
                     }
                     if (!ref && !file) {
-                        if (depositError) depositError.textContent =
-                            'Please provide a reference number or upload a screenshot.';
+                        if (depositError) depositError.textContent = 'Please provide a reference number or upload a screenshot.';
                         return;
                     }
                     depositToPlay(amount, ref, file);
