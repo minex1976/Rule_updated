@@ -5437,6 +5437,446 @@
             showAuthScreen();
         }
 
+        // ============================================================
+        //  WINZO PRODUCTION HARDENING v7.1
+        //  Player app: game reliability + request-only wallet workflow
+        // ============================================================
+        const WINZO_PRODUCTION_VERSION = '7.1.0';
+        let roomConnectionGeneration = 0;
+        let productionRenderQueued = false;
+
+        function productionRetry(task, options = {}) {
+            const retries = Number.isInteger(options.retries) ? options.retries : 3;
+            const base = Number(options.baseMs) || 500;
+            let attempt = 0;
+            const run = () => Promise.resolve().then(task).catch(err => {
+                if (attempt++ >= retries) throw err;
+                const delay = Math.min(8000, base * Math.pow(2, attempt - 1));
+                return new Promise(resolve => setTimeout(resolve, delay)).then(run);
+            });
+            return run();
+        }
+
+        function safeProductionName(value) {
+            return String(value ?? '').replace(/[<>"'`]/g, '').trim().slice(0, 64);
+        }
+
+        function productionEscape(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        }
+
+        function updateStatus(msg, isWin = false) {
+            if (!statusEl) return;
+            const text = String(msg ?? '');
+            if (isWin) {
+                statusEl.textContent = `🏆 ${text.replace(/<[^>]*>/g, '')}`;
+                statusEl.classList.add('win-badge');
+            } else {
+                statusEl.textContent = text.replace(/<[^>]*>/g, '');
+                statusEl.classList.remove('win-badge');
+            }
+        }
+
+        function renderNumberPicker(showLoading = false) {
+            if (!numPicker) return;
+            if (productionRenderQueued) return;
+            productionRenderQueued = true;
+            requestAnimationFrame(() => {
+                productionRenderQueued = false;
+                if (!currentUser) {
+                    numPicker.innerHTML = '<div style="color:#7a6a9a;font-size:0.7rem;text-align:center;padding:20px;">Please log in</div>';
+                    return;
+                }
+                if (showLoading || !isGameInitialized || Object.keys(engineState.players || {}).length === 0) {
+                    let loading = '';
+                    for (let i = 1; i <= 40; i++) loading += '<div class="num-btn loading">•</div>';
+                    numPicker.innerHTML = loading;
+                    return;
+                }
+                const myPick = getMyPick();
+                const locked = engineState.gamePhase !== 'selection' || engineState.activePlayersCount <= 1;
+                let html = '';
+                for (let i = 1; i <= 200; i++) {
+                    const selected = myPick === i;
+                    const taken = engineState.allTakenNumbers.has(i) && !selected;
+                    const disabled = locked || taken || (myPick !== null && !selected);
+                    let cls = 'num-btn';
+                    if (selected) cls += ' selected';
+                    if (taken) cls += ' taken';
+                    html += `<button class="${cls}" data-num="${i}" ${disabled ? 'disabled' : ''}>${i}</button>`;
+                }
+                numPicker.innerHTML = html;
+                updatePickStatus();
+            });
+        }
+
+        function ensureSelectionDeadline() {
+            if (!gameRef || engineState.gamePhase !== 'selection') return;
+            gameRef.child('selectionEndsAt').transaction(current => {
+                const now = getServerNow();
+                if (typeof current === 'number' && current > now) return current;
+                return now + SELECTION_SECONDS * 1000;
+            });
+        }
+
+        function initGameConnection() {
+            const generation = ++roomConnectionGeneration;
+            if (isGameInitialized) {
+                if (gameRef) gameRef.off();
+                detachNumbersTakenListener();
+                gameRef = null;
+                isGameInitialized = false;
+            }
+            if (!database || !currentRoom || !currentUser) return;
+            const roomPath = currentRoom;
+            const ref = database.ref('rooms/' + roomPath);
+            gameRef = ref;
+
+            database.ref('.info/serverTimeOffset').once('value').then(snap => {
+                if (generation !== roomConnectionGeneration) return;
+                serverTimeOffset = Number(snap.val()) || 0;
+            }).catch(err => console.warn('Server time offset unavailable:', err));
+
+            ref.once('value').then(snapshot => {
+                if (generation !== roomConnectionGeneration) return;
+                if (!snapshot.exists()) {
+                    return ref.set({
+                        gameState: 'selection', round: 1, timer: SELECTION_SECONDS,
+                        selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000,
+                        drawnNumbers: [], winners: [], spinCount: 0, cumulativeRotation: 0,
+                        players: {}, gameStarted: true, betAmount: currentBet,
+                        potAmount: 0, totalBets: 0, numbersTaken: {}
+                    });
+                }
+                const data = snapshot.val() || {};
+                if (data.gameState === 'spinning' && !data.winningNumber && !data.spinLock) {
+                    return ref.transaction(room => {
+                        if (!room || room.gameState !== 'spinning' || room.winningNumber || room.spinLock) return room;
+                        room.gameState = 'selection';
+                        room.spinCount = 0;
+                        room.winners = [];
+                        room.drawnNumbers = [];
+                        room.numbersTaken = {};
+                        room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                        return room;
+                    });
+                }
+                if (!data.selectionEndsAt && data.gameState === 'selection') ensureSelectionDeadline();
+            }).catch(err => console.error('Room initialization failed:', err));
+
+            // IMPORTANT: joining/reconnecting never clears numbersTaken.
+            ref.on('value', snapshot => {
+                if (generation !== roomConnectionGeneration) return;
+                const data = snapshot.val();
+                if (data) syncGameState(data);
+            });
+
+            const playerRef = ref.child('players/' + currentUser);
+            playerRef.onDisconnect().remove();
+            playerRef.set({
+                name: currentUser, pick: null, bet: currentBet, ready: false,
+                betDeducted: false, betSources: {}, round: engineState.roundNumber || 1
+            }).catch(err => console.error('Player registration failed:', err));
+
+            isGameInitialized = true;
+            setConnectionStatus(true, '🔑 Connected to ' + currentBet + ' Birr room');
+            setTimeout(() => { if (generation === roomConnectionGeneration) renderNumberPicker(); }, 300);
+        }
+
+        function syncGameState(data) {
+            if (syncInProgress) return;
+            syncInProgress = true;
+            try {
+                const players = data.players || {};
+                const playerNames = Object.keys(players);
+                engineState.players = players;
+                engineState.playerNames = playerNames;
+                engineState.activePlayersCount = playerNames.length;
+                engineState.gamePhase = data.gameState || 'selection';
+                engineState.roundNumber = Number(data.round) || 1;
+                engineState.timer = Number(data.timer) || 0;
+                phaseDeadline = Number(data.selectionEndsAt) || 0;
+                engineState.drawnNumbers = Array.isArray(data.drawnNumbers) ? data.drawnNumbers : [];
+                engineState.winners = Array.isArray(data.winners) ? data.winners : [];
+                engineState.spinCount = Number(data.spinCount) || 0;
+                engineState.cumulativeRotation = Number(data.cumulativeRotation) || 0;
+                engineState.potAmount = Number(data.potAmount) || 0;
+                engineState.totalBetsPlaced = Number(data.totalBets) || 0;
+                engineState.allTakenNumbers = new Set(Object.keys(data.numbersTaken || {})
+                    .filter(k => data.numbersTaken[k] === true).map(Number).filter(n => n >= 1 && n <= 200));
+
+                if (engineState.gamePhase === 'selection') {
+                    stopResultsCountdown();
+                    if (!phaseDeadline) ensureSelectionDeadline();
+                    if (!isTimerRunning) startTimer();
+                    if (engineState.activePlayersCount <= 1) showWaitingModal();
+                    else hideWaitingModal();
+                    if (timerDisplay) timerDisplay.textContent = getRemainingSeconds(phaseDeadline);
+                } else {
+                    stopTimer();
+                    hideWaitingModal();
+                }
+
+                if (engineState.gamePhase === 'spinning' && !engineState.isSpinning && !engineState.spinInProgress) {
+                    setTimeout(() => { if (engineState.gamePhase === 'spinning') executeSpin(); }, 50);
+                }
+
+                if (engineState.gamePhase === 'results' && !engineState.winnersModalShown) {
+                    const winners = Array.isArray(data.winners) ? data.winners : [];
+                    if (winnersList) {
+                        if (winners.length) {
+                            const pool = Number(data.prizePool ?? data.potAmount ?? 0);
+                            const each = winners.length ? Math.floor(pool / winners.length) : 0;
+                            winnersList.innerHTML = winners.map(name =>
+                                `<div class="winner-entry"><span class="player-name">${productionEscape(name)}</span><span class="winning-nums">🎯 ${productionEscape(engineState.drawnNumbers[0] ?? '?')} · ${each} Birr</span></div>`
+                            ).join('');
+                        } else {
+                            winnersList.innerHTML = '<div class="no-winners">😔 No winners this round.</div>';
+                        }
+                    }
+                    if (winnersModal) winnersModal.classList.add('active');
+                    engineState.winnersModalShown = true;
+                    if (winners.length) { startFireworks(); playWinningAudio(); } else playNoWinnerAudio();
+                    startResultsCountdown();
+                }
+                if (engineState.gamePhase === 'selection' && !data.winners?.length) engineState.winnersModalShown = false;
+                updatePrizeDisplay();
+                updatePickStatus();
+                renderNumberPicker();
+            } finally { syncInProgress = false; }
+        }
+
+        function requestSpin() {
+            if (!gameRef || engineState.gamePhase !== 'selection') return;
+            const round = engineState.roundNumber;
+            const playersWithPick = Object.keys(engineState.players || {}).filter(name => {
+                const p = engineState.players[name];
+                return p && p.pick !== null && Number(p.round) === round && p.betDeducted === true;
+            });
+            if (playersWithPick.length === 0) {
+                return gameRef.transaction(room => {
+                    if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
+                    room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                    room.timer = SELECTION_SECONDS;
+                    return room;
+                });
+            }
+            if (playersWithPick.length === 1) {
+                const only = playersWithPick[0];
+                return gameRef.child('singlePlayerHandled/' + round).transaction(current => current || {
+                    username: only, timestamp: firebase.database.ServerValue.TIMESTAMP
+                }).then(result => {
+                    if (!result.committed) return;
+                    const p = engineState.players[only];
+                    const amount = Number(p.bet || currentBet);
+                    return refundBetImmediately(only, amount).then(() => gameRef.transaction(room => {
+                        if (!room || Number(room.round) !== round) return room;
+                        room.gameState = 'selection'; room.timer = SELECTION_SECONDS;
+                        room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                        room.numbersTaken = {};
+                        const player = room.players?.[only];
+                        if (player) { player.pick = null; player.ready = false; player.betDeducted = false; player.betSources = {}; player.round = null; }
+                        return room;
+                    }));
+                }).catch(err => console.error('Single-player reset failed:', err));
+            }
+            return gameRef.transaction(room => {
+                if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
+                const ps = room.players || {};
+                const eligible = Object.keys(ps).filter(n => ps[n] && ps[n].pick !== null && Number(ps[n].round) === round && ps[n].betDeducted === true);
+                if (eligible.length < 2) return room;
+                if (room.spinLock && room.spinLock.round === round) return room;
+                const taken = Object.keys(room.numbersTaken || {}).filter(k => room.numbersTaken[k] === true).map(Number);
+                if (!taken.length) return room;
+                const winningNumber = taken[Math.floor(Math.random() * taken.length)];
+                const winners = eligible.filter(n => Number(ps[n].pick) === winningNumber);
+                const pot = eligible.length * Number(room.betAmount || currentBet);
+                const pool = Math.floor(pot * 0.85);
+                room.spinLock = { round, timestamp: firebase.database.ServerValue.TIMESTAMP };
+                room.winningNumber = winningNumber;
+                room.winners = winners;
+                room.potAmount = pot;
+                room.prizePool = pool;
+                room.gameState = 'spinning';
+                room.spinStartedRound = round;
+                room.timer = 5;
+                room.spinCount = Number(room.spinCount || 0) + 1;
+                return room;
+            }).catch(err => console.error('Spin request failed:', err));
+        }
+
+        function startTimer() {
+            stopTimer();
+            if (!gameRef || engineState.gamePhase !== 'selection') return;
+            if (!phaseDeadline) { ensureSelectionDeadline(); return; }
+            isTimerRunning = true;
+            const tick = () => {
+                if (engineState.gamePhase !== 'selection') { stopTimer(); return; }
+                const remaining = getRemainingSeconds(phaseDeadline);
+                engineState.timer = remaining;
+                if (timerDisplay) timerDisplay.textContent = remaining;
+                if (remaining <= 0) { stopTimer(); requestSpin(); }
+            };
+            tick();
+            timerInterval = setInterval(tick, 500);
+        }
+
+        function startResultsCountdown() {
+            if (isResultsCountdownRunning) return;
+            isResultsCountdownRunning = true;
+            let remaining = 5;
+            if (timerDisplay) timerDisplay.textContent = remaining;
+            resultsCountdownInterval = setInterval(() => {
+                remaining -= 1;
+                if (timerDisplay) timerDisplay.textContent = Math.max(0, remaining);
+                if (remaining <= 0) {
+                    stopResultsCountdown();
+                    const round = engineState.roundNumber;
+                    if (!gameRef) return;
+                    gameRef.child('finalizedRounds/' + round).transaction(current => current || {
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    }).then(result => {
+                        if (!result.committed) return;
+                        return gameRef.transaction(room => {
+                            if (!room || Number(room.round) !== round || room.gameState !== 'results') return room;
+                            const players = room.players || {};
+                            Object.keys(players).forEach(name => {
+                                if (players[name]) {
+                                    players[name].pick = null; players[name].ready = false;
+                                    players[name].betDeducted = false; players[name].betSources = {}; players[name].round = null;
+                                }
+                            });
+                            room.players = players;
+                            room.gameState = 'selection';
+                            room.round = round + 1;
+                            room.timer = SELECTION_SECONDS;
+                            room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                            room.drawnNumbers = []; room.winners = []; room.spinCount = 0;
+                            room.cumulativeRotation = 0; room.potAmount = 0; room.prizePool = 0; room.totalBets = 0;
+                            room.numbersTaken = {};
+                            room.winningNumber = null; room.spinLock = null; room.spinStartedRound = null;
+                            return room;
+                        });
+                    }).catch(err => console.error('Round finalization failed:', err));
+                }
+            }, 1000);
+        }
+
+        function executeSpin() {
+            if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
+            engineState.isSpinning = true; engineState.spinInProgress = true;
+            if (spinningIndicator) spinningIndicator.classList.add('active');
+            gameRef.once('value').then(snapshot => {
+                const room = snapshot.val() || {};
+                const numbers = Object.keys(room.numbersTaken || {}).filter(k => room.numbersTaken[k] === true).map(Number);
+                const winningNumber = Number(room.winningNumber);
+                if (!winningNumber || !numbers.includes(winningNumber)) throw new Error('Invalid authoritative winning number');
+                const targetAngle = getAngleForNumber(winningNumber);
+                const rotations = 4 + Math.floor(Math.random() * 2);
+                const degrees = rotations * 360 + targetAngle;
+                if (arrowContainer) {
+                    arrowContainer.style.transition = 'none'; arrowContainer.style.transform = 'rotate(0deg)';
+                    void arrowContainer.offsetHeight;
+                    arrowContainer.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                    arrowContainer.style.transform = `rotate(${degrees}deg)`;
+                }
+                engineState.cumulativeRotation = degrees;
+                return new Promise(resolve => setTimeout(resolve, 4200)).then(() => {
+                    const winners = Array.isArray(room.winners) ? room.winners : [];
+                    if (arrowCenter) { arrowCenter.textContent = winningNumber; arrowCenter.classList.add('reveal'); }
+                    if (spinEls[0]) { spinEls[0].textContent = winningNumber; spinEls[0].classList.add('reveal', 'active'); }
+                    return gameRef.transaction(current => {
+                        if (!current || Number(current.round) !== Number(room.round) || current.gameState !== 'spinning') return current;
+                        current.drawnNumbers = [winningNumber];
+                        current.gameState = 'results';
+                        current.timer = 5;
+                        current.winners = winners;
+                        current.cumulativeRotation = degrees;
+                        return current;
+                    });
+                });
+            }).catch(err => {
+                console.error('Execute spin failed:', err);
+                updateStatus('⚠️ Spin temporarily failed. Retrying…');
+            }).finally(() => {
+                engineState.isSpinning = false; engineState.spinInProgress = false;
+                if (spinningIndicator) spinningIndicator.classList.remove('active');
+            });
+        }
+
+        // Player wallet is request-only for deposits/withdrawals.
+        // Admin application is solely responsible for applying approved money movements.
+        function withdrawFromMain(amount, name, phone) {
+            if (!currentUser || !database) return false;
+            amount = Number(amount);
+            name = safeProductionName(name); phone = safeProductionName(phone);
+            if (!Number.isFinite(amount) || amount <= 0 || !name || !phone) {
+                if (withdrawError) withdrawError.textContent = 'Please fill in all fields.';
+                return false;
+            }
+            if (Number(walletData.main || 0) < amount) {
+                if (withdrawError) withdrawError.textContent = 'Insufficient main balance.';
+                return false;
+            }
+            if (withdrawError) withdrawError.textContent = '';
+            if (withdrawModal) withdrawModal.classList.remove('active');
+            return requestTransaction('withdraw', amount, '', null, { name, phone });
+        }
+
+        function requestTransaction(type, amount, reference = '', imageFile = null, extra = {}) {
+            if (!currentUser || !database) return Promise.resolve(false);
+            amount = Number(amount);
+            if (!['deposit', 'withdraw'].includes(type) || !Number.isFinite(amount) || amount <= 0) return Promise.resolve(false);
+            const txRef = database.ref('transactions').push();
+            const txData = {
+                id: txRef.key, username: currentUser, type, amount,
+                status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
+                requestVersion: 2
+            };
+            if (type === 'deposit') {
+                if (reference) txData.reference = safeProductionName(reference);
+            } else {
+                txData.fullName = safeProductionName(extra.name);
+                txData.phoneNumber = safeProductionName(extra.phone);
+            }
+            let uploadPromise = Promise.resolve();
+            if (type === 'deposit' && imageFile && storage) {
+                const storageRef = storage.ref(`deposits/${currentUser}/${txRef.key}.jpg`);
+                uploadPromise = storageRef.put(imageFile).then(s => s.ref.getDownloadURL()).then(url => {
+                    txData.imageUrl = url;
+                });
+            }
+            transactionStatus.textContent = '⏳ Pending admin approval...';
+            transactionStatus.className = 'status-text pending';
+            if (transactionModal) transactionModal.classList.add('active');
+            return uploadPromise.then(() => txRef.set(txData)).then(() => new Promise(resolve => {
+                const handler = snap => {
+                    const data = snap.val();
+                    if (!data) return;
+                    if (data.status === 'approved') {
+                        transactionStatus.textContent = data.type === 'withdraw' ? '✅ Withdrawal approved.' : '✅ Deposit approved. Balance updated.';
+                        transactionStatus.className = 'status-text approved';
+                        if (data.walletApplied) syncWalletFromFirebase();
+                        setTimeout(() => transactionModal && transactionModal.classList.remove('active'), 1800);
+                        txRef.off('value', handler); resolve(true);
+                    } else if (data.status === 'rejected') {
+                        transactionStatus.textContent = '❌ Transaction rejected.';
+                        transactionStatus.className = 'status-text rejected';
+                        setTimeout(() => transactionModal && transactionModal.classList.remove('active'), 1800);
+                        txRef.off('value', handler); resolve(false);
+                    }
+                };
+                txRef.on('value', handler);
+            })).catch(err => {
+                console.error('Transaction request failed:', err);
+                if (transactionStatus) transactionStatus.textContent = '⚠️ Could not submit request. Please try again.';
+                return false;
+            });
+        }
+
+        // Preserve existing game logic while removing client-side withdrawal settlement.
+        console.info('WINZO production hardening loaded:', WINZO_PRODUCTION_VERSION);
+
         // Start the app
         init();
     </script>
