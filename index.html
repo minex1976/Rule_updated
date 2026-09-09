@@ -4518,7 +4518,7 @@
                     if (timerDisplay) timerDisplay.textContent = engineState.timer;
                 }
                 if (playerCountEl) playerCountEl.textContent = engineState.activePlayersCount;
-                const phaseLabels = { 'selection': '⏳ Selecting', 'spinning': 'Spinning', 'results': '🏆 Results' };
+                const phaseLabels = { 'selection': '⏳ Selecting', 'spinning': '🎡 Spinning', 'results': '🏆 Results' };
                 if (gamePhaseLabel) gamePhaseLabel.textContent = phaseLabels[engineState.gamePhase] || '⏳';
                 if (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results') {
                     if (wheelContainer) wheelContainer.classList.remove('hidden');
@@ -5016,10 +5016,10 @@
                             spinEls[0].classList.add('reveal', 'active');
                         }
 
-                        updateStatus(`🎯 Winning number: <span class="highlight">${}</span>`);
+                        updateStatus(`🎯 Winning number: <span class="highlight">${winningNumber}</span>`);
                         updateWheel();
 
-                        if (Indicator) spinningIndicator.classList.remove('active');
+                        if (spinningIndicator) spinningIndicator.classList.remove('active');
                         engineState.isSpinning = false;
                         engineState.spinInProgress = false;
                         spinTimeout = null;
