@@ -5936,6 +5936,396 @@
             });
         }
 
+
+        // ============================================================
+        // WINZO PRODUCTION PATCH v7.3
+        // Restores the original wheel/results flow, authoritative winner
+        // selection, live player count, and atomic winner wallet credits.
+        // ============================================================
+        const WINZO_PATCH_VERSION = '7.3.0';
+
+        function syncGameState(data) {
+            if (syncInProgress) return;
+            syncInProgress = true;
+            try {
+                const players = (data && data.players && typeof data.players === 'object') ? data.players : {};
+                const playerNames = Object.keys(players);
+                const phase = data.gameState || 'selection';
+                const round = Number(data.round) || 1;
+
+                engineState.players = players;
+                engineState.playerNames = playerNames;
+                engineState.activePlayersCount = playerNames.length;
+                engineState.gamePhase = phase;
+                engineState.roundNumber = round;
+                engineState.timer = Number(data.timer) || 0;
+                phaseDeadline = Number(data.selectionEndsAt) || 0;
+                engineState.drawnNumbers = Array.isArray(data.drawnNumbers) ? data.drawnNumbers : [];
+                engineState.winners = Array.isArray(data.winners) ? data.winners : [];
+                engineState.spinCount = Number(data.spinCount) || 0;
+                engineState.cumulativeRotation = Number(data.cumulativeRotation) || 0;
+                engineState.potAmount = Number(data.potAmount) || 0;
+                engineState.totalBetsPlaced = Number(data.totalBets) || 0;
+                engineState.allTakenNumbers = new Set(
+                    Object.keys(data.numbersTaken || {})
+                        .filter(k => data.numbersTaken[k] === true)
+                        .map(Number)
+                        .filter(n => n >= 1 && n <= 200)
+                );
+
+                // Keep the live player counter synchronized on every device.
+                if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
+
+                if (phase === 'selection') {
+                    stopResultsCountdown();
+                    if (!phaseDeadline) ensureSelectionDeadline();
+                    if (!isTimerRunning) startTimer();
+                    if (playerNames.length <= 1) showWaitingModal();
+                    else hideWaitingModal();
+                } else {
+                    stopTimer();
+                    hideWaitingModal();
+                }
+
+                // The original game visibly displays the wheel during spinning/results.
+                // updateUIFromState handles the wheel visibility and spin indicator.
+                updateUIFromState();
+
+                if (phase === 'spinning' && !engineState.isSpinning && !engineState.spinInProgress) {
+                    setTimeout(() => {
+                        if (engineState.gamePhase === 'spinning') executeSpin();
+                    }, 30);
+                }
+
+                if (phase === 'results' && !engineState.winnersModalShown) {
+                    const winners = Array.isArray(data.winners) ? data.winners : [];
+                    const winningNumber = Number(data.drawnNumbers?.[0] ?? data.winningNumber);
+                    const pool = Number(data.prizePool ?? data.potAmount ?? 0);
+                    const each = winners.length ? Math.floor(pool / winners.length) : 0;
+
+                    if (winnersList) {
+                        if (winners.length) {
+                            winnersList.innerHTML = winners.map(key => {
+                                const player = players[key] || {};
+                                // The Firebase player key is the authenticated username.
+                                // Prefer the exact stored player name, never a locally guessed name.
+                                const exactName = String(player.name || key);
+                                return `<div class="winner-entry"><span class="player-name">${productionEscape(exactName)}</span><span class="winning-nums">🎯 ${productionEscape(winningNumber || '?')} · ${each} Birr</span></div>`;
+                            }).join('');
+                        } else {
+                            winnersList.innerHTML = '<div class="no-winners">😔 No winners this round.</div>';
+                        }
+                    }
+                    if (winnersModal) winnersModal.classList.add('active');
+                    engineState.winnersModalShown = true;
+                    if (winners.length) { startFireworks(); playWinningAudio(); }
+                    else playNoWinnerAudio();
+                    startResultsCountdown();
+                }
+
+                if (phase === 'selection' && winners.length === 0) {
+                    engineState.winnersModalShown = false;
+                }
+
+                updatePrizeDisplay();
+                updatePickStatus();
+                renderNumberPicker();
+            } finally {
+                syncInProgress = false;
+            }
+        }
+
+        function requestSpin() {
+            if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
+            const round = Number(engineState.roundNumber);
+
+            return gameRef.transaction(room => {
+                if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
+
+                const ps = room.players || {};
+                const eligible = Object.keys(ps).filter(name => {
+                    const p = ps[name];
+                    return p && p.pick !== null && Number(p.round) === round && p.betDeducted === true;
+                });
+
+                // No valid picks: keep the same round alive.
+                if (eligible.length === 0) {
+                    room.gameState = 'selection';
+                    room.timer = SELECTION_SECONDS;
+                    room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                    return room;
+                }
+
+                // One player: preserve the original no-game/refund behavior.
+                if (eligible.length === 1) {
+                    return room;
+                }
+
+                // If another device already locked this round, do nothing.
+                if (room.spinLock && Number(room.spinLock.round) === round) return room;
+
+                const taken = Object.keys(room.numbersTaken || {})
+                    .filter(k => room.numbersTaken[k] === true)
+                    .map(Number)
+                    .filter(n => n >= 1 && n <= 200);
+                if (!taken.length) return room;
+
+                // IMPORTANT: this random choice is made once inside the Firebase
+                // transaction and persisted. Every device therefore receives the
+                // same winning number and the same winner list.
+                const winningNumber = taken[Math.floor(Math.random() * taken.length)];
+                const winners = eligible.filter(name => Number(ps[name].pick) === winningNumber);
+                const bet = Number(room.betAmount || currentBet);
+                const pot = eligible.length * bet;
+                const pool = Math.floor(pot * 0.85);
+
+                room.spinLock = {
+                    round: round,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                };
+                room.winningNumber = winningNumber;
+                room.winners = winners;
+                room.potAmount = pot;
+                room.prizePool = pool;
+                room.gameState = 'spinning';
+                room.spinStartedRound = round;
+                room.timer = 5;
+                room.spinCount = Number(room.spinCount || 0) + 1;
+                room.spinFinishedAt = null;
+                return room;
+            }).then(result => {
+                if (!result || !result.committed) return false;
+                const room = result.snapshot.val() || {};
+
+                // Single-player handling happens outside the transaction so the
+                // wallet refund cannot be accidentally repeated by transaction retries.
+                const eligible = Object.keys(room.players || {}).filter(name => {
+                    const p = room.players[name];
+                    return p && p.pick !== null && Number(p.round) === round && p.betDeducted === true;
+                });
+                if (eligible.length === 1 && room.gameState === 'selection') {
+                    const only = eligible[0];
+                    const marker = gameRef.child('singlePlayerHandled/' + round);
+                    return marker.transaction(current => current || {
+                        username: only,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    }).then(claim => {
+                        if (!claim.committed) return true;
+                        const amount = Number(room.players?.[only]?.bet || currentBet);
+                        return refundBetImmediately(only, amount).then(() => gameRef.transaction(current => {
+                            if (!current || Number(current.round) !== round || current.gameState !== 'selection') return current;
+                            const p = current.players?.[only];
+                            if (p) {
+                                p.pick = null; p.ready = false; p.betDeducted = false;
+                                p.betSources = {}; p.round = null;
+                            }
+                            current.numbersTaken = {};
+                            current.timer = SELECTION_SECONDS;
+                            current.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                            return current;
+                        }));
+                    });
+                }
+                return true;
+            }).catch(err => {
+                console.error('Authoritative spin request failed:', err);
+                return false;
+            });
+        }
+
+        function executeSpin() {
+            if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
+            engineState.isSpinning = true;
+            engineState.spinInProgress = true;
+            if (spinningIndicator) spinningIndicator.classList.add('active');
+
+            gameRef.once('value').then(snapshot => {
+                const room = snapshot.val() || {};
+                const round = Number(room.round);
+                const winningNumber = Number(room.winningNumber);
+                const winners = Array.isArray(room.winners) ? room.winners.filter(Boolean) : [];
+                const numbers = Object.keys(room.numbersTaken || {})
+                    .filter(k => room.numbersTaken[k] === true)
+                    .map(Number)
+                    .filter(n => n >= 1 && n <= 200);
+
+                if (round !== Number(engineState.roundNumber)) throw new Error('Spin round changed');
+                if (!numbers.includes(winningNumber)) throw new Error('Authoritative winning number missing');
+
+                // Synchronize the wheel's number layout with the exact room state
+                // before calculating the target angle.
+                engineState.allTakenNumbers = new Set(numbers);
+                engineState.winners = winners;
+                updateWheel();
+                if (wheelContainer) wheelContainer.classList.remove('hidden');
+                if (spinResults) spinResults.classList.remove('hidden');
+
+                const targetAngle = getAngleForNumber(winningNumber);
+                const rotations = 4 + Math.floor(Math.random() * 2);
+                const degrees = rotations * 360 + targetAngle;
+
+                if (arrowContainer) {
+                    arrowContainer.style.transition = 'none';
+                    arrowContainer.style.transform = 'rotate(0deg)';
+                    void arrowContainer.offsetWidth;
+                    arrowContainer.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                    requestAnimationFrame(() => {
+                        arrowContainer.style.transform = `rotate(${degrees}deg)`;
+                    });
+                }
+                engineState.cumulativeRotation = degrees;
+
+                // Do not end the round until the visible wheel has finished spinning.
+                return new Promise(resolve => setTimeout(resolve, 4300)).then(() => {
+                    return gameRef.transaction(current => {
+                        if (!current || Number(current.round) !== round || current.gameState !== 'spinning') return current;
+                        // Never recalculate the winner here. The transaction above
+                        // already selected and persisted the authoritative result.
+                        current.drawnNumbers = [winningNumber];
+                        current.gameState = 'results';
+                        current.timer = 5;
+                        current.cumulativeRotation = degrees;
+                        current.spinFinishedAt = firebase.database.ServerValue.TIMESTAMP;
+                        return current;
+                    });
+                }).then(result => {
+                    if (!result || !result.committed) return;
+
+                    const finalRoom = result.snapshot.val() || {};
+                    const finalWinners = Array.isArray(finalRoom.winners) ? finalRoom.winners.filter(Boolean) : winners;
+                    const pool = Number(finalRoom.prizePool ?? finalRoom.potAmount ?? 0);
+                    const winAmount = finalWinners.length ? Math.floor(pool / finalWinners.length) : 0;
+
+                    engineState.drawnNumbers = [winningNumber];
+                    engineState.winners = finalWinners;
+                    engineState.gamePhase = 'results';
+                    engineState.winnersModalShown = true;
+
+                    if (arrowCenter) {
+                        arrowCenter.textContent = String(winningNumber);
+                        arrowCenter.classList.add('reveal');
+                    }
+                    if (spinEls[0]) {
+                        spinEls[0].textContent = String(winningNumber);
+                        spinEls[0].classList.add('reveal', 'active');
+                    }
+                    if (spinningIndicator) spinningIndicator.classList.remove('active');
+                    updateWheel();
+                    updateUIFromState();
+
+                    if (finalWinners.length) {
+                        // Use the exact Firebase player name in the modal.
+                        if (winnersList) {
+                            winnersList.innerHTML = finalWinners.map(key => {
+                                const player = finalRoom.players?.[key] || {};
+                                const exactName = String(player.name || key);
+                                return `<div class="winner-entry"><span class="player-name">${productionEscape(exactName)}</span><span class="winning-nums">🎯 ${productionEscape(winningNumber)} · ${winAmount} Birr</span></div>`;
+                            }).join('');
+                        }
+                        startFireworks();
+                        playWinningAudio();
+                    } else {
+                        if (winnersList) winnersList.innerHTML = '<div class="no-winners">😔 No winners this round.</div>';
+                        playNoWinnerAudio();
+                    }
+                    if (winnersModal) winnersModal.classList.add('active');
+
+                    // Credit every winner. The wallet itself contains an atomic
+                    // payout marker, so a payout can only be applied once.
+                    if (finalWinners.length && winAmount > 0) {
+                        Promise.allSettled(finalWinners.map(name => creditWinnerAndReferral(name, winAmount)))
+                            .then(results => {
+                                const failed = results.some(r => r.status === 'rejected' || r.value !== true);
+                                if (finalWinners.includes(currentUser)) {
+                                    if (failed) updateStatus('⚠️ Win recorded; wallet credit is being retried.', true);
+                                    else {
+                                        updateStatus(`🏆 You won ${winAmount} Birr!`, true);
+                                        syncWalletFromFirebase();
+                                    }
+                                }
+                            });
+                    }
+
+                    if (tg && tg.HapticFeedback && finalWinners.includes(currentUser)) {
+                        tg.HapticFeedback.notificationOccurred('success');
+                    }
+                    startResultsCountdown();
+                });
+            }).catch(err => {
+                console.error('Execute spin failed:', err);
+                updateStatus('⚠️ Spin temporarily failed. Retrying…');
+            }).finally(() => {
+                engineState.isSpinning = false;
+                engineState.spinInProgress = false;
+                if (spinningIndicator) spinningIndicator.classList.remove('active');
+            });
+        }
+
+        function creditWinnerAndReferral(winnerName, winAmount) {
+            if (!database || !winnerName || Number(winAmount) <= 0) return Promise.resolve(false);
+            const amount = Number(winAmount);
+            const round = Number(engineState.roundNumber);
+            const payoutKey = `${currentRoom}_${round}_${winnerName}`.replace(/[.#$\[\]/]/g, '_');
+
+            // Atomic per-user ledger: wallet increment + payout marker occur in
+            // the same Firebase transaction. This eliminates double-crediting and
+            // avoids the old "processing forever" claim state.
+            return database.ref('users/' + winnerName).transaction(current => {
+                if (!current) return current;
+                current.mainWallet = Number(current.mainWallet || 0);
+                current.gameWinPayouts = current.gameWinPayouts || {};
+                if (current.gameWinPayouts[payoutKey]) return current;
+                current.mainWallet += amount;
+                current.gameWinPayouts[payoutKey] = {
+                    room: currentRoom,
+                    round: round,
+                    amount: amount,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                };
+                return current;
+            }).then(result => {
+                if (!result || !result.committed) return false;
+                const winnerData = result.snapshot.val() || {};
+                const alreadyPaid = !!winnerData.gameWinPayouts?.[payoutKey];
+
+                // A committed transaction may have been a no-op because the payout
+                // marker already existed. That is still a successful/idempotent result.
+                if (!alreadyPaid) return false;
+
+                const referrer = winnerData.referredBy;
+                const commission = Math.floor(amount * REFERRAL_COMMISSION_RATE);
+                if (!referrer || referrer === winnerName || commission <= 0) return true;
+
+                const refKey = `${currentRoom}_${round}_${winnerName}_ref_${referrer}`.replace(/[.#$\[\]/]/g, '_');
+                return database.ref('users/' + referrer).transaction(current => {
+                    if (!current) return current;
+                    current.mainWallet = Number(current.mainWallet || 0);
+                    current.referralEarnings = Number(current.referralEarnings || 0);
+                    current.referralWinPayouts = current.referralWinPayouts || {};
+                    if (current.referralWinPayouts[refKey]) return current;
+                    current.mainWallet += commission;
+                    current.referralEarnings += commission;
+                    current.referralWinPayouts[refKey] = {
+                        from: winnerName,
+                        room: currentRoom,
+                        round: round,
+                        amount: commission,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    };
+                    return current;
+                }).then(refResult => {
+                    if (!refResult || !refResult.committed) return false;
+                    if (commission > 0) {
+                        try { sendNotification(referrer, `🎉 You earned ${commission} Birr commission from ${winnerName}'s win!`); } catch (_) {}
+                    }
+                    return true;
+                });
+            }).catch(err => {
+                console.error('Atomic winner wallet update failed:', err);
+                return false;
+            });
+        }
+
         // Preserve existing game logic while removing client-side withdrawal settlement.
         console.info('WINZO production hardening loaded:', WINZO_PRODUCTION_VERSION);
 
