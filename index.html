@@ -1941,7 +1941,7 @@
                         <div class="arrow-head"></div>
                     </div>
                     <div class="arrow-center-circle" id="arrowCenter">🎯</div>
-                    <div class="spinning-indicator" id="spinningIndicator">SPINNING...</div>
+                    <div class="spinning-indicator" id="spinningIndicator">🎡 SPINNING...</div>
                 </div>
             </div>
 
@@ -3242,6 +3242,9 @@
         // ============================================================
         //  OCR EXTRACTION
         // ============================================================
+        // OCR state. These declarations must exist before the OCR function runs.
+        let ocrBusy = false;
+        let lastOCRResult = { reference: null, amount: null };
         async function extractReferenceFromImage(file) {
             if (!file) {
                 if (ocrStatus) ocrStatus.textContent = '⚠️ No image selected.';
