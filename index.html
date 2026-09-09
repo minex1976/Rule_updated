@@ -5755,8 +5755,16 @@
                             room.cumulativeRotation = 0; room.potAmount = 0; room.prizePool = 0; room.totalBets = 0;
                             room.numbersTaken = {};
                             room.winningNumber = null; room.spinLock = null; room.spinStartedRound = null;
+                            room.spinFinishedAt = null;
                             return room;
                         });
+                    }).then(() => {
+                        if (winnersModal) winnersModal.classList.remove('active');
+                        engineState.winnersModalShown = false;
+                        if (arrowContainer) { arrowContainer.style.transition = 'none'; arrowContainer.style.transform = 'rotate(0deg)'; }
+                        if (arrowCenter) { arrowCenter.textContent = '🎯'; arrowCenter.classList.remove('reveal'); }
+                        spinEls.forEach(el => { if (el) { el.textContent = ''; el.classList.remove('reveal', 'active'); } });
+                        updateWheel();
                     }).catch(err => console.error('Round finalization failed:', err));
                 }
             }, 1000);
@@ -5764,42 +5772,96 @@
 
         function executeSpin() {
             if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
-            engineState.isSpinning = true; engineState.spinInProgress = true;
+            engineState.isSpinning = true;
+            engineState.spinInProgress = true;
             if (spinningIndicator) spinningIndicator.classList.add('active');
+
             gameRef.once('value').then(snapshot => {
                 const room = snapshot.val() || {};
-                const numbers = Object.keys(room.numbersTaken || {}).filter(k => room.numbersTaken[k] === true).map(Number);
+                const round = Number(room.round);
+                const numbers = Object.keys(room.numbersTaken || {})
+                    .filter(k => room.numbersTaken[k] === true).map(Number)
+                    .filter(n => n >= 1 && n <= 200);
                 const winningNumber = Number(room.winningNumber);
+                const winners = Array.isArray(room.winners) ? room.winners.filter(Boolean) : [];
+                if (!Number.isFinite(round) || Number(engineState.roundNumber) !== round) throw new Error('Spin round changed');
                 if (!winningNumber || !numbers.includes(winningNumber)) throw new Error('Invalid authoritative winning number');
+
+                // Restore the visible 4.2 second wheel spin.
                 const targetAngle = getAngleForNumber(winningNumber);
                 const rotations = 4 + Math.floor(Math.random() * 2);
                 const degrees = rotations * 360 + targetAngle;
                 if (arrowContainer) {
-                    arrowContainer.style.transition = 'none'; arrowContainer.style.transform = 'rotate(0deg)';
-                    void arrowContainer.offsetHeight;
+                    arrowContainer.style.transition = 'none';
+                    arrowContainer.style.transform = 'rotate(0deg)';
+                    void arrowContainer.offsetWidth;
                     arrowContainer.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-                    arrowContainer.style.transform = `rotate(${degrees}deg)`;
+                    requestAnimationFrame(() => { arrowContainer.style.transform = `rotate(${degrees}deg)`; });
                 }
                 engineState.cumulativeRotation = degrees;
-                return new Promise(resolve => setTimeout(resolve, 4200)).then(() => {
-                    const winners = Array.isArray(room.winners) ? room.winners : [];
-                    if (arrowCenter) { arrowCenter.textContent = winningNumber; arrowCenter.classList.add('reveal'); }
-                    if (spinEls[0]) { spinEls[0].textContent = winningNumber; spinEls[0].classList.add('reveal', 'active'); }
+
+                return new Promise(resolve => setTimeout(resolve, 4300)).then(() => {
                     return gameRef.transaction(current => {
-                        if (!current || Number(current.round) !== Number(room.round) || current.gameState !== 'spinning') return current;
+                        if (!current || Number(current.round) !== round || current.gameState !== 'spinning') return current;
                         current.drawnNumbers = [winningNumber];
                         current.gameState = 'results';
                         current.timer = 5;
                         current.winners = winners;
                         current.cumulativeRotation = degrees;
+                        current.spinFinishedAt = firebase.database.ServerValue.TIMESTAMP;
                         return current;
+                    }).then(result => {
+                        if (!result || !result.committed) return;
+
+                        if (arrowCenter) { arrowCenter.textContent = String(winningNumber); arrowCenter.classList.add('reveal'); }
+                        if (spinEls[0]) { spinEls[0].textContent = String(winningNumber); spinEls[0].classList.add('reveal', 'active'); }
+                        engineState.drawnNumbers = [winningNumber];
+                        engineState.winners = winners;
+                        updateStatus(`🎯 Winning number: ${productionEscape(winningNumber)}`);
+                        updateWheel();
+
+                        const finalRoom = result.snapshot.val() || {};
+                        const prizePool = Number(finalRoom.prizePool ?? finalRoom.potAmount ?? 0);
+                        const winAmount = winners.length ? Math.floor(prizePool / winners.length) : 0;
+
+                        // Credit winners after the spin is finalized. creditWinnerAndReferral()
+                        // is idempotent per room/round/winner, so multiple clients cannot pay twice.
+                        if (winners.length && winAmount > 0) {
+                            Promise.allSettled(winners.map(name => creditWinnerAndReferral(name, winAmount)))
+                                .then(results => {
+                                    const failed = results.filter(r => r.status === 'rejected' || r.value !== true);
+                                    if (failed.length) {
+                                        console.error('Winner payout failure:', failed);
+                                        if (winners.includes(currentUser)) updateStatus('⚠️ Win recorded; wallet credit is still processing.', true);
+                                    } else if (winners.includes(currentUser)) {
+                                        updateStatus(`🏆 You won ${winAmount} Birr!`, true);
+                                        syncWalletFromFirebase();
+                                    }
+                                });
+                        }
+
+                        if (winnersList) {
+                            winnersList.innerHTML = winners.length
+                                ? winners.map(name => `<div class="winner-entry"><span class="player-name">${productionEscape(name)}</span><span class="winning-nums">🎯 ${productionEscape(winningNumber)} · ${winAmount} Birr</span></div>`).join('')
+                                : '<div class="no-winners">😔 No winners this round.</div>';
+                        }
+                        if (winners.length) { startFireworks(); playWinningAudio(); }
+                        else playNoWinnerAudio();
+                        if (winnersModal) winnersModal.classList.add('active');
+                        engineState.winnersModalShown = true;
+                        if (tg && tg.HapticFeedback && winners.includes(currentUser)) tg.HapticFeedback.notificationOccurred('success');
+
+                        // Results are displayed briefly, then the current round is finalized
+                        // and a completely fresh selection round starts automatically.
+                        startResultsCountdown();
                     });
                 });
             }).catch(err => {
                 console.error('Execute spin failed:', err);
                 updateStatus('⚠️ Spin temporarily failed. Retrying…');
             }).finally(() => {
-                engineState.isSpinning = false; engineState.spinInProgress = false;
+                engineState.isSpinning = false;
+                engineState.spinInProgress = false;
                 if (spinningIndicator) spinningIndicator.classList.remove('active');
             });
         }
