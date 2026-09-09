@@ -1966,7 +1966,7 @@
                 </div>
             </div>
 
-            <div class="footer">✦ pick one number · win = 85% prize pool</div>
+            <div class="footer">7354-1834-8904-9614</div>
         </div>
     </div>
 
@@ -3256,161 +3256,206 @@
             if (ocrProgressModal) ocrProgressModal.classList.add('active');
             if (ocrSpinner) ocrSpinner.style.display = 'block';
             if (ocrDoneIcon) ocrDoneIcon.classList.remove('show');
-            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Initializing OCR...';
-            if (ocrProgressSub) ocrProgressSub.textContent = 'Please wait, this may take a few seconds.';
+            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Preparing image...';
+            if (ocrProgressSub) ocrProgressSub.textContent = 'Running multiple OCR passes for the full 10-character reference.';
+
+            let imageUrl = null;
+            const objectUrls = [];
 
             try {
-                const imageUrl = URL.createObjectURL(file);
-                const result = await Tesseract.recognize(imageUrl, 'eng', {
-                    logger: m => {
-                        if (m.status === 'recognizing text') {
-                            const progress = Math.round(m.progress * 100);
-                            if (ocrProgressStatus) ocrProgressStatus.textContent = `Extracting text... ${progress}%`;
-                            if (ocrProgressSub) ocrProgressSub.textContent = 'Processing image...';
-                        } else if (m.status === 'loading tesseract core') {
-                            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Loading OCR engine...';
-                            if (ocrProgressSub) ocrProgressSub.textContent = 'This may take a moment.';
-                        } else if (m.status === 'initializing tesseract') {
-                            if (ocrProgressStatus) ocrProgressStatus.textContent = 'Initializing...';
-                            if (ocrProgressSub) ocrProgressSub.textContent = 'Preparing OCR engine.';
+                // Create several OCR versions. Payment screenshots can be low-resolution,
+                // and a single Tesseract pass often drops characters from the reference.
+                imageUrl = URL.createObjectURL(file);
+                objectUrls.push(imageUrl);
+
+                const img = await new Promise((resolve, reject) => {
+                    const im = new Image();
+                    im.onload = () => resolve(im);
+                    im.onerror = reject;
+                    im.src = imageUrl;
+                });
+
+                const maxSide = 2400;
+                const scale = Math.min(3, Math.max(1.5, maxSide / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height)));
+                const w = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+                const h = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+
+                function makeProcessed(mode) {
+                    const c = document.createElement('canvas');
+                    c.width = w;
+                    c.height = h;
+                    const ctx = c.getContext('2d', { willReadFrequently: true });
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const data = ctx.getImageData(0, 0, w, h);
+                    for (let i = 0; i < data.data.length; i += 4) {
+                        const r = data.data[i], g = data.data[i + 1], b = data.data[i + 2];
+                        let v = 0.299 * r + 0.587 * g + 0.114 * b;
+                        if (mode === 'contrast') v = Math.max(0, Math.min(255, (v - 128) * 1.8 + 128));
+                        if (mode === 'threshold') v = v > 160 ? 255 : 0;
+                        data.data[i] = data.data[i + 1] = data.data[i + 2] = v;
+                    }
+                    ctx.putImageData(data, 0, 0);
+                    return c.toDataURL('image/png');
+                }
+
+                const sources = [
+                    { url: imageUrl, mode: 'normal' },
+                    { url: makeProcessed('contrast'), mode: 'contrast' },
+                    { url: makeProcessed('threshold'), mode: 'threshold' }
+                ];
+
+                const allTexts = [];
+                const allWords = [];
+
+                for (let pass = 0; pass < sources.length; pass++) {
+                    if (ocrProgressStatus) ocrProgressStatus.textContent = `Extracting reference... pass ${pass + 1}/3`;
+                    const result = await Tesseract.recognize(sources[pass].url, 'eng', {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                const progress = Math.round(m.progress * 100);
+                                if (ocrProgressSub) ocrProgressSub.textContent = `OCR pass ${pass + 1}/3: ${progress}%`;
+                            }
+                        },
+                        config: {
+                            tessedit_pageseg_mode: pass === 0 ? '6' : '11'
+                        }
+                    });
+                    allTexts.push(result.data.text || '');
+                    if (Array.isArray(result.data.words)) allWords.push(...result.data.words);
+                }
+
+                const text = allTexts.join('\n');
+                const labelRe = /(reference|transaction\s*(id|number|no)?|ref\.?\s*(id|no)?|receipt\s*(no|number)?)/i;
+                const refCandidates = [];
+                const seen = new Set();
+
+                function addCandidate(value, score = 0) {
+                    if (!value) return;
+                    let v = String(value).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    if (v.length !== 10 || !/[A-Z]/.test(v) || !/\d/.test(v)) return;
+                    if (!seen.has(v)) {
+                        seen.add(v);
+                        refCandidates.push({ value: v, score });
+                    } else {
+                        const item = refCandidates.find(x => x.value === v);
+                        if (item) item.score = Math.max(item.score, score);
+                    }
+                }
+
+                // 1) Exact tokens and joined nearby OCR fragments.
+                const cleaned = text.replace(/[\u2010-\u2015]/g, '-').replace(/[\r\n]+/g, ' ');
+                const tokens = cleaned.match(/[A-Z0-9]{1,24}/gi) || [];
+                tokens.forEach(t => addCandidate(t, 80));
+
+                for (let i = 0; i < tokens.length; i++) {
+                    let joined = '';
+                    for (let j = i; j < Math.min(tokens.length, i + 5); j++) {
+                        joined += tokens[j];
+                        if (joined.length > 10) break;
+                        if (joined.length === 10) addCandidate(joined, 90);
+                    }
+                }
+
+                // 2) Search short windows around reference/transaction labels. This is much
+                // safer than simply taking the first 10-character string in the screenshot.
+                const labelWindows = [];
+                for (const m of cleaned.matchAll(/(?:reference|transaction\s*(?:id|number|no)?|ref\.?\s*(?:id|no)?|receipt\s*(?:no|number)?)[^\n]{0,90}/gi)) {
+                    labelWindows.push(m[0]);
+                }
+                for (const win of labelWindows) {
+                    const compact = win.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                    for (let i = 0; i <= compact.length - 10; i++) addCandidate(compact.slice(i, i + 10), 140);
+                }
+
+                // 3) Use Tesseract word positions: if a word says Reference/Transaction,
+                // inspect nearby words on the same/next line and join their fragments.
+                for (let i = 0; i < allWords.length; i++) {
+                    const word = String(allWords[i].text || '');
+                    if (!labelRe.test(word)) continue;
+                    const base = allWords[i];
+                    const near = allWords.filter(wd => {
+                        const dx = Math.abs((wd.bbox?.x0 || 0) - (base.bbox?.x1 || 0));
+                        const dy = Math.abs((wd.bbox?.y0 || 0) - (base.bbox?.y0 || 0));
+                        return wd !== base && dy < 180 && dx < 1200;
+                    });
+                    const fragments = near.map(wd => String(wd.text || '').replace(/[^A-Z0-9]/gi, '')).filter(Boolean);
+                    for (let a = 0; a < fragments.length; a++) {
+                        let joined = '';
+                        for (let b = a; b < Math.min(fragments.length, a + 5); b++) {
+                            joined += fragments[b];
+                            if (joined.length > 10) break;
+                            if (joined.length === 10) addCandidate(joined, 160);
                         }
                     }
-                });
-                URL.revokeObjectURL(imageUrl);
-                const text = result.data.text;
-
-                // Payment references are exactly 10 alphanumeric characters, e.g. HTINR467EB.
-                // OCR often inserts spaces, line breaks, or hyphens inside the code, so first
-                // search normal tokens and then search for 10-character codes reconstructed
-                // from nearby alphanumeric fragments.
-                const cleanedOCRText = text
-                    .replace(/[\u2010-\u2015]/g, '-')
-                    .replace(/[\r\n]+/g, ' ');
-
-                const refTokens = cleanedOCRText.match(/[A-Z0-9]{1,20}/gi) || [];
-                const refCandidates = [];
-
-                // Direct 10-character token.
-                for (const token of refTokens) {
-                    const v = token.toUpperCase();
-                    if (v.length === 10 && /[A-Z]/.test(v) && /\d/.test(v)) {
-                        refCandidates.push(v);
-                    }
                 }
 
-                // Reconstruct references when OCR splits them: HTINR 467EB, HTINR-467EB,
-                // HTI NR467 EB, etc. Only join fragments from the same short text window.
-                const refWindowRegex = /(?:[A-Z0-9][A-Z0-9\s-]{8,30}[A-Z0-9])/gi;
-                const windows = cleanedOCRText.match(refWindowRegex) || [];
-                for (const windowText of windows) {
-                    const compact = windowText.replace(/[^A-Z0-9]/gi, '').toUpperCase();
-                    if (compact.length === 10 && /[A-Z]/.test(compact) && /\d/.test(compact)) {
-                        refCandidates.push(compact);
-                    }
-                }
-
-                // Last fallback: inspect each OCR line with all separators removed.
+                // 4) Last-resort sliding windows on each OCR line.
                 for (const line of text.split(/\r?\n/)) {
                     const compact = line.replace(/[^A-Z0-9]/gi, '').toUpperCase();
-                    if (compact.length >= 10) {
-                        for (let i = 0; i <= compact.length - 10; i++) {
-                            const part = compact.slice(i, i + 10);
-                            if (/^[A-Z0-9]{10}$/.test(part) && /[A-Z]/.test(part) && /\d/.test(part)) {
-                                refCandidates.push(part);
-                            }
-                        }
+                    for (let i = 0; i <= compact.length - 10; i++) {
+                        addCandidate(compact.slice(i, i + 10), 20);
                     }
                 }
 
-                const refMatch = refCandidates[0] || null;
+                // Prefer references that occur more than once across OCR passes, then those
+                // found close to a Reference/Transaction label. This prevents partial codes
+                // such as HTINR467 from being accepted just because they appeared first.
+                const counts = {};
+                for (const item of refCandidates) counts[item.value] = (counts[item.value] || 0) + 1;
+                refCandidates.sort((a, b) => (counts[b.value] * 1000 + b.score) - (counts[a.value] * 1000 - a.score));
+                const refMatch = refCandidates.length ? refCandidates[0].value : null;
 
+                // Amount extraction remains compatible with the previous version.
                 let amount = null;
                 const lines = text.split('\n');
                 let amountLine = null;
                 for (const line of lines) {
-                    if (line.match(/ETB|Birr/i)) {
-                        amountLine = line;
-                        break;
-                    }
+                    if (/ETB|Birr/i.test(line)) { amountLine = line; break; }
                 }
-
                 if (amountLine) {
                     const numberMatch = amountLine.match(/-?\s*([\d,]+\.?\d*)/);
                     if (numberMatch) {
-                        const numStr = numberMatch[1].replace(/,/g, '');
-                        const parsed = parseFloat(numStr);
-                        if (!isNaN(parsed) && parsed > 0) {
-                            amount = parsed;
-                        }
+                        const parsed = parseFloat(numberMatch[1].replace(/,/g, ''));
+                        if (!isNaN(parsed) && parsed > 0) amount = parsed;
                     }
                 }
-
                 if (amount === null) {
-                    const decimalRegex = /\b(\d+\.\d{2})\b/g;
-                    let matches = [];
-                    let m;
-                    while ((m = decimalRegex.exec(text)) !== null) {
-                        const val = parseFloat(m[1]);
-                        if (val < 1900 || val > 2100) {
-                            matches.push(val);
-                        }
-                    }
-                    if (matches.length > 0) {
-                        amount = Math.max(...matches);
-                    } else {
-                        const intRegex = /\b(\d{2,4})\b/g;
-                        let intMatches = [];
-                        while ((m = intRegex.exec(text)) !== null) {
-                            const val = parseInt(m[1]);
-                            if (val < 1900 || val > 2100) {
-                                intMatches.push(val);
-                            }
-                        }
-                        if (intMatches.length > 0) {
-                            amount = Math.max(...intMatches);
-                        }
+                    const decimalMatches = [...text.matchAll(/\b(\d+\.\d{2})\b/g)].map(m => parseFloat(m[1])).filter(v => v < 1900 || v > 2100);
+                    if (decimalMatches.length) amount = Math.max(...decimalMatches);
+                    else {
+                        const intMatches = [...text.matchAll(/\b(\d{2,4})\b/g)].map(m => parseInt(m[1], 10)).filter(v => v < 1900 || v > 2100);
+                        if (intMatches.length) amount = Math.max(...intMatches);
                     }
                 }
 
                 if (ocrSpinner) ocrSpinner.style.display = 'none';
                 if (ocrDoneIcon) ocrDoneIcon.classList.add('show');
 
-                const resultObj = { reference: null, amount: null };
+                const resultObj = { reference: refMatch, amount: amount };
                 if (refMatch) {
-                    resultObj.reference = refMatch[0];
-                    if (ocrProgressStatus) ocrProgressStatus.textContent = '✅ Reference found!';
-                } else {
-                    if (ocrProgressStatus) ocrProgressStatus.textContent = '⚠️ No reference found.';
+                    if (ocrProgressStatus) ocrProgressStatus.textContent = '✅ Full 10-character reference found!';
+                } else if (ocrProgressStatus) {
+                    ocrProgressStatus.textContent = '⚠️ Full 10-character reference not found.';
                 }
-                if (amount !== null && amount > 0) {
-                    resultObj.amount = amount;
-                    if (ocrProgressStatus) ocrProgressStatus.textContent += ' ✅ Amount found!';
-                } else {
-                    if (ocrProgressStatus) ocrProgressStatus.textContent += ' ⚠️ No amount found.';
-                }
-
+                if (amount !== null && amount > 0 && ocrProgressStatus) ocrProgressStatus.textContent += ' ✅ Amount found!';
                 if (ocrProgressSub) ocrProgressSub.textContent = `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
 
-                setTimeout(() => {
-                    if (ocrProgressModal) ocrProgressModal.classList.remove('active');
-                }, 1500);
-
+                setTimeout(() => { if (ocrProgressModal) ocrProgressModal.classList.remove('active'); }, 1500);
                 lastOCRResult = resultObj;
                 ocrBusy = false;
                 return resultObj;
-
             } catch (e) {
                 console.error('OCR error:', e);
                 if (ocrSpinner) ocrSpinner.style.display = 'none';
                 if (ocrDoneIcon) ocrDoneIcon.classList.add('show');
                 if (ocrProgressStatus) ocrProgressStatus.textContent = '❌ OCR failed.';
                 if (ocrProgressSub) ocrProgressSub.textContent = 'Please enter data manually.';
-                setTimeout(() => {
-                    if (ocrProgressModal) ocrProgressModal.classList.remove('active');
-                }, 1500);
+                setTimeout(() => { if (ocrProgressModal) ocrProgressModal.classList.remove('active'); }, 1500);
                 lastOCRResult = { reference: null, amount: null };
                 ocrBusy = false;
                 return lastOCRResult;
+            } finally {
+                objectUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch (_) {} });
             }
         }
 
