@@ -1941,7 +1941,7 @@
                         <div class="arrow-head"></div>
                     </div>
                     <div class="arrow-center-circle" id="arrowCenter">🎯</div>
-                    <div class="spinning-indicator" id="spinningIndicator">🎡 SPINNING...</div>
+                    <div class="spinning-indicator" id="spinningIndicator">SPINNING...</div>
                 </div>
             </div>
 
@@ -3279,10 +3279,50 @@
                 URL.revokeObjectURL(imageUrl);
                 const text = result.data.text;
 
-                // Payment references can be 8–20 alphanumeric characters and OCR may insert spaces/hyphens.
-                const normalizedText = text.replace(/[\u2010-\u2015]/g, '-');
-                const refCandidates = normalizedText.match(/\b[A-Z0-9]{8,20}\b/gi) || [];
-                const refMatch = refCandidates.find(v => /[A-Z]/i.test(v) && /\d/.test(v)) || null;
+                // Payment references are exactly 10 alphanumeric characters, e.g. HTINR467EB.
+                // OCR often inserts spaces, line breaks, or hyphens inside the code, so first
+                // search normal tokens and then search for 10-character codes reconstructed
+                // from nearby alphanumeric fragments.
+                const cleanedOCRText = text
+                    .replace(/[\u2010-\u2015]/g, '-')
+                    .replace(/[\r\n]+/g, ' ');
+
+                const refTokens = cleanedOCRText.match(/[A-Z0-9]{1,20}/gi) || [];
+                const refCandidates = [];
+
+                // Direct 10-character token.
+                for (const token of refTokens) {
+                    const v = token.toUpperCase();
+                    if (v.length === 10 && /[A-Z]/.test(v) && /\d/.test(v)) {
+                        refCandidates.push(v);
+                    }
+                }
+
+                // Reconstruct references when OCR splits them: HTINR 467EB, HTINR-467EB,
+                // HTI NR467 EB, etc. Only join fragments from the same short text window.
+                const refWindowRegex = /(?:[A-Z0-9][A-Z0-9\s-]{8,30}[A-Z0-9])/gi;
+                const windows = cleanedOCRText.match(refWindowRegex) || [];
+                for (const windowText of windows) {
+                    const compact = windowText.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                    if (compact.length === 10 && /[A-Z]/.test(compact) && /\d/.test(compact)) {
+                        refCandidates.push(compact);
+                    }
+                }
+
+                // Last fallback: inspect each OCR line with all separators removed.
+                for (const line of text.split(/\r?\n/)) {
+                    const compact = line.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                    if (compact.length >= 10) {
+                        for (let i = 0; i <= compact.length - 10; i++) {
+                            const part = compact.slice(i, i + 10);
+                            if (/^[A-Z0-9]{10}$/.test(part) && /[A-Z]/.test(part) && /\d/.test(part)) {
+                                refCandidates.push(part);
+                            }
+                        }
+                    }
+                }
+
+                const refMatch = refCandidates[0] || null;
 
                 let amount = null;
                 const lines = text.split('\n');
