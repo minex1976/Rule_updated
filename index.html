@@ -3248,6 +3248,8 @@
                 return null;
             }
 
+            if (ocrBusy) return lastOCRResult;
+            ocrBusy = true;
             if (ocrProgressModal) ocrProgressModal.classList.add('active');
             if (ocrSpinner) ocrSpinner.style.display = 'block';
             if (ocrDoneIcon) ocrDoneIcon.classList.remove('show');
@@ -3274,7 +3276,10 @@
                 URL.revokeObjectURL(imageUrl);
                 const text = result.data.text;
 
-                const refMatch = text.match(/\b[A-Z0-9]{10}\b/);
+                // Payment references can be 8–20 alphanumeric characters and OCR may insert spaces/hyphens.
+                const normalizedText = text.replace(/[\u2010-\u2015]/g, '-');
+                const refCandidates = normalizedText.match(/\b[A-Z0-9]{8,20}\b/gi) || [];
+                const refMatch = refCandidates.find(v => /[A-Z]/i.test(v) && /\d/.test(v)) || null;
 
                 let amount = null;
                 const lines = text.split('\n');
@@ -3347,6 +3352,8 @@
                     if (ocrProgressModal) ocrProgressModal.classList.remove('active');
                 }, 1500);
 
+                lastOCRResult = resultObj;
+                ocrBusy = false;
                 return resultObj;
 
             } catch (e) {
@@ -3358,7 +3365,9 @@
                 setTimeout(() => {
                     if (ocrProgressModal) ocrProgressModal.classList.remove('active');
                 }, 1500);
-                return { reference: null, amount: null };
+                lastOCRResult = { reference: null, amount: null };
+                ocrBusy = false;
+                return lastOCRResult;
             }
         }
 
@@ -5402,12 +5411,24 @@
             if (moreBtn) moreBtn.onclick = toggleMoreDropdown;
 
             if (depositConfirm) {
-                depositConfirm.onclick = () => {
-                    const amount = parseInt(depositAmount ? depositAmount.value : '0');
-                    const ref = depositReference ? depositReference.value.trim() : '';
+                depositConfirm.onclick = async () => {
                     const file = depositImage ? depositImage.files[0] : null;
+                    let amount = parseFloat(depositAmount ? depositAmount.value : '0');
+                    let ref = depositReference ? depositReference.value.trim() : '';
+
+                    // If the player chose OCR but the fields were not populated yet,
+                    // finish OCR here before submitting the Firebase transaction.
+                    if (file && (!amount || !ref)) {
+                        if (ocrStatus) ocrStatus.textContent = '🔍 Reading payment details...';
+                        const extracted = await extractReferenceFromImage(file);
+                        if (!amount && extracted && extracted.amount) amount = Number(extracted.amount);
+                        if (!ref && extracted && extracted.reference) ref = String(extracted.reference);
+                        if (depositAmount && amount > 0) depositAmount.value = amount;
+                        if (depositReference && ref) depositReference.value = ref;
+                    }
+
                     if (!amount || amount <= 0) {
-                        if (depositError) depositError.textContent = 'Please enter a valid amount.';
+                        if (depositError) depositError.textContent = 'Could not detect the deposit amount. Please enter the amount.';
                         return;
                     }
                     if (!ref && !file) {
@@ -5925,49 +5946,78 @@
             if (!currentUser || !database) return Promise.resolve(false);
             amount = Number(amount);
             if (!['deposit', 'withdraw'].includes(type) || !Number.isFinite(amount) || amount <= 0) return Promise.resolve(false);
+
             const txRef = database.ref('transactions').push();
             const txData = {
-                id: txRef.key, username: currentUser, type, amount,
-                status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
-                requestVersion: 2
+                id: txRef.key,
+                username: currentUser,
+                type,
+                amount,
+                status: 'pending',
+                timestamp: firebase.database.ServerValue.TIMESTAMP,
+                requestVersion: 3,
+                createdBy: 'player'
             };
+
             if (type === 'deposit') {
                 if (reference) txData.reference = safeProductionName(reference);
             } else {
                 txData.fullName = safeProductionName(extra.name);
                 txData.phoneNumber = safeProductionName(extra.phone);
             }
-            let uploadPromise = Promise.resolve();
-            if (type === 'deposit' && imageFile && storage) {
-                const storageRef = storage.ref(`deposits/${currentUser}/${txRef.key}.jpg`);
-                uploadPromise = storageRef.put(imageFile).then(s => s.ref.getDownloadURL()).then(url => {
-                    txData.imageUrl = url;
-                });
-            }
-            transactionStatus.textContent = '⏳ Pending admin approval...';
+
+            transactionStatus.textContent = '⏳ Sending request to admin...';
             transactionStatus.className = 'status-text pending';
             if (transactionModal) transactionModal.classList.add('active');
-            return uploadPromise.then(() => txRef.set(txData)).then(() => new Promise(resolve => {
+
+            // IMPORTANT: create the Firebase transaction FIRST.
+            // A failed deposit-proof image upload must never prevent the
+            // deposit/withdrawal request from reaching the admin dashboard.
+            return txRef.set(txData).then(() => {
+                transactionStatus.textContent = '⏳ Pending admin approval...';
+
+                // Upload proof separately. The transaction already exists,
+                // so Storage errors cannot hide the request from admins.
+                if (type === 'deposit' && imageFile && storage) {
+                    const storageRef = storage.ref(`deposits/${currentUser}/${txRef.key}.jpg`);
+                    return storageRef.put(imageFile)
+                        .then(s => s.ref.getDownloadURL())
+                        .then(url => txRef.update({imageUrl: url}))
+                        .catch(err => {
+                            console.warn('Deposit proof upload failed; request remains pending:', err);
+                            transactionStatus.textContent = '⏳ Pending admin approval (proof upload failed).';
+                            return null;
+                        });
+                }
+                return null;
+            }).then(() => new Promise(resolve => {
                 const handler = snap => {
                     const data = snap.val();
                     if (!data) return;
                     if (data.status === 'approved') {
-                        transactionStatus.textContent = data.type === 'withdraw' ? '✅ Withdrawal approved.' : '✅ Deposit approved. Balance updated.';
+                        transactionStatus.textContent = data.type === 'withdraw'
+                            ? '✅ Withdrawal approved.'
+                            : '✅ Deposit approved. Balance updated.';
                         transactionStatus.className = 'status-text approved';
                         if (data.walletApplied) syncWalletFromFirebase();
                         setTimeout(() => transactionModal && transactionModal.classList.remove('active'), 1800);
-                        txRef.off('value', handler); resolve(true);
+                        txRef.off('value', handler);
+                        resolve(true);
                     } else if (data.status === 'rejected') {
                         transactionStatus.textContent = '❌ Transaction rejected.';
                         transactionStatus.className = 'status-text rejected';
                         setTimeout(() => transactionModal && transactionModal.classList.remove('active'), 1800);
-                        txRef.off('value', handler); resolve(false);
+                        txRef.off('value', handler);
+                        resolve(false);
                     }
                 };
-                txRef.on('value', handler);
+                txRef.on('value', handler, err => {
+                    console.error('Transaction status listener failed:', err);
+                    if (transactionStatus) transactionStatus.textContent = '⚠️ Request sent, but status cannot be monitored.';
+                });
             })).catch(err => {
                 console.error('Transaction request failed:', err);
-                if (transactionStatus) transactionStatus.textContent = '⚠️ Could not submit request. Please try again.';
+                if (transactionStatus) transactionStatus.textContent = '⚠️ Could not submit request: ' + (err.message || 'Firebase error');
                 return false;
             });
         }
@@ -5978,7 +6028,7 @@
         // Restores the original wheel/results flow, authoritative winner
         // selection, live player count, and atomic winner wallet credits.
         // ============================================================
-        const WINZO_PATCH_VERSION = '7.4.0-admin-ready';
+        const WINZO_PATCH_VERSION = '7.4.1-admin-requests';
 
         function syncGameState(data) {
             if (syncInProgress) return;
