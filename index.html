@@ -941,7 +941,7 @@
             border-radius: 6px;
             padding: 0;
             font-weight: 800;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: #f0e6ff;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             cursor: pointer;
@@ -977,16 +977,16 @@
             z-index: 2;
         }
         .num-btn.taken {
-            background: #4a2a5a;
-            color: #5a4a6a;
+            background: red;
+            color: yellow;
             border-color: rgba(120, 80, 200, 0.2);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             cursor: not-allowed;
-            opacity: 0.6;
+            opacity: 100;
             transform: scale(0.95);
         }
         .num-btn:disabled {
-            opacity: 0.35;
+            opacity: 100;
             transform: scale(0.92);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
             pointer-events: none;
@@ -1016,7 +1016,7 @@
             text-align: center;
             font-size: 0.4rem;
             margin-top: auto;
-            opacity: 0.6;
+            opacity: 0.9;
             border-top: 1px solid rgba(120, 80, 200, 0.08);
             padding-top: 2px;
             flex-shrink: 0;
@@ -1896,14 +1896,14 @@
         <div id="gameScreen">
             <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆 · <small id="modeLabel">15 Birr</small></div>
             <div class="bet-switcher">
-                <button class="bet-btn switch-room-btn" id="switchRoomBtn">🔄 Switch Room</button>
+                <button class="bet-btn switch-room-btn" id="switchRoomBtn"> Switch Room</button>
             </div>
 
             <div class="wallet-bar">
                 <div class="wallet-left">
                     <div class="wallet-item"><span class="label">👤</span><span class="username" id="walletUsername">User</span></div>
-                    <div class="wallet-item"><span class="label">💰</span><span class="amount" id="mainWallet">0</span></div>
-                    <div class="wallet-item"><span class="label">🎰</span><span class="amount" id="playWallet">0</span></div>
+                    <div class="wallet-item"><span class="label"> M-Wallet </span><span class="amount" id="mainWallet">0</span></div>
+                    <div class="wallet-item"><span class="label"> P-Wallet </span><span class="amount" id="playWallet">0</span></div>
                     <div class="wallet-item" id="pendingItem" style="display:none;"><span class="label">⏳</span><span class="pending" id="pendingAmount">0</span></div>
                 </div>
                 <div class="wallet-right">
@@ -1926,12 +1926,12 @@
             </div>
 
             <div class="game-info-bar">
-                <div class="info-item">⏱️ <span class="value timer" id="timerDisplay">30</span>s</div>
+                <div class="info-item">Timer: <span class="value timer" id="timerDisplay">30</span>s</div>
                 <div class="info-item">👥 <span class="value players" id="playerCount">0</span></div>
                 <div class="info-item">🏆 <span class="value prize" id="prizeDisplay">0</span> Birr</div>
             </div>
 
-            <div class="pick-status" id="pickStatus"><span>🎯 Pick <span class="highlight">one</span> number</span></div>
+            <div class="pick-status" id="pickStatus"><span>Pick <span class="highlight">one</span> number</span></div>
 
             <div class="wheel-container hidden" id="wheelContainer">
                 <div class="wheel" id="wheel">
@@ -2000,12 +2000,13 @@
     <!-- DEPOSIT MODAL -->
     <div class="deposit-modal" id="depositModal">
         <div class="modal-content">
-            <h3>💰 Deposit to Play</h3>
-            <div class="balance-info">Current Play: <span class="amount" id="depositPlayBalance">0</span></div>
+            <h3> በቴሌብር ወደ 0998487148 ገቢ ያድርጉ </h3>
+
+            <div class="balance-info">አሁን ያሎት ብር: <span class="amount" id="depositPlayBalance">0</span></div>
             <input type="number" class="modal-input" id="depositAmount" placeholder="Amount" min="1" step="1">
             <input type="text" class="modal-input" id="depositReference" placeholder="Reference number" maxlength="20">
             <div style="margin: 8px 0;">
-                <label style="color:#b8a0d0;font-size:0.8rem;">Upload Screenshot</label>
+                <label style="color:#b8a0d0;font-size:0.8rem;"> Screenshot ይላኩ</label>
                 <input type="file" id="depositImage" accept="image/*" style="width:100%;padding:6px;background:rgba(0,0,0,0.3);border:1px solid rgba(120,80,200,0.2);border-radius:30px;color:#f0e6ff;">
                 <div style="display:flex;gap:8px;margin-top:6px;align-items:center;flex-wrap:wrap;">
                     <button id="extractRefBtn" style="background:rgba(80,255,160,0.08);border:1px solid rgba(80,255,160,0.15);border-radius:30px;padding:4px 16px;color:#8affb0;font-size:0.75rem;cursor:pointer;">🔍 Extract</button>
@@ -2014,7 +2015,7 @@
             </div>
             <div class="modal-error" id="depositError"></div>
             <div class="modal-btns">
-                <button class="confirm" id="depositConfirm">Submit</button>
+                <button class="confirm" id="depositConfirm">Send</button>
                 <button class="cancel" id="depositCancel">Cancel</button>
             </div>
         </div>
@@ -2022,14 +2023,14 @@
 
     <div class="withdraw-modal" id="withdrawModal">
         <div class="modal-content">
-            <h3>🏦 Withdraw from Main</h3>
-            <div class="balance-info">Available: <span class="amount" id="withdrawAvailableBalance">0</span> Birr</div>
+            <h3>ከዋናው ዋሌት ወጪ  ማዘዣ </h3>
+            <div class="balance-info">ያለው የብር መጠን: <span class="amount" id="withdrawAvailableBalance">0</span> ብር</div>
             <input type="text" class="modal-input" id="withdrawName" placeholder="Full Name" required>
             <input type="tel" class="modal-input" id="withdrawPhone" placeholder="Phone Number" required>
             <input type="number" class="modal-input" id="withdrawAmount" placeholder="Amount" min="1" required>
             <div class="modal-error" id="withdrawError"></div>
             <div class="modal-btns">
-                <button class="confirm" id="withdrawConfirm">Request</button>
+                <button class="confirm" id="withdrawConfirm">Send</button>
                 <button class="cancel" id="withdrawCancel">Cancel</button>
             </div>
         </div>
@@ -2053,9 +2054,9 @@
     </div>
 
     <div class="waiting-modal" id="waitingModal">
-        <span class="icon">🕐</span>
-        <h3>ብቻዎትን ኖት</h3>
-        <p>አሁን ብቻዎትን ኖት። ሌላ ተጫዋች እስከሚገባ እባክዎትን ትንሽ ይጠብቁ!</p>
+        <span class="icon"></span>
+        <h3>✋</h3>
+        <p>ሌላ ተጫዋች እስከሚገባ እባክዎትን ትንሽ ይጠብቁ!</p>
         <button class="close-waiting" id="closeWaitingBtn">✕ Dismiss</button>
     </div>
 
