@@ -603,7 +603,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
             background: rgba(20, 10, 40, 0.5);
             backdrop-filter: blur(8px);
             border-radius: 30px;
@@ -620,6 +621,7 @@
             color: #b8a0d0;
             font-size: 0.7rem;
             font-weight: 600;
+            white-space: nowrap;
         }
         .game-info-bar .info-item .value {
             color: #f0e6ff;
@@ -639,7 +641,13 @@
         .game-info-bar .info-item .value.prize {
             color: #ffcc44;
             font-size: 0.95rem;
-            min-width: 50px;
+            min-width: 40px;
+        }
+        .game-info-bar .info-item .value.bet-total {
+            color: #74ffb9;
+            font-size: 0.95rem;
+            min-width: 40px;
+            text-shadow: 0 0 12px rgba(116, 255, 185, 0.35);
         }
 
         /* ===== Pick Status ===== */
@@ -1000,14 +1008,12 @@
             cursor: default;
         }
         @keyframes shimmer {
-            0% {
+            0%,
+            100% {
                 opacity: 0.4;
             }
             50% {
                 opacity: 0.8;
-            }
-            100% {
-                opacity: 0.4;
             }
         }
 
@@ -1722,7 +1728,7 @@
             }
             .game-info-bar {
                 padding: 2px 10px;
-                gap: 12px;
+                gap: 8px;
             }
             .game-info-bar .info-item {
                 font-size: 0.6rem;
@@ -1806,16 +1812,21 @@
             }
             .game-info-bar {
                 padding: 2px 8px;
-                gap: 8px;
+                gap: 6px;
             }
             .game-info-bar .info-item {
-                font-size: 0.55rem;
+                font-size: 0.5rem;
             }
             .game-info-bar .info-item .value {
-                font-size: 0.7rem;
+                font-size: 0.65rem;
             }
             .game-info-bar .info-item .value.timer {
-                font-size: 0.8rem;
+                font-size: 0.75rem;
+            }
+            .game-info-bar .info-item .value.bet-total,
+            .game-info-bar .info-item .value.prize {
+                font-size: 0.7rem;
+                min-width: 32px;
             }
             .bet-switcher {
                 padding: 2px 6px;
@@ -1894,9 +1905,9 @@
 
         <!-- ===== GAME SCREEN ===== -->
         <div id="gameScreen">
-            <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆<small id="modeLabel">15 Birr</small></div>
+            <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆 · <small id="modeLabel">15 Birr</small></div>
             <div class="bet-switcher">
-                <button class="bet-btn switch-room-btn" id="switchRoomBtn">Switch Room</button>
+                <button class="bet-btn switch-room-btn" id="switchRoomBtn"> Switch Room</button>
             </div>
 
             <div class="wallet-bar">
@@ -1928,7 +1939,8 @@
             <div class="game-info-bar">
                 <div class="info-item">Timer: <span class="value timer" id="timerDisplay">30</span>s</div>
                 <div class="info-item">👥 <span class="value players" id="playerCount">0</span></div>
-                <div class="info-item">🏆 <span class="value prize" id="prizeDisplay">0</span> Birr</div>
+                <div class="info-item">💰 Total Bet: <span class="value bet-total" id="totalBetDisplay">0</span></div>
+                <div class="info-item">🏆 <span class="value prize" id="prizeDisplay">0</span></div>
             </div>
 
             <div class="pick-status" id="pickStatus"><span>Pick <span class="highlight">one</span> number</span></div>
@@ -2000,7 +2012,7 @@
     <!-- DEPOSIT MODAL -->
     <div class="deposit-modal" id="depositModal">
         <div class="modal-content">
-            <h3>በቴሌብር ወደ 0998487148 ገቢ ያድርጉ</h3>
+            <h3> በቴሌብር ወደ 0998487148 ገቢ ያድርጉ </h3>
 
             <div class="balance-info">አሁን ያሎት ብር: <span class="amount" id="depositPlayBalance">0</span></div>
             <input type="number" class="modal-input" id="depositAmount" placeholder="Amount" min="1" step="1">
@@ -2023,7 +2035,7 @@
 
     <div class="withdraw-modal" id="withdrawModal">
         <div class="modal-content">
-            <h3>ከዋናው ዋሌት ወጪ ማዘዣ </h3>
+            <h3>ከዋናው ዋሌት ወጪ  ማዘዣ </h3>
             <div class="balance-info">ያለው የብር መጠን: <span class="amount" id="withdrawAvailableBalance">0</span> ብር</div>
             <input type="text" class="modal-input" id="withdrawName" placeholder="Full Name" required>
             <input type="tel" class="modal-input" id="withdrawPhone" placeholder="Phone Number" required>
@@ -2876,12 +2888,31 @@
         const timerDisplay = $('timerDisplay');
         const playerCountEl = $('playerCount');
         const gamePhaseLabel = $('gamePhaseLabel');
+        // NEW: Total bet display element
+        const totalBetDisplayEl = $('totalBetDisplay');
 
         const ocrProgressModal = $('ocrProgressModal');
         const ocrSpinner = $('ocrSpinner');
         const ocrDoneIcon = $('ocrDoneIcon');
         const ocrProgressStatus = $('ocrProgressStatus');
         const ocrProgressSub = $('ocrProgressSub');
+
+        // ============================================================
+        //  NEW: TOTAL BET DISPLAY
+        //  Computes total bet = (number of taken numbers) × current bet.
+        //  Called from renderNumberPicker() and syncGameState() so it
+        //  updates live on every pick / unpick / room change.
+        // ============================================================
+        function updateTotalBetDisplay() {
+            if (!totalBetDisplayEl) return;
+            const bet = Number(currentBet || 0);
+            const takenSet = (engineState && engineState.allTakenNumbers instanceof Set)
+                ? engineState.allTakenNumbers
+                : new Set();
+            const takenCount = takenSet.size;
+            const total = takenCount * bet;
+            totalBetDisplayEl.textContent = String(total);
+        }
 
         // ============================================================
         //  CONNECTION STATUS
@@ -3551,6 +3582,7 @@
             if (betDisplay) betDisplay.textContent = currentBet;
             updateWalletUI();
             updatePickStatus();
+            updateTotalBetDisplay();
             audioPlayedThisRound = false;
             DB.setSavedBet(currentBet);
             enableNetworkListener();
@@ -3867,6 +3899,7 @@
             renderNumberPicker();
             updatePickStatus();
             updateWalletUI();
+            updateTotalBetDisplay();
 
             if (tg && tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
@@ -3933,6 +3966,7 @@
             showGameScreen();
 
             renderNumberPicker(true);
+            updateTotalBetDisplay();
 
             initGameConnection();
             updateStatus(`🔄 Joined ${amount} Birr room. Pick numbers!`);
@@ -4020,6 +4054,7 @@
                 engineState.potAmount = totalPicks * currentBet;
 
                 updatePrizeDisplay();
+                updateTotalBetDisplay();
                 // Keep the betting total visible immediately after each pick/unpick.
                 if (statusEl && engineState.gamePhase === 'selection') {
                     updateStatus(`⏳ ${totalPicks} number${totalPicks === 1 ? '' : 's'} picked · ${totalPicks * Number(currentBet || 0)} Birr bet`);
@@ -4044,22 +4079,16 @@
             });
 
             if (prizeDisplay) {
-                if (engineState.gamePhase === 'selection') {
-                    if (totalPicks >= 2) {
-                        const prize = Math.floor(currentBet * totalPicks * 0.85);
-                        prizeDisplay.textContent = prize;
-                    } else {
-                        prizeDisplay.textContent = '0';
-                    }
+                if (totalPicks >= 2) {
+                    const prize = Math.floor(currentBet * totalPicks * 0.85);
+                    prizeDisplay.textContent = prize;
                 } else {
-                    if (totalPicks >= 2) {
-                        const prize = Math.floor(currentBet * totalPicks * 0.85);
-                        prizeDisplay.textContent = prize;
-                    } else {
-                        prizeDisplay.textContent = '0';
-                    }
+                    prizeDisplay.textContent = '0';
                 }
             }
+
+            // Keep the total bet display in sync with the same pick count.
+            updateTotalBetDisplay();
         }
 
         // ============================================================
@@ -4084,6 +4113,7 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
+                updateTotalBetDisplay();
             });
 
             const onChildAdded = (snap) => {
@@ -4094,6 +4124,7 @@
                     renderNumberPicker();
                     updatePickStatus();
                     updateWheel();
+                    updateTotalBetDisplay();
                 }
             };
             const onChildChanged = (snap) => {
@@ -4107,6 +4138,7 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
+                updateTotalBetDisplay();
             };
             const onChildRemoved = (snap) => {
                 const num = Number(snap.key);
@@ -4114,6 +4146,7 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
+                updateTotalBetDisplay();
             };
 
             ref.on('child_added', onChildAdded);
@@ -4582,6 +4615,7 @@
                         if (timerDisplay) timerDisplay.textContent = '30';
                         updatePrizeDisplay();
                         updatePickStatus();
+                        updateTotalBetDisplay();
                         renderNumberPicker();
 
                         startTimer();
@@ -4633,6 +4667,7 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updateWheel();
+                updateTotalBetDisplay();
                 if (engineState.cumulativeRotation > 0 && (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results')) {
                     if (arrowContainer) arrowContainer.style.transform = `rotate(${engineState.cumulativeRotation}deg)`;
                 } else if (engineState.gamePhase === 'selection') {
@@ -4850,6 +4885,7 @@
                     renderNumberPicker();
                     updatePickStatus();
                     updatePrizeDisplay();
+                    updateTotalBetDisplay();
                     updateStatus(`↩️ Removed ${num}.`);
                     if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
                     return;
@@ -4892,6 +4928,7 @@
                 renderNumberPicker();
                 updatePickStatus();
                 updatePrizeDisplay();
+                updateTotalBetDisplay();
 
                 claimNumber(num, function(success) {
                     if (!success) {
@@ -4907,6 +4944,7 @@
                         }
                         renderNumberPicker();
                         updatePickStatus();
+                        updateTotalBetDisplay();
                         updateStatus(`❌ Number ${num} was just taken!`);
                         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                         return;
@@ -4928,6 +4966,7 @@
                             engineState.allTakenNumbers.delete(num);
                             renderNumberPicker();
                             updatePickStatus();
+                            updateTotalBetDisplay();
                             updateStatus('⚠️ Bet deduction failed. Number released.');
                             return;
                         }
@@ -4947,6 +4986,7 @@
                         }
 
                         updatePickStatus();
+                        updateTotalBetDisplay();
                         updateStatus(`✅ ${currentUser} picked ${num} for ${currentBet} Birr!`);
                         if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
                     });
@@ -5369,6 +5409,7 @@
             renderNumberPicker();
             updateWheel();
             updatePrizeDisplay();
+            updateTotalBetDisplay();
         }
 
         function updatePlayerList() {
@@ -5653,6 +5694,8 @@
                 }
                 numPicker.innerHTML = html;
                 updatePickStatus();
+                // NEW: keep total bet in sync with every number-picker render.
+                updateTotalBetDisplay();
             });
         }
 
@@ -5750,6 +5793,9 @@
                 engineState.totalBetsPlaced = Number(data.totalBets) || 0;
                 engineState.allTakenNumbers = new Set(Object.keys(data.numbersTaken || {})
                     .filter(k => data.numbersTaken[k] === true).map(Number).filter(n => n >= 1 && n <= 200));
+
+                // NEW: refresh total bet immediately after the room snapshot arrives.
+                updateTotalBetDisplay();
 
                 if (engineState.gamePhase === 'selection') {
                     stopResultsCountdown();
@@ -5911,6 +5957,7 @@
                         if (arrowCenter) { arrowCenter.textContent = '🎯'; arrowCenter.classList.remove('reveal'); }
                         spinEls.forEach(el => { if (el) { el.textContent = ''; el.classList.remove('reveal', 'active'); } });
                         updateWheel();
+                        updateTotalBetDisplay();
                     }).catch(err => console.error('Round finalization failed:', err));
                 }
             }, 1000);
@@ -6151,6 +6198,9 @@
                 // Keep the live player counter synchronized on every device.
                 if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
 
+                // NEW: update the total bet display right after the room snapshot.
+                updateTotalBetDisplay();
+
                 if (phase === 'selection') {
                     stopResultsCountdown();
                     if (!phaseDeadline) ensureSelectionDeadline();
@@ -6205,6 +6255,7 @@
                 updatePrizeDisplay();
                 updatePickStatus();
                 renderNumberPicker();
+                updateTotalBetDisplay();
             } finally {
                 syncInProgress = false;
             }
