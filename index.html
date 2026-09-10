@@ -1938,9 +1938,8 @@
 
             <div class="game-info-bar">
                 <div class="info-item">Timer: <span class="value timer" id="timerDisplay">30</span>s</div>
-                <div class="info-item">👥 <span class="value players" id="playerCount">0</span></div>
-                <div class="info-item">💰 Total Bet: <span class="value bet-total" id="totalBetDisplay">0</span></div>
-                <div class="info-item">🏆 <span class="value prize" id="prizeDisplay">0</span></div>
+                <div class="info-item">Online: <span class="value players" id="playerCount">0</span></div>
+                <div class="info-item">🏆 Prize: <span class="value bet-total" id="totalBetDisplay">0</span> Birr</div>
             </div>
 
             <div class="pick-status" id="pickStatus"><span>Pick <span class="highlight">one</span> number</span></div>
@@ -2910,8 +2909,12 @@
                 ? engineState.allTakenNumbers
                 : new Set();
             const takenCount = takenSet.size;
-            const total = takenCount * bet;
-            totalBetDisplayEl.textContent = String(total);
+        
+            // Win amount = total bets, minus the 15% house fee.
+            // e.g. 3 picks × 15 Birr = 45 → floor(45 × 0.85) = 38 Birr
+            const winAmount = Math.floor(takenCount * bet * 0.85);
+        
+            totalBetDisplayEl.textContent = String(winAmount);
         }
 
         // ============================================================
