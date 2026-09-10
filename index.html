@@ -1356,7 +1356,63 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '6.2';
+        const APP_VERSION = '6.1';
+        // ============================================================
+        // LOCAL ROUND/WALLET CACHE POLICY
+        // Round state and wallet balances are NEVER persisted locally.
+        // Firebase is the only source of truth for game/wallet data.
+        // Login credentials/current username are intentionally preserved.
+        // ============================================================
+        const LOCAL_ROUND_KEYS = [
+            'bingo_last_winners', 'bingo_last_winning_number', 'bingo_last_winning_numbers',
+            'bingo_last_round_results', 'bingo_last_drawn_numbers', 'bingo_last_pot_amount',
+            'bingo_last_prize_pool', 'bingo_last_round', 'winzo_last_winners',
+            'winzo_last_winning_number', 'winzo_last_drawn_numbers', 'winzo_last_round_results',
+            'winzo_last_round', 'winzo_last_pot_amount', 'winzo_last_prize_pool',
+            'bingo_round_state', 'bingo_game_state', 'winzo_round_state', 'winzo_game_state',
+            'bingo_wallet', 'bingo_wallet_data', 'winzo_wallet', 'winzo_wallet_data',
+            'mainWallet', 'playWallet', 'main_wallet', 'play_wallet', 'pendingWithdrawal'
+        ];
+
+        function clearLocalRoundData(reason = 'round reset') {
+            try {
+                LOCAL_ROUND_KEYS.forEach(key => localStorage.removeItem(key));
+                // Remove any future/legacy game cache keys, but preserve auth/credentials.
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (!key) continue;
+                    if (/^(bingo|winzo)_(last_|round_|game_)/i.test(key) ||
+                        /^(bingo|winzo)_(main|play|pending)?_?wallet/i.test(key)) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not clear local round data:', e);
+            }
+            console.log('🧹 Local round data cleared:', reason);
+        }
+
+        function clearLocalWalletData(reason = 'wallet must come from Firebase') {
+            try {
+                LOCAL_ROUND_KEYS.forEach(key => {
+                    if (/wallet|mainwallet|playwallet|pendingwithdrawal/i.test(key)) localStorage.removeItem(key);
+                });
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && /^(bingo|winzo).*?(wallet|balance|pendingwithdrawal)/i.test(key)) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not clear local wallet data:', e);
+            }
+            console.log('🧹 Local wallet cache cleared:', reason);
+        }
+
+        // Do this immediately on every app load. It does NOT remove login credentials.
+        clearLocalRoundData('app start');
+        clearLocalWalletData('app start');
+
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(username) {
@@ -1420,6 +1476,7 @@
         let isResultsCountdownRunning = false;
         let spinTimeout = null;
         let syncInProgress = false;
+        let lastSyncedFirebaseRound = null;
         let numbersTakenListenerRef = null;
         let numbersTakenInitialized = false;
 
@@ -1491,6 +1548,8 @@
             }
         };
 
+        installAuthoritativeDataLifecycle();
+
         // ============================================================
         //  SESSION
         // ============================================================
@@ -1538,13 +1597,20 @@
                 return true;
             }, (error, committed, snapshot) => {
                 if (error) { console.error('Claim number error:', error); callback(false); return; }
-                if (committed) callback(true); else callback(false);
+                if (committed) {
+                    // If this browser disappears mid-round, Firebase automatically releases
+                    // the number instead of leaving stale local/remote round state behind.
+                    if (currentUser) takenRef.onDisconnect().remove();
+                    callback(true);
+                } else callback(false);
             }, false);
         }
 
         function releaseNumber(number) {
             if (!gameRef) return;
-            gameRef.child('numbersTaken/' + number).set(false);
+            const ref = gameRef.child('numbersTaken/' + number);
+            try { ref.onDisconnect().cancel(); } catch (e) {}
+            ref.set(false);
         }
 
         function resetNumbersTaken() {
@@ -1701,13 +1767,57 @@
             userRef.on('value', snapshot => {
                 const data = snapshot.val();
                 if (data) {
-                    walletData.main = data.mainWallet || 0;
-                    walletData.play = data.playWallet || 0;
-                    walletData.pending = data.pendingWithdrawal || 0;
+                    clearLocalWalletData('Firebase wallet listener');
+                    walletData.main = Number(data.mainWallet || 0);
+                    walletData.play = Number(data.playWallet || 0);
+                    walletData.pending = Number(data.pendingWithdrawal || 0);
                     updateWalletUI();
                     updateWelcomeUI();
                     if (transactionModal && transactionModal.classList.contains('active')) checkPendingTransactionStatus();
                 }
+            });
+        }
+
+        function refreshWalletFromFirebase(reason = 'refresh') {
+            if (!currentUser || !database) return Promise.resolve(false);
+            clearLocalWalletData(reason);
+            const userRef = database.ref('users/' + currentUser);
+            return userRef.once('value').then(snapshot => {
+                const data = snapshot.val();
+                if (!data) return false;
+                // Firebase is authoritative. Never read a wallet balance from localStorage.
+                walletData = {
+                    main: Number(data.mainWallet || 0),
+                    play: Number(data.playWallet || 0),
+                    pending: Number(data.pendingWithdrawal || 0)
+                };
+                updateWalletUI();
+                updateWelcomeUI();
+                return true;
+            }).catch(err => {
+                console.warn('Firebase wallet refresh failed:', err);
+                return false;
+            });
+        }
+
+        function installAuthoritativeDataLifecycle() {
+            const refresh = () => {
+                clearLocalWalletData('lifecycle refresh');
+                if (currentUser && database) refreshWalletFromFirebase('lifecycle refresh');
+            };
+            window.addEventListener('focus', refresh);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') refresh();
+            });
+            window.addEventListener('pageshow', refresh);
+            window.addEventListener('pagehide', () => {
+                // Clear only local round/wallet cache. Firebase onDisconnect handles player removal.
+                clearLocalRoundData('player left page');
+                clearLocalWalletData('player left page');
+            });
+            window.addEventListener('beforeunload', () => {
+                clearLocalRoundData('player left game');
+                clearLocalWalletData('player left game');
             });
         }
 
@@ -2176,7 +2286,9 @@
             updateWelcomeUI();
             stopTimer(); stopResultsCountdown();
             audioPlayedThisRound = false;
+            clearLocalWalletData('login');
             syncWalletFromFirebase();
+            refreshWalletFromFirebase('login');
             checkPendingTransactionStatus();
             enableNetworkListener();
             if (currentUser) { startSessionListener(currentUser); listenNotifications(currentUser); }
@@ -2274,7 +2386,9 @@
                             localStorage.removeItem('winzo_pending_referral');
                             pendingReferralCode = null;
                         }
+                        clearLocalWalletData('signup');
                         syncWalletFromFirebase();
+                        refreshWalletFromFirebase('signup');
                         checkPendingTransactionStatus();
                         showWelcomeScreen();
                         setConnectionStatus(true);
@@ -2298,6 +2412,8 @@
         }
 
         function performLogout() {
+            clearLocalRoundData('logout');
+            clearLocalWalletData('logout');
             detachNumbersTakenListener();
             if (gameRef) {
                 if (currentUser) {
@@ -2326,6 +2442,7 @@
             isGameInitialized = false;
             audioPlayedThisRound = false;
             syncInProgress = false;
+            lastSyncedFirebaseRound = null;
             walletData = { main: 0, play: 0, pending: 0 };
             engineState = {
                 players: {}, allTakenNumbers: new Set(), drawnNumbers: [], winners: [],
@@ -3024,10 +3141,7 @@
         function deductPickBetFast(username, betAmount) {
             if (!username || !database) return Promise.resolve(false);
             return new Promise((resolve) => {
-                if (walletData.play >= betAmount) {
-                    walletData.play -= betAmount;
-                    updateWalletUI(); updateWelcomeUI();
-                } else { resolve(false); return; }
+                if (walletData.play < betAmount) { resolve(false); return; }
                 const userRef = database.ref('users/' + username);
                 userRef.transaction(current => {
                     if (!current) return current;
@@ -3036,8 +3150,7 @@
                     return undefined;
                 }, (error, committed, snap) => {
                     if (!committed || error) {
-                        walletData.play += betAmount;
-                        updateWalletUI(); updateWelcomeUI();
+                        refreshWalletFromFirebase('bet deduction failed');
                         resolve(false);
                     } else {
                         const updated = snap.val();
@@ -3052,8 +3165,6 @@
         function refundPickBetFast(username, betAmount) {
             if (!username || !database) return Promise.resolve(false);
             return new Promise((resolve) => {
-                walletData.play += betAmount;
-                updateWalletUI(); updateWelcomeUI();
                 const userRef = database.ref('users/' + username);
                 userRef.transaction(current => {
                     if (!current) return current;
@@ -3061,8 +3172,7 @@
                     return current;
                 }, (error, committed, snap) => {
                     if (!committed || error) {
-                        walletData.play -= betAmount;
-                        updateWalletUI(); updateWelcomeUI();
+                        refreshWalletFromFirebase('bet refund failed');
                         resolve(false);
                     } else {
                         const updated = snap.val();
@@ -3723,13 +3833,30 @@
             if (syncInProgress) return;
             syncInProgress = true;
             try {
+                const firebaseRound = Number(data.round) || 1;
+                if (lastSyncedFirebaseRound !== null && firebaseRound !== lastSyncedFirebaseRound) {
+                    clearLocalRoundData(`Firebase round changed ${lastSyncedFirebaseRound} → ${firebaseRound}`);
+                    clearLocalWalletData('Firebase round changed');
+                    // Drop all transient round state before applying the new authoritative round.
+                    engineState.allTakenNumbers = new Set();
+                    engineState.drawnNumbers = [];
+                    engineState.winners = [];
+                    engineState.spinCount = 0;
+                    engineState.potAmount = 0;
+                    engineState.totalBetsPlaced = 0;
+                    engineState.isSpinning = false;
+                    engineState.spinInProgress = false;
+                    engineState.cumulativeRotation = 0;
+                    engineState.winnersModalShown = false;
+                }
+                lastSyncedFirebaseRound = firebaseRound;
                 const players = data.players || {};
                 const playerNames = Object.keys(players);
                 engineState.players = players;
                 engineState.playerNames = playerNames;
                 engineState.activePlayersCount = playerNames.length;
                 engineState.gamePhase = data.gameState || 'selection';
-                engineState.roundNumber = Number(data.round) || 1;
+                engineState.roundNumber = firebaseRound;
                 engineState.timer = Number(data.timer) || 0;
                 phaseDeadline = Number(data.selectionEndsAt) || 0;
                 engineState.drawnNumbers = Array.isArray(data.drawnNumbers) ? data.drawnNumbers : [];
@@ -3786,6 +3913,7 @@
                 return p && p.pick !== null && Number(p.round) === round && p.betDeducted === true;
             });
             if (playersWithPick.length === 0) {
+                clearLocalRoundData('timer restart with no picks');
                 return gameRef.transaction(room => {
                     if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
                     room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
@@ -3847,7 +3975,13 @@
                 const remaining = getRemainingSeconds(phaseDeadline);
                 engineState.timer = remaining;
                 if (timerDisplay) timerDisplay.textContent = remaining;
-                if (remaining <= 0) { stopTimer(); requestSpin(); }
+                if (remaining <= 0) {
+                    stopTimer();
+                    // Timer restart = new selection cycle. Never keep stale local round data.
+                    clearLocalRoundData('selection timer reached 0');
+                    clearLocalWalletData('selection timer reached 0');
+                    requestSpin();
+                }
             };
             tick();
             timerInterval = setInterval(tick, 500);
@@ -3897,6 +4031,8 @@
                             return room;
                         });
                     }).then(() => {
+                        clearLocalRoundData('timer/results round restart');
+                        clearLocalWalletData('round restart');
                         // ==========================================
                         // 1) CLEAR IN-MEMORY ROUND STATE
                         // ==========================================
@@ -4177,6 +4313,24 @@
                 const playerNames = Object.keys(players);
                 const phase = data.gameState || 'selection';
                 const round = Number(data.round) || 1;
+
+                // Firebase round is authoritative. Whenever the round changes,
+                // discard all previous local round/cache data before rendering it.
+                if (lastSyncedFirebaseRound !== null && round !== lastSyncedFirebaseRound) {
+                    clearLocalRoundData(`Firebase round changed ${lastSyncedFirebaseRound} → ${round}`);
+                    clearLocalWalletData('Firebase round changed');
+                    engineState.allTakenNumbers = new Set();
+                    engineState.drawnNumbers = [];
+                    engineState.winners = [];
+                    engineState.spinCount = 0;
+                    engineState.potAmount = 0;
+                    engineState.totalBetsPlaced = 0;
+                    engineState.isSpinning = false;
+                    engineState.spinInProgress = false;
+                    engineState.cumulativeRotation = 0;
+                    engineState.winnersModalShown = false;
+                }
+                lastSyncedFirebaseRound = round;
 
                 engineState.players = players;
                 engineState.playerNames = playerNames;
