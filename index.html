@@ -434,7 +434,7 @@
                 </div>
             </div>
             <div style="color:#b8a0d0;font-size:0.72rem;text-align:center;line-height:1.45;">
-                Your referral link opens @WinzoBettingBot. Your referral is attached when the new player creates an account.
+                Your referral link opens the Winzo Mini App directly. Your referral is attached when the new player creates an account.
             </div>
             <button class="close-btn" id="referralCloseBtn" style="width:100%;padding:10px;border-radius:30px;border:none;background:rgba(120,80,200,0.15);color:#d4c0f0;font-weight:700;cursor:pointer;margin-top:12px;">Close</button>
         </div>
@@ -524,25 +524,48 @@
         let telegramDetectedUsername = null;
         let pendingReferralCode = null;
         const REFERRAL_COMMISSION_RATE = 0.05;
-        const TELEGRAM_BOT_LINK = 'https://t.me/WinzoBettingBot';
-
+        // [REFERRAL FIX] Use the named Mini App short name in the URL
+        const TELEGRAM_BOT_LINK = 'http://t.me/WinzoBettingBot';
+        // ============================================================
+        //  [REFERRAL FIX] REFERRAL CAPTURE with diagnostics
+        // ============================================================
         function captureReferralCode() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
-                let ref = urlParams.get('ref') || urlParams.get('start');
-                if (!ref && tg && tg.initDataUnsafe) ref = tg.initDataUnsafe.start_param || null;
+
+                // 1) Direct URL params (works if opened with ?ref= or ?start=)
+                let ref = urlParams.get('ref') || urlParams.get('start') || null;
+
+                // 2) Telegram Mini App deep-link param (standard for ?startapp=)
+                if (!ref && tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+                    ref = tg.initDataUnsafe.start_param;
+                }
+
+                // 3) Strip "ref_" prefix if present
                 if (ref && ref.indexOf('ref_') === 0) ref = ref.slice(4);
+
+                // 4) Normalize and validate
                 if (ref) {
                     ref = decodeURIComponent(ref).replace(/^@/, '').trim();
                     if (/^[A-Za-z0-9_]{1,32}$/.test(ref)) {
                         pendingReferralCode = ref;
                         localStorage.setItem('winzo_pending_referral', ref);
+                        console.log('🔗 Referral captured:', ref);
+                    } else {
+                        console.warn('🔗 Referral rejected (invalid format):', ref);
                     }
                 } else if (!pendingReferralCode) {
                     const saved = localStorage.getItem('winzo_pending_referral');
-                    if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) pendingReferralCode = saved;
+                    if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) {
+                        pendingReferralCode = saved;
+                        console.log('🔗 Referral restored from localStorage:', saved);
+                    } else {
+                        console.log('🔗 No referral param in URL and none stored.');
+                    }
                 }
-            } catch (e) { console.warn('Referral capture error:', e); }
+            } catch (e) {
+                console.warn('Referral capture error:', e);
+            }
         }
 
         // ============================================================
@@ -1629,6 +1652,9 @@
                     if (refCode && refCode !== username) {
                         newUserData.referredBy = refCode;
                         newUserData.referralJoinedAt = firebase.database.ServerValue.TIMESTAMP;
+                        console.log('🔗 Attaching referrer to new user:', refCode);
+                    } else if (refCode === username) {
+                        console.log('🔗 Skipping self-referral.');
                     }
                     database.ref('users').child(username).set(newUserData).then(() => {
                         if (authError) authError.textContent = '✅ Account created! +30 Birr bonus.';
@@ -1834,9 +1860,10 @@
             if (moreDropdown) moreDropdown.classList.toggle('open');
         }
 
+        // [REFERRAL FIX] Use ?startapp= and the short-named Mini App URL
         function openReferralModal() {
             if (!currentUser) return;
-            const link = `${TELEGRAM_BOT_LINK}?start=ref_${encodeURIComponent(currentUser)}`;
+            const link = `${TELEGRAM_BOT_LINK}?startapp=ref_${encodeURIComponent(currentUser)}`;
             if (referralLink) referralLink.value = link;
             if (referralModal) referralModal.classList.add('active');
             closeMoreDropdown();
@@ -2447,7 +2474,7 @@
         }
 
         // ============================================================
-        //  updateStatus – FINAL (production version)
+        //  updateStatus – production
         // ============================================================
         function updateStatus(msg, isWin = false) {
             if (!statusEl) return;
@@ -2462,7 +2489,7 @@
         }
 
         // ============================================================
-        //  renderNumberPicker – FINAL (production version)
+        //  renderNumberPicker – production
         // ============================================================
         function renderNumberPicker(showLoading = false) {
             if (!numPicker) return;
@@ -2496,7 +2523,7 @@
         }
 
         // ============================================================
-        //  ensureSelectionDeadline – FINAL (production version)
+        //  ensureSelectionDeadline – production
         // ============================================================
         function ensureSelectionDeadline() {
             if (!gameRef || engineState.gamePhase !== 'selection') return;
@@ -2508,7 +2535,7 @@
         }
 
         // ============================================================
-        //  initGameConnection – FINAL (production version)
+        //  initGameConnection – production
         // ============================================================
         function initGameConnection() {
             const generation = ++roomConnectionGeneration;
@@ -2569,7 +2596,7 @@
         }
 
         // ============================================================
-        //  syncGameState – FINAL (production version)
+        //  syncGameState – production
         // ============================================================
         function syncGameState(data) {
             if (syncInProgress) return;
@@ -2650,7 +2677,7 @@
         }
 
         // ============================================================
-        //  requestSpin – FINAL (production version)
+        //  requestSpin – production
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
@@ -2722,7 +2749,7 @@
         }
 
         // ============================================================
-        //  startTimer – FINAL (production version)
+        //  startTimer – production
         // ============================================================
         function startTimer() {
             stopTimer();
@@ -2741,7 +2768,7 @@
         }
 
         // ============================================================
-        //  startResultsCountdown – FINAL (production version, full reset)
+        //  startResultsCountdown – production, full reset
         // ============================================================
         function startResultsCountdown() {
             if (isResultsCountdownRunning) return;
@@ -2781,7 +2808,6 @@
                             return room;
                         });
                     }).then(() => {
-                        // Clear in-memory round state
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = [];
                         engineState.winners = [];
@@ -2806,7 +2832,6 @@
                             }
                         });
 
-                        // Clear winners + winning numbers from localStorage
                         try {
                             localStorage.removeItem('bingo_last_winners');
                             localStorage.removeItem('bingo_last_winning_number');
@@ -2824,11 +2849,9 @@
                             console.warn('Could not clear winner localStorage keys:', e);
                         }
 
-                        // Clear winners modal DOM
                         if (winnersList) winnersList.innerHTML = '';
                         if (winnersModal) winnersModal.classList.remove('active');
 
-                        // Reset wheel / spin visuals
                         if (arrowContainer) {
                             arrowContainer.style.transition = 'none';
                             arrowContainer.style.transform = 'rotate(0deg)';
@@ -2846,7 +2869,6 @@
                         if (wheelContainer) wheelContainer.classList.add('hidden');
                         if (spinResults) spinResults.classList.add('hidden');
 
-                        // Reset counters + total win amount to 0
                         if (timerDisplay) timerDisplay.textContent = '30';
                         if (prizeDisplay) prizeDisplay.textContent = '0';
                         if (playerCountEl) playerCountEl.textContent = String(engineState.activePlayersCount || 0);
@@ -2881,7 +2903,7 @@
         }
 
         // ============================================================
-        //  executeSpin – FINAL (production version)
+        //  executeSpin – production
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
@@ -2994,7 +3016,7 @@
         }
 
         // ============================================================
-        //  creditWinnerAndReferral – FINAL (production version, atomic)
+        //  creditWinnerAndReferral – production, atomic
         // ============================================================
         function creditWinnerAndReferral(winnerName, winAmount) {
             if (!database || !winnerName || Number(winAmount) <= 0) return Promise.resolve(false);
@@ -3047,7 +3069,7 @@
         }
 
         // ============================================================
-        //  withdrawFromMain – FINAL (production, request-only)
+        //  withdrawFromMain – production, request-only
         // ============================================================
         function withdrawFromMain(amount, name, phone) {
             if (!currentUser || !database) return false;
@@ -3067,7 +3089,7 @@
         }
 
         // ============================================================
-        //  requestTransaction – FINAL (production, request-only)
+        //  requestTransaction – production, request-only
         // ============================================================
         function requestTransaction(type, amount, reference = '', imageFile = null, extra = {}) {
             if (!currentUser || !database) return Promise.resolve(false);
