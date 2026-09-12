@@ -293,7 +293,6 @@
             .bet-switcher { padding: 2px 6px; }
             .bet-switcher .bet-btn { font-size: 0.6rem; padding: 1px 8px; }
         }
-        /* Hide player name on small screens to make room for all wallets */
         @media (max-width: 430px) {
             #usernameWalletItem { display: none !important; }
         }
@@ -354,7 +353,7 @@
         </div>
 
         <div id="gameScreen">
-            <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆 · <small id="modeLabel">15 Birr</small></div>
+            <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆 <small id="modeLabel">15 Birr</small></div>
             <div class="bet-switcher">
                 <button class="bet-btn switch-room-btn" id="switchRoomBtn"> Switch Room</button>
             </div>
@@ -362,9 +361,9 @@
             <div class="wallet-bar">
                 <div class="wallet-left">
                     <div class="wallet-item" id="usernameWalletItem"><span class="label">👤</span><span class="username" id="walletUsername">User</span></div>
-                    <div class="wallet-item"><span class="label"> M-Wallet </span><span class="amount" id="mainWallet">0</span></div>
-                    <div class="wallet-item"><span class="label"> P-Wallet </span><span class="amount" id="playWallet">0</span></div>
-                    <div class="wallet-item"><span class="label">🎁 Ref</span><span class="amount" id="refWallet">0</span></div>
+                    <div class="wallet-item"><span class="label"> M-Wallet: </span><span class="amount" id="mainWallet">0</span></div>
+                    <div class="wallet-item"><span class="label"> P-Wallet: </span><span class="amount" id="playWallet">0</span></div>
+                    <div class="wallet-item"><span class="label">🎁 Referral: </span><span class="amount" id="refWallet">0</span></div>
                     <div class="wallet-item" id="pendingItem" style="display:none;"><span class="label">⏳</span><span class="pending" id="pendingAmount">0</span></div>
                 </div>
                 <div class="wallet-right">
@@ -533,7 +532,6 @@
         let telegramDetectedUsername = null;
         let pendingReferralCode = null;
         const REFERRAL_COMMISSION_RATE = 0.05;
-        // [REFERRAL FIX] Use the named Mini App short name in the URL
         const TELEGRAM_BOT_LINK = 'http://t.me/WinzoBettingBot';
         // ============================================================
         //  [REFERRAL FIX] REFERRAL CAPTURE with diagnostics
@@ -541,19 +539,11 @@
         function captureReferralCode() {
             try {
                 const urlParams = new URLSearchParams(window.location.search);
-
-                // 1) Direct URL params (works if opened with ?ref= or ?start=)
                 let ref = urlParams.get('ref') || urlParams.get('start') || null;
-
-                // 2) Telegram Mini App deep-link param (standard for ?startapp=)
                 if (!ref && tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
                     ref = tg.initDataUnsafe.start_param;
                 }
-
-                // 3) Strip "ref_" prefix if present
                 if (ref && ref.indexOf('ref_') === 0) ref = ref.slice(4);
-
-                // 4) Normalize and validate
                 if (ref) {
                     ref = decodeURIComponent(ref).replace(/^@/, '').trim();
                     if (/^[A-Za-z0-9_]{1,32}$/.test(ref)) {
@@ -954,6 +944,11 @@
         let numbersTakenListenerRef = null;
         let numbersTakenInitialized = false;
 
+        // [FIX] Cache of players from the previous room sync, to detect orphans
+        let lastKnownPlayersCache = {};
+        let watchdogInterval = null;
+        let lastRoomSyncAt = 0;
+
         // ============================================================
         //  NETWORK LISTENER
         // ============================================================
@@ -985,15 +980,21 @@
             networkOverlay.classList.remove('active');
         }
 
+        // [FIX] On reconnect: re-sync state from Firebase and re-render num picker
         function handleNetworkOnline() {
             if (isNetworkConnected) return;
             isNetworkConnected = true;
             console.log('🌐 Network reconnected');
             networkOverlay.classList.remove('active');
             updateStatus('✅ Network restored. Game will continue.');
-            document.querySelectorAll('.num-btn:not(:disabled)').forEach(btn => btn.disabled = false);
-            if (engineState.gamePhase === 'selection' && !isTimerRunning) startTimer();
-            if (gameRef) gameRef.once('value', snapshot => { if (snapshot.exists()) syncGameState(snapshot.val()); });
+            if (gameRef) {
+                gameRef.once('value').then(snapshot => {
+                    if (snapshot.exists()) syncGameState(snapshot.val());
+                }).catch(err => console.warn('Reconnect sync failed:', err));
+            }
+            // [FIX] Re-render number picker so disabled buttons reflect current state
+            renderNumberPicker();
+            if (engineState.gamePhase === 'selection' && !isTimerRunning && phaseDeadline) startTimer();
         }
 
         function handleNetworkOffline() {
@@ -1021,6 +1022,21 @@
                 });
             }
         };
+
+        // [FIX] Re-sync when app becomes visible again (screen on / call ended)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) return;
+            if (!currentUser) return;
+            console.log('👁️ App resumed from background');
+            if (gameRef) {
+                gameRef.once('value').then(snap => {
+                    if (snap.exists()) syncGameState(snap.val());
+                }).catch(err => console.warn('Visibility resync failed:', err));
+            }
+            if (engineState.gamePhase === 'selection' && !isTimerRunning && phaseDeadline) {
+                startTimer();
+            }
+        });
 
         // ============================================================
         //  SESSION
@@ -1234,7 +1250,25 @@
                     walletData.main = data.mainWallet || 0;
                     walletData.play = data.playWallet || 0;
                     walletData.pending = data.pendingWithdrawal || 0;
-                    walletData.refEarn = data.referralEarnings || 0;
+
+                    // [FIX] Referral wallet must show the Birr AMOUNT earned,
+                    // not a count. Sum the `amount` field from every entry
+                    // in referralWinPayouts. Fall back to referralEarnings
+                    // only if there are no payout records yet.
+                    let refTotal = 0;
+                    if (data.referralWinPayouts && typeof data.referralWinPayouts === 'object') {
+                        Object.keys(data.referralWinPayouts).forEach(k => {
+                            const p = data.referralWinPayouts[k];
+                            if (p && typeof p === 'object' && p.amount != null) {
+                                refTotal += Number(p.amount) || 0;
+                            }
+                        });
+                    }
+                    if (refTotal === 0 && data.referralEarnings) {
+                        refTotal = Number(data.referralEarnings) || 0;
+                    }
+                    walletData.refEarn = refTotal;
+
                     updateWalletUI();
                     updateWelcomeUI();
                     if (transactionModal && transactionModal.classList.contains('active')) checkPendingTransactionStatus();
@@ -1699,12 +1733,47 @@
             console.log('🧹 All local data cleared.');
         }
 
+        // [FIX] Refund the current user's active bet (used on leave)
+        function refundMyActiveBet() {
+            if (!currentUser || !engineState.players[currentUser]) return;
+            const me = engineState.players[currentUser];
+            if (me.pick !== null && me.pick !== undefined && me.betDeducted === true) {
+                const num = Number(me.pick);
+                const amount = Number(me.bet || currentBet);
+                try { releaseNumber(num); } catch (e) {}
+                refundBetIdempotent(currentUser, me.round || engineState.roundNumber, amount, currentRoom);
+                engineState.allTakenNumbers.delete(num);
+            }
+        }
+
+        // [FIX] Idempotent refund helper — safe to call from multiple clients
+        function refundBetIdempotent(username, round, amount, room) {
+            if (!database || !username || !amount || amount <= 0) return Promise.resolve(false);
+            const r = room || currentRoom;
+            if (!r) return Promise.resolve(false);
+            const key = `refunds/${r}/${round}/${username}`;
+            return database.ref(key).transaction(current => {
+                if (current) return; // already claimed
+                return { amount: Number(amount), timestamp: Date.now() };
+            }).then(claim => {
+                if (!claim.committed) return false;
+                return database.ref('users/' + username + '/playWallet').transaction(w => (w || 0) + Number(amount))
+                    .then(() => {
+                        console.log('💰 Refunded', amount, 'to', username, '(round ' + round + ')');
+                        return true;
+                    });
+            }).catch(err => {
+                console.error('refundBetIdempotent failed:', err);
+                return false;
+            });
+        }
+
         function performLogout() {
+            // [FIX] Refund any active bet before leaving
+            try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener();
             if (gameRef) {
                 if (currentUser) {
-                    const playerData = engineState.players[currentUser];
-                    if (playerData && playerData.pick !== null) releaseNumber(playerData.pick);
                     gameRef.child('players/' + currentUser).remove();
                 }
                 gameRef.off();
@@ -1736,6 +1805,8 @@
                 gameStarted: true, spinInProgress: false, waitingModalShown: false,
                 potAmount: 0, totalBetsPlaced: 0, winnersModalShown: false
             };
+            // [FIX] Reset orphan cache
+            lastKnownPlayersCache = {};
             closeMoreDropdown();
             hideWaitingModal();
             if (welcomeToast) welcomeToast.classList.remove('active');
@@ -1760,11 +1831,11 @@
         //  SWITCH ROOM
         // ============================================================
         function switchRoom() {
+            // [FIX] Refund any active bet before leaving
+            try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener();
             if (gameRef) {
-                if (currentUser && engineState.players[currentUser]) {
-                    const pick = engineState.players[currentUser].pick;
-                    if (pick !== null) releaseNumber(pick);
+                if (currentUser) {
                     gameRef.child('players/' + currentUser).remove();
                 }
                 gameRef.off();
@@ -1792,6 +1863,8 @@
             engineState.potAmount = 0;
             engineState.totalBetsPlaced = 0;
             engineState.winnersModalShown = false;
+            // [FIX] Reset orphan cache
+            lastKnownPlayersCache = {};
             DB.setSavedBet(null);
             showWelcomeScreen();
             updateStatus('🔄 Choose your room.');
@@ -1821,11 +1894,11 @@
         function selectBet(amount) {
             if (!currentUser) return;
             if (walletData.play < amount) { alert('⚠️ Insufficient play balance. Please deposit.'); return; }
+            // [FIX] Refund any previous active bet before joining new room
+            try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener();
             if (gameRef) {
-                if (currentUser && engineState.players[currentUser]) {
-                    const pick = engineState.players[currentUser].pick;
-                    if (pick !== null) releaseNumber(pick);
+                if (currentUser) {
                     gameRef.child('players/' + currentUser).remove();
                 }
                 gameRef.off();
@@ -1853,6 +1926,8 @@
             engineState.potAmount = 0;
             engineState.totalBetsPlaced = 0;
             engineState.winnersModalShown = false;
+            // [FIX] Reset orphan cache
+            lastKnownPlayersCache = {};
             currentBet = amount;
             currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
@@ -1871,7 +1946,6 @@
             if (moreDropdown) moreDropdown.classList.toggle('open');
         }
 
-        // [REFERRAL FIX] Use ?startapp= and the short-named Mini App URL
         function openReferralModal() {
             if (!currentUser) return;
             const link = `${TELEGRAM_BOT_LINK}?startapp=ref_${encodeURIComponent(currentUser)}`;
@@ -2437,9 +2511,9 @@
             if (tg && tg.BackButton) {
                 tg.BackButton.onClick(() => {
                     if (gameScreen && gameScreen.style.display !== 'none') {
-                        if (currentUser && engineState.players[currentUser]) {
-                            const pick = engineState.players[currentUser].pick;
-                            if (pick !== null) releaseNumber(pick);
+                        // [FIX] Refund any active bet before leaving
+                        try { refundMyActiveBet(); } catch (e) {}
+                        if (currentUser) {
                             if (gameRef) gameRef.child('players/' + currentUser).remove();
                         }
                         if (gameRef) { gameRef.off(); gameRef = null; }
@@ -2449,19 +2523,23 @@
                         isGameInitialized = false;
                         audioPlayedThisRound = false;
                         syncInProgress = false;
+                        lastKnownPlayersCache = {};
                         showWelcomeScreen();
                     } else showWelcomeScreen();
                 });
                 tg.BackButton.show();
             }
             currentUser = null;
+            // [FIX] Start watchdog to recover stuck rooms
+            if (watchdogInterval) clearInterval(watchdogInterval);
+            watchdogInterval = setInterval(runRoomWatchdog, 5000);
             showAuthScreen();
         }
 
         // ============================================================
-        //  PRODUCTION HARDENING v7.1
+        //  PRODUCTION HARDENING v7.2
         // ============================================================
-        const WINZO_PRODUCTION_VERSION = '7.1.0';
+        const WINZO_PRODUCTION_VERSION = '7.2.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -2561,6 +2639,8 @@
             const roomPath = currentRoom;
             const ref = database.ref('rooms/' + roomPath);
             gameRef = ref;
+            // [FIX] reset orphan cache for the new room
+            lastKnownPlayersCache = {};
             database.ref('.info/serverTimeOffset').once('value').then(snap => {
                 if (generation !== roomConnectionGeneration) return;
                 serverTimeOffset = Number(snap.val()) || 0;
@@ -2642,6 +2722,24 @@
                 if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
                 updateTotalBetDisplay();
 
+                // [FIX] Detect players who left the room with an active bet and refund them
+                try {
+                    const currentNamesSet = new Set(playerNames);
+                    Object.keys(lastKnownPlayersCache).forEach(name => {
+                        const prev = lastKnownPlayersCache[name];
+                        if (!prev) return;
+                        if (currentNamesSet.has(name)) return; // still present
+                        if (prev.pick === null || prev.pick === undefined) return;
+                        if (prev.betDeducted !== true) return;
+                        const prevRound = Number(prev.round || 0);
+                        if (prevRound <= 0) return;
+                        if (name === currentUser) return;
+                        const amount = Number(prev.bet || currentBet);
+                        refundBetIdempotent(name, prevRound, amount, currentRoom);
+                    });
+                } catch (e) { console.warn('Orphan refund scan failed:', e); }
+                lastKnownPlayersCache = JSON.parse(JSON.stringify(players));
+
                 if (phase === 'selection') {
                     stopResultsCountdown();
                     if (!phaseDeadline) ensureSelectionDeadline();
@@ -2685,79 +2783,126 @@
                 updatePickStatus();
                 renderNumberPicker();
                 updateTotalBetDisplay();
+                lastRoomSyncAt = Date.now();
             } finally { syncInProgress = false; }
         }
 
         // ============================================================
-        //  requestSpin – production
+        //  [FIX] requestSpin – handles single-player refund + multi-player spin
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
             const round = Number(engineState.roundNumber);
-            return gameRef.transaction(room => {
-                if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
-                const ps = room.players || {};
+            return gameRef.once('value').then(snap => {
+                const roomSnap = snap.val() || {};
+                if (!roomSnap || roomSnap.gameState !== 'selection' || Number(roomSnap.round) !== round) return false;
+                const ps = roomSnap.players || {};
                 const eligible = Object.keys(ps).filter(name => {
                     const p = ps[name];
-                    return p && p.pick !== null && Number(p.round) === round && p.betDeducted === true;
+                    return p && p.pick !== null && p.pick !== undefined && Number(p.round) === round && p.betDeducted === true;
                 });
+
+                // Case 1: no one picked — just extend the timer
                 if (eligible.length === 0) {
-                    room.gameState = 'selection';
-                    room.timer = SELECTION_SECONDS;
-                    room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
-                    return room;
+                    return gameRef.transaction(r => {
+                        if (!r || r.gameState !== 'selection' || Number(r.round) !== round) return r;
+                        r.timer = SELECTION_SECONDS;
+                        r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                        return r;
+                    }).then(res => res && res.committed);
                 }
-                if (eligible.length === 1) return room;
-                if (room.spinLock && Number(room.spinLock.round) === round) return room;
-                const taken = Object.keys(room.numbersTaken || {})
-                    .filter(k => room.numbersTaken[k] === true)
-                    .map(Number)
-                    .filter(n => n >= 1 && n <= 200);
-                if (!taken.length) return room;
-                const winningNumber = taken[Math.floor(Math.random() * taken.length)];
-                const winners = eligible.filter(name => Number(ps[name].pick) === winningNumber);
-                const bet = Number(room.betAmount || currentBet);
-                const pot = eligible.length * bet;
-                const pool = Math.floor(pot * 0.85);
-                room.spinLock = { round: round, timestamp: firebase.database.ServerValue.TIMESTAMP };
-                room.winningNumber = winningNumber;
-                room.winners = winners;
-                room.potAmount = pot;
-                room.prizePool = pool;
-                room.gameState = 'spinning';
-                room.spinStartedRound = round;
-                room.timer = 5;
-                room.spinCount = Number(room.spinCount || 0) + 1;
-                room.spinFinishedAt = null;
-                return room;
-            }).then(result => {
-                if (!result || !result.committed) return false;
-                const room = result.snapshot.val() || {};
-                const eligible = Object.keys(room.players || {}).filter(name => {
-                    const p = room.players[name];
-                    return p && p.pick !== null && Number(p.round) === round && p.betDeducted === true;
-                });
-                if (eligible.length === 1 && room.gameState === 'selection') {
+
+                // Case 2: only one player picked — refund their bet and reset (don't spin alone)
+                if (eligible.length === 1) {
                     const only = eligible[0];
-                    const marker = gameRef.child('singlePlayerHandled/' + round);
-                    return marker.transaction(current => current || {
-                        username: only, timestamp: firebase.database.ServerValue.TIMESTAMP
-                    }).then(claim => {
-                        if (!claim.committed) return true;
-                        const amount = Number(room.players?.[only]?.bet || currentBet);
-                        return refundBetImmediately(only, amount).then(() => gameRef.transaction(current => {
-                            if (!current || Number(current.round) !== round || current.gameState !== 'selection') return current;
-                            const p = current.players?.[only];
-                            if (p) { p.pick = null; p.ready = false; p.betDeducted = false; p.betSources = {}; p.round = null; }
-                            current.numbersTaken = {};
-                            current.timer = SELECTION_SECONDS;
-                            current.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
-                            return current;
-                        }));
-                    });
+                    const amount = Number(ps[only].bet || currentBet);
+                    const markerRef = gameRef.child('singlePlayerHandled/' + round);
+                    return markerRef.transaction(current => current || { username: only, amount, ts: Date.now() })
+                        .then(claim => {
+                            if (!claim.committed) return true; // someone else is handling it
+                            return refundBetIdempotent(only, round, amount, currentRoom).then(() => {
+                                return gameRef.transaction(r => {
+                                    if (!r || Number(r.round) !== round || r.gameState !== 'selection') return r;
+                                    const players = r.players || {};
+                                    for (const n of Object.keys(players)) {
+                                        if (players[n]) {
+                                            players[n].pick = null;
+                                            players[n].ready = false;
+                                            players[n].betDeducted = false;
+                                            players[n].betSources = {};
+                                            players[n].round = null;
+                                        }
+                                    }
+                                    r.players = players;
+                                    r.numbersTaken = {};
+                                    r.timer = SELECTION_SECONDS;
+                                    r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                                    return r;
+                                });
+                            });
+                        });
                 }
-                return true;
-            }).catch(err => { console.error('Authoritative spin request failed:', err); return false; });
+
+                // Case 3: normal multi-player spin
+                return gameRef.transaction(room => {
+                    if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
+                    if (room.spinLock && Number(room.spinLock.round) === round) return room;
+                    const psInner = room.players || {};
+                    const eligibleInner = Object.keys(psInner).filter(name => {
+                        const p = psInner[name];
+                        return p && p.pick !== null && p.pick !== undefined && Number(p.round) === round && p.betDeducted === true;
+                    });
+                    if (eligibleInner.length <= 1) return room; // safe: single-player handler above
+                    const taken = Object.keys(room.numbersTaken || {})
+                        .filter(k => room.numbersTaken[k] === true)
+                        .map(Number)
+                        .filter(n => n >= 1 && n <= 200);
+                    if (!taken.length) return room;
+                    const winningNumber = taken[Math.floor(Math.random() * taken.length)];
+                    const winners = eligibleInner.filter(name => Number(psInner[name].pick) === winningNumber);
+                    const bet = Number(room.betAmount || currentBet);
+                    const pot = eligibleInner.length * bet;
+                    const pool = Math.floor(pot * 0.85);
+                    room.spinLock = { round: round, timestamp: firebase.database.ServerValue.TIMESTAMP };
+                    room.winningNumber = winningNumber;
+                    room.winners = winners;
+                    room.potAmount = pot;
+                    room.prizePool = pool;
+                    room.gameState = 'spinning';
+                    room.spinStartedRound = round;
+                    room.timer = 5;
+                    room.spinCount = Number(room.spinCount || 0) + 1;
+                    room.spinFinishedAt = null;
+                    return room;
+                }).then(result => result && result.committed);
+            }).catch(err => {
+                console.error('requestSpin failed:', err);
+                return false;
+            });
+        }
+
+        // ============================================================
+        //  [FIX] Watchdog – recovers stuck rooms
+        // ============================================================
+        function runRoomWatchdog() {
+            if (!gameRef || !currentUser) return;
+            if (!navigator.onLine) return;
+            if (syncInProgress) return;
+            if (engineState.gamePhase === 'selection') {
+                const expiredFor = getServerNow() - (Number(phaseDeadline) || 0);
+                if (phaseDeadline && expiredFor > 12000) {
+                    console.log('🐕 Watchdog: selection expired', expiredFor, 'ms ago — forcing progress');
+                    requestSpin().catch(err => console.warn('Watchdog spin failed:', err));
+                }
+            } else if (engineState.gamePhase === 'spinning') {
+                const now = Date.now();
+                if (lastRoomSyncAt && (now - lastRoomSyncAt) > 12000) {
+                    console.log('🐕 Watchdog: spinning state stale — resyncing');
+                    gameRef.once('value').then(snap => {
+                        if (snap.exists()) syncGameState(snap.val());
+                    }).catch(() => {});
+                }
+            }
         }
 
         // ============================================================
@@ -2798,6 +2943,8 @@
                         timestamp: firebase.database.ServerValue.TIMESTAMP
                     }).then(result => {
                         if (!result.committed) return;
+                        // [FIX] Clean up single-player marker for this round
+                        gameRef.child('singlePlayerHandled/' + round).remove().catch(() => {});
                         return gameRef.transaction(room => {
                             if (!room || Number(room.round) !== round || room.gameState !== 'results') return room;
                             const players = room.players || {};
