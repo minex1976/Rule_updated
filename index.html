@@ -71,6 +71,7 @@
         .wallet-item .label { color: #7a6a9a; }
         .wallet-item .username { color: #f0e6ff; font-weight: 700; max-width: 50px; overflow: hidden; text-overflow: ellipsis; }
         .wallet-item .pending { color: #ffd866; font-weight: 600; font-size: 0.55rem; }
+        #refWallet { color: #8affb0 !important; }
         .wallet-right { display: flex; align-items: center; gap: 3px; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
         .status-dot.online { background: #4caf84; box-shadow: 0 0 12px rgba(76, 175, 132, 0.4); }
@@ -292,6 +293,13 @@
             .bet-switcher { padding: 2px 6px; }
             .bet-switcher .bet-btn { font-size: 0.6rem; padding: 1px 8px; }
         }
+        /* Hide player name on small screens to make room for all wallets */
+        @media (max-width: 430px) {
+            #usernameWalletItem { display: none !important; }
+        }
+        @media (max-height: 700px) {
+            #usernameWalletItem { display: none !important; }
+        }
         .num-picker-wrapper { -webkit-overflow-scrolling: touch; touch-action: pan-y; }
         .num-picker { touch-action: pan-y; }
         .num-btn { touch-action: manipulation; }
@@ -353,9 +361,10 @@
 
             <div class="wallet-bar">
                 <div class="wallet-left">
-                    <div class="wallet-item"><span class="label">👤</span><span class="username" id="walletUsername">User</span></div>
+                    <div class="wallet-item" id="usernameWalletItem"><span class="label">👤</span><span class="username" id="walletUsername">User</span></div>
                     <div class="wallet-item"><span class="label"> M-Wallet </span><span class="amount" id="mainWallet">0</span></div>
                     <div class="wallet-item"><span class="label"> P-Wallet </span><span class="amount" id="playWallet">0</span></div>
+                    <div class="wallet-item"><span class="label">🎁 Ref</span><span class="amount" id="refWallet">0</span></div>
                     <div class="wallet-item" id="pendingItem" style="display:none;"><span class="label">⏳</span><span class="pending" id="pendingAmount">0</span></div>
                 </div>
                 <div class="wallet-right">
@@ -925,7 +934,7 @@
         let isGameInitialized = false;
         let currentBet = 15;
         let currentRoom = 'room_15';
-        let walletData = { main: 0, play: 0, pending: 0 };
+        let walletData = { main: 0, play: 0, pending: 0, refEarn: 0 };
 
         let engineState = {
             players: {}, allTakenNumbers: new Set(), drawnNumbers: [], winners: [],
@@ -1124,6 +1133,7 @@
         const walletUsername = $('walletUsername');
         const mainWalletEl = $('mainWallet');
         const playWalletEl = $('playWallet');
+        const refWalletEl = $('refWallet');
         const pendingItem = $('pendingItem');
         const pendingAmount = $('pendingAmount');
         const moreBtn = $('moreBtn');
@@ -1224,6 +1234,7 @@
                     walletData.main = data.mainWallet || 0;
                     walletData.play = data.playWallet || 0;
                     walletData.pending = data.pendingWithdrawal || 0;
+                    walletData.refEarn = data.referralEarnings || 0;
                     updateWalletUI();
                     updateWelcomeUI();
                     if (transactionModal && transactionModal.classList.contains('active')) checkPendingTransactionStatus();
@@ -1717,7 +1728,7 @@
             isGameInitialized = false;
             audioPlayedThisRound = false;
             syncInProgress = false;
-            walletData = { main: 0, play: 0, pending: 0 };
+            walletData = { main: 0, play: 0, pending: 0, refEarn: 0 };
             engineState = {
                 players: {}, allTakenNumbers: new Set(), drawnNumbers: [], winners: [],
                 spinCount: 0, isSpinning: false, gamePhase: 'selection', roundNumber: 1,
@@ -1882,6 +1893,7 @@
             if (!currentUser) return;
             if (mainWalletEl) mainWalletEl.textContent = walletData.main;
             if (playWalletEl) playWalletEl.textContent = walletData.play;
+            if (refWalletEl) refWalletEl.textContent = walletData.refEarn || 0;
             if (walletUsername) walletUsername.textContent = currentUser;
             if (pendingItem && pendingAmount) {
                 if (walletData.pending > 0) {
