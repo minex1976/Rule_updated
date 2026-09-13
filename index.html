@@ -81,7 +81,7 @@
         .pick-status .highlight { color: #ffcc44; font-weight: 800; }
         .wheel-container { position: relative; width: 100%; max-width: 220px; margin: 2px auto; aspect-ratio: 1/1; flex-shrink: 0; }
         .wheel { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(from 0deg, #f5d6a0 0%, #f5c542 12%, #f5d6a0 24%, #f5c542 36%, #f5d6a0 48%, #f5c542 60%, #f5d6a0 72%, #f5c542 84%, #f5d6a0 100%); position: relative; box-shadow: 0 0 0 6px rgba(255, 204, 68, 0.15), 0 0 0 12px rgba(20, 10, 40, 0.6), 0 0 60px rgba(255, 204, 68, 0.08); display: flex; align-items: center; justify-content: center; }
-        .arrow-container { position: absolute; width: 100%; height: 100%; top: 0; left: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 15; transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); transform-origin: 50% 50%; }
+        .arrow-container { position: absolute; width: 100%; height: 100%; top: 0; left: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 15; transform-origin: 50% 50%; }
         .arrow-shaft { position: absolute; width: 4px; height: 35%; background: linear-gradient(to bottom, #ff6b6b, #e05555); top: 15%; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 0 12px rgba(255, 80, 80, 0.3)); border-radius: 4px; }
         .arrow-head { position: absolute; width: 16px; height: 16px; background: #ff6b6b; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); top: 11%; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 0 16px rgba(255, 80, 80, 0.3)); }
         .arrow-center-circle { position: absolute; width: 26px; height: 26px; background: radial-gradient(circle at 40% 35%, #fff5e0, #f5c542); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 16; border: 3px solid rgba(20, 10, 40, 0.8); box-shadow: 0 0 30px rgba(255, 204, 68, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.3); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.65rem; color: #1a0a2e; pointer-events: none; transition: all 0.3s; }
@@ -173,8 +173,6 @@
         .referral-actions button { flex: 1; padding: 9px; border: none; border-radius: 22px; font-weight: 700; cursor: pointer; font-size: 0.78rem; }
         .referral-actions .share { background: linear-gradient(135deg, #ffcc44, #f5a623); color: #1a0a2e; }
         .referral-actions .copy { background: rgba(120, 80, 200, 0.18); color: #d4c0f0; }
-
-        /* WINNING NUMBER CARD */
         .winners-modal-content { max-width: 360px !important; width: 100%; text-align: center; background: none !important; border: none !important; padding: 0 !important; max-height: none !important; overflow: visible !important; position: relative; }
         .winning-card-halo { position: absolute; inset: -40px; background: radial-gradient(circle at 50% 45%, rgba(255, 204, 68, 0.45), transparent 62%); filter: blur(38px); z-index: 0; pointer-events: none; animation: haloPulse 2.5s ease-in-out infinite alternate; }
         @keyframes haloPulse { 0% { opacity: 0.55; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1.12); } }
@@ -211,7 +209,6 @@
             <p>Your connection was lost. Please check your network and try again.</p>
             <button class="retry-btn" id="networkRetryBtn">🔄 Retry</button>
         </div>
-
         <div class="session-conflict-modal" id="sessionConflictModal">
             <div class="modal-content">
                 <span class="icon">⚠️</span>
@@ -220,7 +217,6 @@
                 <button id="sessionConflictOkBtn">OK</button>
             </div>
         </div>
-
         <div id="authScreen" class="auth-screen">
             <div class="logo"><h2>🏆 <span>WINZO</span> 🏆</h2></div>
             <div class="subtitle">Bet 15 or 30 Birr</div>
@@ -234,7 +230,6 @@
                 <span class="connection-status offline" id="authStatus">⚡ Offline</span>
             </div>
         </div>
-
         <div id="welcomeScreen" class="welcome-screen">
             <div class="logo">
                 <h2>🏆 <span>WINZO</span> 🏆</h2>
@@ -250,13 +245,11 @@
                 <button class="logout-btn" id="welcomeDepositBtn" style="border-color:rgba(80,255,160,0.15);color:#8affb0;">💰 Deposit</button>
             </div>
         </div>
-
         <div id="gameScreen">
             <div class="title">🏆 <span style="color:#ffcc44;">WINZO</span> 🏆 · <small id="modeLabel">15 Birr</small></div>
             <div class="bet-switcher">
                 <button class="bet-btn switch-room-btn" id="switchRoomBtn"> Switch Room</button>
             </div>
-
             <div class="wallet-bar">
                 <div class="wallet-left">
                     <div class="wallet-item" id="usernameWalletItem"><span class="label">👤</span><span class="username" id="walletUsername">User</span></div>
@@ -265,12 +258,12 @@
                     <div class="wallet-item"><span class="label">🎁 Ref</span><span class="amount" id="refWallet">0</span></div>
                     <div class="wallet-item" id="pendingItem" style="display:none;"><span class="label">⏳</span><span class="pending" id="pendingAmount">0</span></div>
                 </div>
-                <div class="wallet-right">
+                <div class="wallet-right" style="display:flex;align-items:center;gap:3px;">
                     <span class="status-dot offline" id="statusDot"></span>
                     <div class="more-wrapper">
                         <button class="more-btn" id="moreBtn">⋮</button>
                         <div class="more-dropdown" id="moreDropdown">
-                            <div class="dropdown-section" style="border-bottom:none;padding:4px 3px;">
+                            <div style="padding:4px 3px;">
                                 <div style="color:#7a6a9a;font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">⚙️ Actions</div>
                                 <button class="dropdown-item deposit" id="depositBtn"><span class="icon">💰</span> Deposit</button>
                                 <button class="dropdown-item withdraw" id="withdrawBtn"><span class="icon">🏦</span> Withdraw</button>
@@ -283,15 +276,12 @@
                     </div>
                 </div>
             </div>
-
             <div class="game-info-bar">
                 <div class="info-item">Timer: <span class="value timer" id="timerDisplay">30</span>s</div>
                 <div class="info-item">Online: <span class="value players" id="playerCount">0</span></div>
                 <div class="info-item">🏆 Prize: <span class="value bet-total" id="totalBetDisplay">0</span> Birr</div>
             </div>
-
             <div class="pick-status" id="pickStatus"><span>Pick <span class="highlight">one</span> number</span></div>
-
             <div class="wheel-container hidden" id="wheelContainer">
                 <div class="wheel" id="wheel">
                     <div class="wheel-numbers" id="wheelNumbers"></div>
@@ -303,11 +293,9 @@
                     <div class="spinning-indicator" id="spinningIndicator">SPINNING...</div>
                 </div>
             </div>
-
             <div class="status-area" id="statusMessage">
                 <span>⏳ Pick one number · Bet: <span class="highlight" id="betDisplay">15</span> Birr</span>
             </div>
-
             <div class="profile-area">
                 <div class="profile-row">
                     <span class="profile-label">👤</span>
@@ -318,11 +306,9 @@
                     <div class="num-picker" id="numPicker"></div>
                 </div>
             </div>
-
             <div class="footer">7354-1834-8904-9614</div>
         </div>
     </div>
-
     <div class="modal-overlay" id="referralModal">
         <div class="modal-content">
             <h3>🎁 Refer & Earn 5%</h3>
@@ -338,7 +324,6 @@
             <button class="close-btn" id="referralCloseBtn" style="width:100%;padding:10px;border-radius:30px;border:none;background:rgba(120,80,200,0.15);color:#d4c0f0;font-weight:700;cursor:pointer;margin-top:12px;">Close</button>
         </div>
     </div>
-
     <div class="modal-overlay" id="winnersModal">
         <div class="modal-content winners-modal-content">
             <div class="winning-card-halo"></div>
@@ -353,7 +338,6 @@
             <div style="text-align:center;margin-top:14px;color:#7a6a9a;font-size:0.6rem;letter-spacing:1px;">closes in 5s · auto restart</div>
         </div>
     </div>
-
     <div class="deposit-modal" id="depositModal">
         <div class="modal-content">
             <h3> በቴሌብር ወደ 0998487148 ገቢ ያድርጉ </h3>
@@ -375,7 +359,6 @@
             </div>
         </div>
     </div>
-
     <div class="withdraw-modal" id="withdrawModal">
         <div class="modal-content">
             <h3>ከዋናው ዋሌት ወጪ ማዘዣ</h3>
@@ -390,7 +373,6 @@
             </div>
         </div>
     </div>
-
     <div class="transaction-modal" id="transactionModal">
         <div class="modal-content">
             <h3>💳 Transaction Request</h3>
@@ -398,7 +380,6 @@
             <button class="close-btn" id="transactionCloseBtn">OK</button>
         </div>
     </div>
-
     <div class="ocr-progress-modal" id="ocrProgressModal">
         <div class="modal-content">
             <div class="spinner" id="ocrSpinner"></div>
@@ -407,21 +388,17 @@
             <div class="sub-text" id="ocrProgressSub">Please wait, this may take a few seconds.</div>
         </div>
     </div>
-
     <div class="waiting-modal" id="waitingModal">
         <h3>✋</h3>
         <p>ሌላ ተጫዋች እስከሚገባ እባክዎትን ትንሽ ይጠብቁ!</p>
         <button class="close-waiting" id="closeWaitingBtn">✕ Dismiss</button>
     </div>
-
     <div class="toast" id="welcomeToast">
         <span class="icon">🎉</span>
         <h3>Welcome to Winzo!</h3>
         <p>You've been given <strong>30 Birr</strong> in your play wallet. Good luck!</p>
     </div>
-
     <canvas id="fireworksCanvas"></canvas>
-
     <script>
         // ============================================================
         //  GLOBAL VARIABLES
@@ -439,10 +416,7 @@
                 if (ref && ref.indexOf('ref_') === 0) ref = ref.slice(4);
                 if (ref) {
                     ref = decodeURIComponent(ref).replace(/^@/, '').trim();
-                    if (/^[A-Za-z0-9_]{1,32}$/.test(ref)) {
-                        pendingReferralCode = ref;
-                        localStorage.setItem('winzo_pending_referral', ref);
-                    }
+                    if (/^[A-Za-z0-9_]{1,32}$/.test(ref)) { pendingReferralCode = ref; localStorage.setItem('winzo_pending_referral', ref); }
                 } else if (!pendingReferralCode) {
                     const saved = localStorage.getItem('winzo_pending_referral');
                     if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) pendingReferralCode = saved;
@@ -453,20 +427,11 @@
         // ============================================================
         //  AUDIO
         // ============================================================
-        let audioCtx = null;
-        let audioInitialized = false;
-        function initAudio() {
-            if (!audioInitialized) {
-                try { audioCtx = new(window.AudioContext || window.webkitAudioContext)(); audioInitialized = true; } catch (e) {}
-            }
-            return audioCtx;
-        }
-        document.addEventListener('click', function resumeAudio() {
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
-        }, { once: false });
+        let audioCtx = null; let audioInitialized = false;
+        function initAudio() { if (!audioInitialized) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); audioInitialized = true; } catch (e) {} } return audioCtx; }
+        document.addEventListener('click', function resumeAudio() { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {}); }, { once: false });
         function playTone(freq, duration, type = 'sine', volume = 0.30, delay = 0) {
-            const ctx = initAudio();
-            if (!ctx) return;
+            const ctx = initAudio(); if (!ctx) return;
             if (ctx.state === 'suspended') ctx.resume().catch(() => {});
             try {
                 const osc = ctx.createOscillator(); const gain = ctx.createGain();
@@ -476,8 +441,7 @@
                 gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + delay + 0.02);
                 gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
                 osc.connect(gain); gain.connect(ctx.destination);
-                osc.start(ctx.currentTime + delay);
-                osc.stop(ctx.currentTime + delay + duration);
+                osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + duration);
             } catch (e) {}
         }
         function playWinningAudio() {
@@ -506,8 +470,7 @@
         window.addEventListener('resize', resizeCanvas); resizeCanvas();
         class Firework {
             constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = canvas.height;
+                this.x = Math.random() * canvas.width; this.y = canvas.height;
                 this.targetY = Math.random() * canvas.height * 0.4 + canvas.height * 0.1;
                 this.speed = 4 + Math.random() * 4;
                 this.trail = []; this.exploded = false; this.size = 2 + Math.random() * 2;
@@ -587,8 +550,7 @@
         //  TELEGRAM
         // ============================================================
         let tg = null; let telegramUser = null; let isTelegram = false;
-        let telegramDetectionAttempts = 0;
-        const maxTelegramAttempts = 5;
+        let telegramDetectionAttempts = 0; const maxTelegramAttempts = 5;
         function detectTelegramUser() {
             try {
                 tg = window.Telegram?.WebApp;
@@ -604,16 +566,8 @@
                         const name = user.username || user.first_name || '';
                         const infoEl = document.getElementById('telegramInfo');
                         if (infoEl) {
-                            if (name) {
-                                infoEl.textContent = '✅ Detected Telegram: @' + name;
-                                infoEl.className = 'telegram-info detected';
-                                telegramDetectedUsername = name;
-                                applyTelegramAutoLogin(name);
-                            } else {
-                                infoEl.textContent = '📱 Telegram detected (no username). Enter manually.';
-                                infoEl.className = 'telegram-info not-detected';
-                                telegramDetectedUsername = null;
-                            }
+                            if (name) { infoEl.textContent = '✅ Detected Telegram: @' + name; infoEl.className = 'telegram-info detected'; telegramDetectedUsername = name; applyTelegramAutoLogin(name); }
+                            else { infoEl.textContent = '📱 Telegram detected (no username). Enter manually.'; infoEl.className = 'telegram-info not-detected'; telegramDetectedUsername = null; }
                         }
                         return true;
                     }
@@ -624,10 +578,7 @@
         function attemptTelegramDetection() {
             if (telegramDetectionAttempts >= maxTelegramAttempts) {
                 const infoEl = document.getElementById('telegramInfo');
-                if (infoEl) {
-                    infoEl.textContent = '📱 Telegram not detected. Enter manually.';
-                    infoEl.className = 'telegram-info not-detected';
-                }
+                if (infoEl) { infoEl.textContent = '📱 Telegram not detected. Enter manually.'; infoEl.className = 'telegram-info not-detected'; }
                 return false;
             }
             telegramDetectionAttempts++;
@@ -639,9 +590,7 @@
             const usernameInput = document.getElementById('authUsername');
             const passwordInput = document.getElementById('authPassword');
             if (!usernameInput || !passwordInput) return;
-            usernameInput.value = username;
-            usernameInput.readOnly = true;
-            usernameInput.style.color = '#8affb0';
+            usernameInput.value = username; usernameInput.readOnly = true; usernameInput.style.color = '#8affb0';
             const savedCredentials = DB.getSavedCredentials();
             if (savedCredentials && savedCredentials.password) passwordInput.value = savedCredentials.password;
             else { passwordInput.value = ''; passwordInput.placeholder = 'Enter your password'; }
@@ -677,22 +626,20 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '6.2';
+        const APP_VERSION = '8.1';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
-            setCurrentUser(username) { if (username) localStorage.setItem('bingo_current_user', username); else localStorage.removeItem('bingo_current_user'); },
+            setCurrentUser(u) { if (u) localStorage.setItem('bingo_current_user', u); else localStorage.removeItem('bingo_current_user'); },
             getSavedCredentials() { try { return JSON.parse(localStorage.getItem('bingo_saved_credentials') || 'null'); } catch { return null; } },
-            setSavedCredentials(username, password) { localStorage.setItem('bingo_saved_credentials', JSON.stringify({ username, password })); },
-            setSavedBet(bet) { if (bet) localStorage.setItem('bingo_saved_bet', bet.toString()); else localStorage.removeItem('bingo_saved_bet'); },
+            setSavedCredentials(u, p) { localStorage.setItem('bingo_saved_credentials', JSON.stringify({ username: u, password: p })); },
+            setSavedBet(b) { if (b) localStorage.setItem('bingo_saved_bet', b.toString()); else localStorage.removeItem('bingo_saved_bet'); },
             getToastShown() { return localStorage.getItem('bingo_toast_shown') === 'true'; },
             setToastShown() { localStorage.setItem('bingo_toast_shown', 'true'); },
             getVersion() { return localStorage.getItem('bingo_app_version'); },
             setVersion() { localStorage.setItem('bingo_app_version', APP_VERSION); },
             clearAll() {
-                localStorage.removeItem('bingo_current_user');
-                localStorage.removeItem('bingo_saved_bet');
-                localStorage.removeItem('bingo_toast_shown');
-                localStorage.removeItem('bingo_app_version');
+                localStorage.removeItem('bingo_current_user'); localStorage.removeItem('bingo_saved_bet');
+                localStorage.removeItem('bingo_toast_shown'); localStorage.removeItem('bingo_app_version');
             }
         };
         if (DB.getVersion() !== APP_VERSION) { DB.clearAll(); DB.setVersion(); }
@@ -709,66 +656,23 @@
             timer: 30, activePlayersCount: 0, cumulativeRotation: 0, playerNames: [],
             gameStarted: true, spinInProgress: false, waitingModalShown: false,
             potAmount: 0, totalBetsPlaced: 0, winnersModalShown: false,
-            wheelSeed: 0
+            wheelSeed: 0, targetAngle: 0, spinStartedAt: 0
         };
         let timerInterval = null; let isTimerRunning = false; let audioPlayedThisRound = false;
         let resultsCountdownInterval = null; let isResultsCountdownRunning = false;
         let spinTimeout = null; let syncInProgress = false;
         let numbersTakenListenerRef = null; let numbersTakenInitialized = false;
         let lastKnownPlayersCache = {}; let watchdogInterval = null; let lastRoomSyncAt = 0;
-        let suppressArrowUpdate = false;
 
-        // ============================================================
-        //  WHEEL — Firebase-seeded slot layout
-        //  Each round stores a `wheelSeed`. All devices shuffle the
-        //  200 numbers with the same seed, so every device sees the
-        //  same layout — and number N lands in a fresh spot each round.
-        // ============================================================
+        // [FIX] Single-writer bookkeeping
+        let displayedCardRound = null;     // round number whose card we've shown
+        let lastSpunRound = null;          // round number whose arrow animation we've triggered
+        let cardFallbackTimer = null;      // timer to fall back to drawnNumbers if lastResult is slow
+        let lastResultData = null;         // latest lastResult object
+
         const TOTAL_WHEEL_NUMBERS = 200;
         const DEGREES_PER_SLOT = 360 / TOTAL_WHEEL_NUMBERS; // 1.8°
-        const ARROW_REST_ROTATION = 90; // 3 o'clock
-        let cachedSlotMap = null;
-        let cachedSeedForMap = null;
-
-        function makeSeededRandom(seed) {
-            let s = (Number(seed) || 1) & 0x7fffffff;
-            if (s === 0) s = 1;
-            return function() {
-                s = (s * 1103515245 + 12345) & 0x7fffffff;
-                return s / 0x7fffffff;
-            };
-        }
-
-        function buildSlotMap(seed) {
-            if (cachedSlotMap && cachedSeedForMap === seed) return cachedSlotMap;
-            const nums = [];
-            for (let i = 1; i <= TOTAL_WHEEL_NUMBERS; i++) nums.push(i);
-            const rng = makeSeededRandom(seed);
-            for (let i = nums.length - 1; i > 0; i--) {
-                const j = Math.floor(rng() * (i + 1));
-                const tmp = nums[i]; nums[i] = nums[j]; nums[j] = tmp;
-            }
-            const map = {};
-            nums.forEach((n, idx) => { map[n] = idx; });
-            cachedSlotMap = map;
-            cachedSeedForMap = seed;
-            return map;
-        }
-
-        function getSlotIndexForNumber(num, seed) {
-            const map = buildSlotMap(seed || engineState.wheelSeed || 1);
-            const idx = map[num];
-            return (typeof idx === 'number') ? idx : 0;
-        }
-
-        function getSlotAngle(slotIndex) {
-            return slotIndex * DEGREES_PER_SLOT;
-        }
-
-        function getDeterministicFullTurns(round) {
-            const r = Number(round) || 0;
-            return 5 + ((r * 7) % 3); // 5, 6 or 7
-        }
+        const ARROW_REST_ROTATION = 90;
 
         // ============================================================
         //  NETWORK LISTENER
@@ -802,14 +706,12 @@
             isNetworkConnected = true;
             networkOverlay.classList.remove('active');
             updateStatus('✅ Network restored. Game will continue.');
+            // Just re-sync. Do NOT trigger any spin logic.
             if (gameRef) {
                 gameRef.once('value').then(snapshot => {
                     if (snapshot.exists()) syncGameState(snapshot.val());
                 }).catch(() => {});
-                reapplyAuthoritativeResult();
             }
-            renderNumberPicker();
-            if (engineState.gamePhase === 'selection' && !isTimerRunning && phaseDeadline) startTimer();
         }
         function handleNetworkOffline() {
             if (!isNetworkConnected) return;
@@ -826,10 +728,7 @@
             else if (database) {
                 database.ref('.info/connected').once('value', (snap) => {
                     if (snap.val() === true) handleNetworkOnline();
-                    else {
-                        networkOverlay.classList.remove('active');
-                        setTimeout(() => networkOverlay.classList.add('active'), 100);
-                    }
+                    else { networkOverlay.classList.remove('active'); setTimeout(() => networkOverlay.classList.add('active'), 100); }
                 });
             }
         };
@@ -838,7 +737,6 @@
             if (!currentUser) return;
             if (gameRef) {
                 gameRef.once('value').then(snap => { if (snap.exists()) syncGameState(snap.val()); }).catch(() => {});
-                reapplyAuthoritativeResult();
             }
             if (engineState.gamePhase === 'selection' && !isTimerRunning && phaseDeadline) startTimer();
         });
@@ -866,10 +764,7 @@
             });
         }
         function stopSessionListener() {
-            if (sessionListener && database && currentUser) {
-                database.ref('sessions/' + currentUser).off();
-                sessionListener = null;
-            }
+            if (sessionListener && database && currentUser) { database.ref('sessions/' + currentUser).off(); sessionListener = null; }
             if (database && currentUser) database.ref('sessions/' + currentUser).remove();
             sessionId = null;
         }
@@ -880,10 +775,7 @@
         function claimNumber(number, callback) {
             if (!gameRef) return callback(false);
             const takenRef = gameRef.child('numbersTaken/' + number);
-            takenRef.transaction(current => {
-                if (current === true) return;
-                return true;
-            }, (error, committed) => {
+            takenRef.transaction(current => { if (current === true) return; return true; }, (error, committed) => {
                 if (error) { callback(false); return; }
                 if (committed) callback(true); else callback(false);
             }, false);
@@ -929,89 +821,140 @@
         const ocrDoneIcon = $('ocrDoneIcon'); const ocrProgressStatus = $('ocrProgressStatus'); const ocrProgressSub = $('ocrProgressSub');
 
         // ============================================================
-        //  CARD DISPLAY — reads ONLY from Firebase (no localStorage)
+        //  CARD DISPLAY — single source of truth
         // ============================================================
-        let currentCardRound = null;
-        let currentCardNumber = null;
-
         function displayWinningNumberCard(round, number) {
-            const r = Number(round);
-            const n = Number(number);
-            if (!isFinite(r) || r <= 0) return;
-            if (!isFinite(n) || n <= 0) return;
-            // Guard: ignore updates for a different round
-            if (currentCardRound !== null && currentCardRound !== r) return;
-
+            const r = Number(round); const n = Number(number);
+            if (!isFinite(r) || r <= 0 || !isFinite(n) || n <= 0) return;
             const numEl = document.getElementById('winningNumberBig');
             const roundEl = document.getElementById('winningNumberRound');
-            const changed = currentCardNumber !== n;
-            currentCardRound = r;
-            currentCardNumber = n;
-
             if (roundEl) roundEl.textContent = '#' + r;
-            if (numEl && changed) {
+            if (numEl) {
                 numEl.textContent = String(n);
                 numEl.style.animation = 'none';
                 void numEl.offsetWidth;
                 numEl.style.animation = 'numberPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
             }
         }
-
         function resetWinningNumberCard() {
-            currentCardRound = null;
-            currentCardNumber = null;
+            displayedCardRound = null;
+            if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
             const numEl = document.getElementById('winningNumberBig');
             const roundEl = document.getElementById('winningNumberRound');
             if (numEl) numEl.textContent = '--';
             if (roundEl) roundEl.textContent = '#--';
         }
 
-        // Clear any winning-number data stored for the current day
-        function clearLocalRoundData() {
-            try {
-                const keys = [];
-                for (let i = 0; i < localStorage.length; i++) {
-                    const k = localStorage.key(i);
-                    if (k && k.indexOf('winzo_winning_') === 0) keys.push(k);
+        // Card state applier — called from syncGameState AND lastResult listener
+        function applyCardState() {
+            const phase = engineState.gamePhase;
+            const round = Number(engineState.roundNumber);
+
+            if (phase !== 'results') {
+                if (winnersModal) winnersModal.classList.remove('active');
+                displayedCardRound = null;
+                if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
+                return;
+            }
+            if (!isFinite(round) || round <= 0) return;
+            if (displayedCardRound === round) return; // already displayed this round
+
+            // Prefer lastResult if it matches current round
+            if (lastResultData && Number(lastResultData.round) === round) {
+                const num = Number(lastResultData.winningNumber);
+                if (isFinite(num) && num > 0) {
+                    displayedCardRound = round;
+                    displayWinningNumberCard(round, num);
+                    if (winnersModal) winnersModal.classList.add('active');
+                    if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
+                    return;
                 }
-                keys.forEach(k => localStorage.removeItem(k));
-            } catch (e) {}
+            }
+
+            // Wait a moment for lastResult to arrive before falling back
+            if (cardFallbackTimer) return;
+            cardFallbackTimer = setTimeout(() => {
+                cardFallbackTimer = null;
+                if (engineState.gamePhase !== 'results') return;
+                if (displayedCardRound === round) return;
+                const nums = engineState.drawnNumbers;
+                if (nums.length > 0) {
+                    const num = Number(nums[0]);
+                    if (isFinite(num) && num > 0) {
+                        displayedCardRound = round;
+                        displayWinningNumberCard(round, num);
+                        if (winnersModal) winnersModal.classList.add('active');
+                    }
+                }
+            }, 1200);
         }
 
-        // ============================================================
-        //  AUTHORITATIVE RESULT — single source of truth
-        // ============================================================
         function handleAuthoritativeResult(r) {
             if (!r || r.round == null || r.winningNumber == null) return;
-            const round = Number(r.round);
-            const winningNumber = Number(r.winningNumber);
-            if (!isFinite(round) || round <= 0) return;
-            if (!isFinite(winningNumber) || winningNumber <= 0) return;
-
-            if (round !== Number(engineState.roundNumber)) return;
-            if (engineState.gamePhase !== 'results') return;
-
-            displayWinningNumberCard(round, winningNumber);
-            if (winnersModal) winnersModal.classList.add('active');
-        }
-
-        function reapplyAuthoritativeResult() {
-            if (!gameRef) return;
-            gameRef.child('lastResult').once('value').then(snap => {
-                if (snap.exists()) handleAuthoritativeResult(snap.val());
-            }).catch(() => {});
+            lastResultData = r;
+            applyCardState();
         }
 
         function attachLastResultListener(ref) {
             if (lastResultListenerRef) { try { lastResultListenerRef.off(); } catch (e) {} lastResultListenerRef = null; }
             if (!ref) return;
             lastResultListenerRef = ref.child('lastResult');
-            lastResultListenerRef.on('value', snap => {
-                if (snap.exists()) handleAuthoritativeResult(snap.val());
-            });
+            lastResultListenerRef.on('value', snap => { if (snap.exists()) handleAuthoritativeResult(snap.val()); });
         }
         function detachLastResultListener() {
             if (lastResultListenerRef) { try { lastResultListenerRef.off(); } catch (e) {} lastResultListenerRef = null; }
+        }
+
+        // ============================================================
+        //  ARROW SPIN — driven by Firebase-stored targetAngle
+        // ============================================================
+        function startArrowSpin(targetAngle, spinStartedAt) {
+            if (!arrowContainer) return;
+            const elapsed = spinStartedAt > 0 ? (Date.now() - spinStartedAt) : 0;
+            if (elapsed > 800) {
+                // Late — jump straight to final angle, no animation
+                arrowContainer.style.transition = 'none';
+                arrowContainer.style.transform = `rotate(${targetAngle}deg)`;
+                return;
+            }
+            // Full animation from rest position
+            arrowContainer.style.transition = 'none';
+            arrowContainer.style.transform = `rotate(${ARROW_REST_ROTATION}deg)`;
+            arrowContainer.getBoundingClientRect();
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    arrowContainer.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                    arrowContainer.style.transform = `rotate(${targetAngle}deg)`;
+                });
+            });
+        }
+
+        function applyArrowState() {
+            const phase = engineState.gamePhase;
+            const round = Number(engineState.roundNumber);
+            const targetAngle = Number(engineState.targetAngle);
+            const spinStartedAt = Number(engineState.spinStartedAt) || 0;
+
+            if (phase === 'selection') {
+                if (lastSpunRound !== null && lastSpunRound !== round) lastSpunRound = null;
+                if (arrowContainer) { arrowContainer.style.transition = 'none'; arrowContainer.style.transform = `rotate(${ARROW_REST_ROTATION}deg)`; }
+                if (arrowCenter) { arrowCenter.textContent = '🎯'; arrowCenter.classList.remove('reveal'); }
+                return;
+            }
+
+            if (!isFinite(targetAngle) || targetAngle === 0) return;
+            if (lastSpunRound === round) return;
+
+            if (phase === 'spinning') {
+                lastSpunRound = round;
+                startArrowSpin(targetAngle, spinStartedAt);
+            } else if (phase === 'results') {
+                lastSpunRound = round;
+                if (arrowContainer) { arrowContainer.style.transition = 'none'; arrowContainer.style.transform = `rotate(${targetAngle}deg)`; }
+                if (engineState.drawnNumbers.length > 0) {
+                    if (arrowCenter) { arrowCenter.textContent = String(engineState.drawnNumbers[0]); arrowCenter.classList.add('reveal'); }
+                }
+            }
         }
 
         // ============================================================
@@ -1022,8 +965,7 @@
             const bet = Number(currentBet || 0);
             const takenSet = (engineState && engineState.allTakenNumbers instanceof Set) ? engineState.allTakenNumbers : new Set();
             const takenCount = takenSet.size;
-            const winAmount = Math.floor(takenCount * bet * 0.85);
-            totalBetDisplayEl.textContent = String(winAmount);
+            totalBetDisplayEl.textContent = String(Math.floor(takenCount * bet * 0.85));
         }
         function setConnectionStatus(online, message) {
             const cls = online ? 'online' : 'offline';
@@ -1075,17 +1017,13 @@
         function listenNotifications(username) {
             if (!database || !username) return;
             if (notificationListener) { notificationListener.off(); notificationListener = null; }
-            notificationListener = database.ref('notifications/' + username)
-                .orderByChild('read').equalTo(false).on('child_added', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) { showToast(data.message, 'info'); snapshot.ref.update({ read: true }); }
-                });
+            notificationListener = database.ref('notifications/' + username).orderByChild('read').equalTo(false).on('child_added', (snapshot) => {
+                const data = snapshot.val();
+                if (data) { showToast(data.message, 'info'); snapshot.ref.update({ read: true }); }
+            });
         }
         function stopNotificationListener() {
-            if (notificationListener && database && currentUser) {
-                database.ref('notifications/' + currentUser).off();
-                notificationListener = null;
-            }
+            if (notificationListener && database && currentUser) { database.ref('notifications/' + currentUser).off(); notificationListener = null; }
         }
         function showToast(message, type = 'info') {
             if (!welcomeToast) return;
@@ -1102,7 +1040,7 @@
         }
 
         // ============================================================
-        //  DEPOSIT / TRANSFER / OCR
+        //  DEPOSIT / TRANSFER / OCR (kept as-is, condensed)
         // ============================================================
         function openDepositModal() {
             if (depositPlayBalance) depositPlayBalance.textContent = walletData.play;
@@ -1130,17 +1068,11 @@
             const userRef = database.ref('users/' + currentUser);
             userRef.transaction(current => {
                 if (current) {
-                    const main = current.mainWallet || 0;
-                    const play = current.playWallet || 0;
-                    if (main - (current.pendingWithdrawal || 0) >= amount) {
-                        current.mainWallet = main - amount;
-                        current.playWallet = play + amount;
-                    }
+                    const main = current.mainWallet || 0; const play = current.playWallet || 0;
+                    if (main - (current.pendingWithdrawal || 0) >= amount) { current.mainWallet = main - amount; current.playWallet = play + amount; }
                 }
                 return current;
-            }, (error, committed) => {
-                if (committed) updateStatus(`✅ Transferred ${amount} Birr from Main to Play.`);
-            });
+            }, () => { updateStatus(`✅ Transferred ${amount} Birr from Main to Play.`); });
             return true;
         }
         let ocrBusy = false; let lastOCRResult = { reference: null, amount: null };
@@ -1156,9 +1088,7 @@
             let imageUrl = null; const objectUrls = [];
             try {
                 imageUrl = URL.createObjectURL(file); objectUrls.push(imageUrl);
-                const img = await new Promise((resolve, reject) => {
-                    const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = imageUrl;
-                });
+                const img = await new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = imageUrl; });
                 const scale = 2;
                 const w = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
                 const h = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
@@ -1168,11 +1098,7 @@
                 const processedUrl = c.toDataURL('image/png');
                 if (ocrProgressStatus) ocrProgressStatus.textContent = 'Extracting text...';
                 const result = await Tesseract.recognize(processedUrl, 'eng', {
-                    logger: m => {
-                        if (m.status === 'recognizing text' && ocrProgressSub) {
-                            ocrProgressSub.textContent = `OCR: ${Math.round(m.progress * 100)}%`;
-                        }
-                    }
+                    logger: m => { if (m.status === 'recognizing text' && ocrProgressSub) ocrProgressSub.textContent = `OCR: ${Math.round(m.progress * 100)}%`; }
                 });
                 const text = result.data.text || '';
                 const refCandidates = []; const seen = new Set();
@@ -1247,7 +1173,7 @@
         }
 
         // ============================================================
-        //  AUTH SCREENS
+        //  SCREEN SWITCHERS
         // ============================================================
         function showAuthScreen() {
             if (authScreen) authScreen.style.display = 'flex';
@@ -1343,25 +1269,17 @@
                 if (userData) { if (authError) authError.textContent = 'Username already exists. Please login.'; return; }
                 else {
                     let refCode = pendingReferralCode;
-                    if (!refCode) {
-                        const saved = localStorage.getItem('winzo_pending_referral');
-                        if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) refCode = saved;
-                    }
+                    if (!refCode) { const saved = localStorage.getItem('winzo_pending_referral'); if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) refCode = saved; }
                     const newUserData = { password, mainWallet: 0, playWallet: 30, pendingWithdrawal: 0, bonusClaimed: true };
-                    if (refCode && refCode !== username) {
-                        newUserData.referredBy = refCode;
-                        newUserData.referralJoinedAt = firebase.database.ServerValue.TIMESTAMP;
-                    }
+                    if (refCode && refCode !== username) { newUserData.referredBy = refCode; newUserData.referralJoinedAt = firebase.database.ServerValue.TIMESTAMP; }
                     database.ref('users').child(username).set(newUserData).then(() => {
                         if (authError) authError.textContent = '✅ Account created! +30 Birr bonus.';
                         currentUser = username;
                         DB.setCurrentUser(username);
                         DB.setSavedCredentials(username, password);
                         if (pendingReferralCode) { localStorage.removeItem('winzo_pending_referral'); pendingReferralCode = null; }
-                        syncWalletFromFirebase();
-                        checkPendingTransactionStatus();
-                        showWelcomeScreen();
-                        setConnectionStatus(true);
+                        syncWalletFromFirebase(); checkPendingTransactionStatus();
+                        showWelcomeScreen(); setConnectionStatus(true);
                         if (welcomeToast) welcomeToast.classList.add('active');
                         DB.setToastShown();
                         setTimeout(() => { if (welcomeToast) welcomeToast.classList.remove('active'); }, 5000);
@@ -1374,17 +1292,24 @@
         //  LOGOUT
         // ============================================================
         function clearAllLocalData() {
-            localStorage.removeItem('bingo_current_user');
-            localStorage.removeItem('bingo_saved_bet');
-            localStorage.removeItem('bingo_toast_shown');
-            localStorage.removeItem('bingo_app_version');
+            localStorage.removeItem('bingo_current_user'); localStorage.removeItem('bingo_saved_bet');
+            localStorage.removeItem('bingo_toast_shown'); localStorage.removeItem('bingo_app_version');
+        }
+        function clearLocalRoundData() {
+            try {
+                const keys = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.indexOf('winzo_winning_') === 0) keys.push(k);
+                }
+                keys.forEach(k => localStorage.removeItem(k));
+            } catch (e) {}
         }
         function refundMyActiveBet() {
             if (!currentUser || !engineState.players[currentUser]) return;
             const me = engineState.players[currentUser];
             if (me.pick !== null && me.pick !== undefined && me.betDeducted === true) {
-                const num = Number(me.pick);
-                const amount = Number(me.bet || currentBet);
+                const num = Number(me.pick); const amount = Number(me.bet || currentBet);
                 try { releaseNumber(num); } catch (e) {}
                 refundBetIdempotent(currentUser, me.round || engineState.roundNumber, amount, currentRoom);
                 engineState.allTakenNumbers.delete(num);
@@ -1395,8 +1320,7 @@
             const r = room || currentRoom; if (!r) return Promise.resolve(false);
             const key = `refunds/${r}/${round}/${username}`;
             return database.ref(key).transaction(current => {
-                if (current) return;
-                return { amount: Number(amount), timestamp: Date.now() };
+                if (current) return; return { amount: Number(amount), timestamp: Date.now() };
             }).then(claim => {
                 if (!claim.committed) return false;
                 return database.ref('users/' + username + '/playWallet').transaction(w => (w || 0) + Number(amount)).then(() => true);
@@ -1405,18 +1329,12 @@
         function performLogout() {
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
-            if (gameRef) {
-                if (currentUser) gameRef.child('players/' + currentUser).remove();
-                gameRef.off(); gameRef = null;
-            }
+            if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
             if (userWalletRef) { userWalletRef.off(); userWalletRef = null; }
             if (pendingTxListener) { pendingTxListener.off(); pendingTxListener = null; }
-            Object.keys(transactionListeners).forEach(key => {
-                try { database.ref('transactions/' + key).off(); } catch (e) {}
-                delete transactionListeners[key];
-            });
+            Object.keys(transactionListeners).forEach(key => { try { database.ref('transactions/' + key).off(); } catch (e) {} delete transactionListeners[key]; });
             stopNetworkListener(); stopSessionListener(); stopNotificationListener();
             clearAllLocalData(); clearLocalRoundData();
             currentUser = null; currentBet = 15; currentRoom = 'room_15';
@@ -1427,9 +1345,11 @@
                 spinCount: 0, isSpinning: false, gamePhase: 'selection', roundNumber: 1,
                 timer: 30, activePlayersCount: 0, cumulativeRotation: 0, playerNames: [],
                 gameStarted: true, spinInProgress: false, waitingModalShown: false,
-                potAmount: 0, totalBetsPlaced: 0, winnersModalShown: false, wheelSeed: 0
+                potAmount: 0, totalBetsPlaced: 0, winnersModalShown: false,
+                wheelSeed: 0, targetAngle: 0, spinStartedAt: 0
             };
-            lastKnownPlayersCache = {}; cachedSlotMap = null; cachedSeedForMap = null;
+            lastKnownPlayersCache = {};
+            displayedCardRound = null; lastSpunRound = null; lastResultData = null;
             closeMoreDropdown(); hideWaitingModal();
             if (welcomeToast) welcomeToast.classList.remove('active');
             stopFireworks();
@@ -1452,26 +1372,21 @@
         function switchRoom() {
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
-            if (gameRef) {
-                if (currentUser) gameRef.child('players/' + currentUser).remove();
-                gameRef.off(); gameRef = null;
-            }
+            if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
             isGameInitialized = false; audioPlayedThisRound = false; syncInProgress = false;
             if (currentUser && engineState.players[currentUser]) {
-                engineState.players[currentUser].pick = null;
-                engineState.players[currentUser].ready = false;
-                engineState.players[currentUser].betDeducted = false;
-                engineState.players[currentUser].betSources = {};
+                engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false;
+                engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
             }
             engineState.allTakenNumbers = new Set();
             engineState.drawnNumbers = []; engineState.winners = []; engineState.spinCount = 0;
             engineState.isSpinning = false; engineState.gamePhase = 'selection'; engineState.spinInProgress = false;
             engineState.waitingModalShown = false; engineState.potAmount = 0; engineState.totalBetsPlaced = 0;
-            engineState.winnersModalShown = false; engineState.wheelSeed = 0;
+            engineState.winnersModalShown = false; engineState.wheelSeed = 0; engineState.targetAngle = 0; engineState.spinStartedAt = 0;
             lastKnownPlayersCache = {};
-            cachedSlotMap = null; cachedSeedForMap = null;
+            displayedCardRound = null; lastSpunRound = null; lastResultData = null;
             DB.setSavedBet(null);
             if (winnersModal) winnersModal.classList.remove('active');
             resetWinningNumberCard(); clearLocalRoundData();
@@ -1494,26 +1409,21 @@
             if (walletData.play < amount) { alert('⚠️ Insufficient play balance. Please deposit.'); return; }
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
-            if (gameRef) {
-                if (currentUser) gameRef.child('players/' + currentUser).remove();
-                gameRef.off(); gameRef = null;
-            }
+            if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
             isGameInitialized = false; audioPlayedThisRound = false; syncInProgress = false;
             if (currentUser && engineState.players[currentUser]) {
-                engineState.players[currentUser].pick = null;
-                engineState.players[currentUser].ready = false;
-                engineState.players[currentUser].betDeducted = false;
-                engineState.players[currentUser].betSources = {};
+                engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false;
+                engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
             }
             engineState.allTakenNumbers = new Set();
             engineState.drawnNumbers = []; engineState.winners = []; engineState.spinCount = 0;
             engineState.isSpinning = false; engineState.gamePhase = 'selection'; engineState.spinInProgress = false;
             engineState.waitingModalShown = false; engineState.potAmount = 0; engineState.totalBetsPlaced = 0;
-            engineState.winnersModalShown = false; engineState.wheelSeed = 0;
+            engineState.winnersModalShown = false; engineState.wheelSeed = 0; engineState.targetAngle = 0; engineState.spinStartedAt = 0;
             lastKnownPlayersCache = {};
-            cachedSlotMap = null; cachedSeedForMap = null;
+            displayedCardRound = null; lastSpunRound = null; lastResultData = null;
             if (winnersModal) winnersModal.classList.remove('active');
             resetWinningNumberCard(); clearLocalRoundData();
             currentBet = amount;
@@ -1562,15 +1472,8 @@
         // ============================================================
         //  HELPERS
         // ============================================================
-        function getPlayerPick(player) {
-            if (!player) return null;
-            if (player.pick !== null && player.pick !== undefined) return Number(player.pick);
-            return null;
-        }
-        function getBetSources(player) {
-            const sources = player && player.betSources ? player.betSources : {};
-            return sources && typeof sources === 'object' ? sources : {};
-        }
+        function getPlayerPick(player) { if (!player) return null; if (player.pick !== null && player.pick !== undefined) return Number(player.pick); return null; }
+        function getBetSources(player) { const s = player && player.betSources ? player.betSources : {}; return s && typeof s === 'object' ? s : {}; }
         function updatePrizeDisplay() {
             const players = engineState.players;
             const playerNames = Object.keys(players);
@@ -1595,8 +1498,7 @@
             const ref = gameRef.child('numbersTaken');
             numbersTakenListenerRef = ref;
             ref.once('value', (snapshot) => {
-                const data = snapshot.val() || {};
-                const newSet = new Set();
+                const data = snapshot.val() || {}; const newSet = new Set();
                 Object.keys(data).forEach(key => { if (data[key] === true) newSet.add(Number(key)); });
                 engineState.allTakenNumbers = newSet;
                 renderNumberPicker(); updatePickStatus(); updateWheel(); updateTotalBetDisplay();
@@ -1616,8 +1518,7 @@
         }
         function detachNumbersTakenListener() {
             if (numbersTakenListenerRef) {
-                const ref = numbersTakenListenerRef;
-                const handlers = ref._handlers || {};
+                const ref = numbersTakenListenerRef; const handlers = ref._handlers || {};
                 if (handlers.onChildAdded) ref.off('child_added', handlers.onChildAdded);
                 if (handlers.onChildChanged) ref.off('child_changed', handlers.onChildChanged);
                 if (handlers.onChildRemoved) ref.off('child_removed', handlers.onChildRemoved);
@@ -1651,10 +1552,6 @@
                 if (engineState.gamePhase === 'spinning') { if (spinningIndicator) spinningIndicator.classList.add('active'); }
                 else { if (spinningIndicator) spinningIndicator.classList.remove('active'); }
                 renderNumberPicker(); updatePickStatus(); updateWheel(); updateTotalBetDisplay();
-                if (engineState.gamePhase === 'selection') {
-                    if (arrowContainer) { arrowContainer.style.transition = 'none'; arrowContainer.style.transform = `rotate(${ARROW_REST_ROTATION}deg)`; }
-                    if (arrowCenter) { arrowCenter.textContent = '🎯'; arrowCenter.classList.remove('reveal'); }
-                }
                 updatePending = false;
             });
         }
@@ -1684,13 +1581,8 @@
                     if (play >= betAmount) { current.playWallet = play - betAmount; return current; }
                     return undefined;
                 }, (error, committed, snap) => {
-                    if (!committed || error) {
-                        walletData.play += betAmount; updateWalletUI(); updateWelcomeUI(); resolve(false);
-                    } else {
-                        const updated = snap.val();
-                        walletData.play = Number(updated.playWallet || 0);
-                        updateWalletUI(); updateWelcomeUI(); resolve(true);
-                    }
+                    if (!committed || error) { walletData.play += betAmount; updateWalletUI(); updateWelcomeUI(); resolve(false); }
+                    else { const updated = snap.val(); walletData.play = Number(updated.playWallet || 0); updateWalletUI(); updateWelcomeUI(); resolve(true); }
                 }, false);
             });
         }
@@ -1701,16 +1593,10 @@
                 const userRef = database.ref('users/' + username);
                 userRef.transaction(current => {
                     if (!current) return current;
-                    current.playWallet = Number(current.playWallet || 0) + betAmount;
-                    return current;
+                    current.playWallet = Number(current.playWallet || 0) + betAmount; return current;
                 }, (error, committed, snap) => {
-                    if (!committed || error) {
-                        walletData.play -= betAmount; updateWalletUI(); updateWelcomeUI(); resolve(false);
-                    } else {
-                        const updated = snap.val();
-                        walletData.play = Number(updated.playWallet || 0);
-                        updateWalletUI(); updateWelcomeUI(); resolve(true);
-                    }
+                    if (!committed || error) { walletData.play -= betAmount; updateWalletUI(); updateWelcomeUI(); resolve(false); }
+                    else { const updated = snap.val(); walletData.play = Number(updated.playWallet || 0); updateWalletUI(); updateWelcomeUI(); resolve(true); }
                 }, false);
             });
         }
@@ -1738,10 +1624,8 @@
                         gameRef.child('players/' + currentUser + '/round').set(null);
                     }
                     if (engineState.players[currentUser]) {
-                        engineState.players[currentUser].pick = null;
-                        engineState.players[currentUser].ready = false;
-                        engineState.players[currentUser].betDeducted = false;
-                        engineState.players[currentUser].betSources = {};
+                        engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false;
+                        engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
                     }
                     engineState.allTakenNumbers.delete(num);
                     refundPickBetFast(currentUser, currentBet);
@@ -1763,10 +1647,7 @@
                     if (!success) {
                         engineState.allTakenNumbers.delete(num);
                         if (engineState.players[currentUser]) { engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false; }
-                        if (gameRef) {
-                            gameRef.child('players/' + currentUser + '/pick').set(null);
-                            gameRef.child('players/' + currentUser + '/ready').set(false);
-                        }
+                        if (gameRef) { gameRef.child('players/' + currentUser + '/pick').set(null); gameRef.child('players/' + currentUser + '/ready').set(false); }
                         renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
                         updateStatus(`❌ Number ${num} was just taken!`);
                         return;
@@ -1775,9 +1656,7 @@
                         if (!success) {
                             releaseNumber(num);
                             if (engineState.players[currentUser]) {
-                                engineState.players[currentUser].pick = null;
-                                engineState.players[currentUser].ready = false;
-                                engineState.players[currentUser].betDeducted = false;
+                                engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false; engineState.players[currentUser].betDeducted = false;
                             }
                             if (gameRef) {
                                 gameRef.child('players/' + currentUser + '/pick').set(null);
@@ -1807,8 +1686,12 @@
         }
 
         // ============================================================
-        //  WHEEL — Firebase-seeded layout
+        //  WHEEL — seed-rotated layout (Firebase-driven)
         // ============================================================
+        function getSlotIndexForNumber(num, seed) {
+            const offset = (((Number(seed) || 1) % TOTAL_WHEEL_NUMBERS) + TOTAL_WHEEL_NUMBERS) % TOTAL_WHEEL_NUMBERS;
+            return ((num - 1 + offset) % TOTAL_WHEEL_NUMBERS + TOTAL_WHEEL_NUMBERS) % TOTAL_WHEEL_NUMBERS;
+        }
         function updateWheel() {
             if (!wheelNumbers) return;
             const taken = Array.from(engineState.allTakenNumbers);
@@ -1821,7 +1704,7 @@
             let html = '';
             taken.forEach(num => {
                 const slot = getSlotIndexForNumber(num, seed);
-                const angle = getSlotAngle(slot);
+                const angle = slot * DEGREES_PER_SLOT;
                 const rad = (angle * Math.PI) / 180;
                 const x = 50 + radius * Math.sin(rad);
                 const y = 50 - radius * Math.cos(rad);
@@ -1840,18 +1723,13 @@
         if (transactionCloseBtn) {
             transactionCloseBtn.onclick = () => {
                 if (transactionModal) transactionModal.classList.remove('active');
-                Object.keys(transactionListeners).forEach(key => {
-                    try { database.ref('transactions/' + key).off(); } catch (e) {}
-                    delete transactionListeners[key];
-                });
+                Object.keys(transactionListeners).forEach(key => { try { database.ref('transactions/' + key).off(); } catch (e) {} delete transactionListeners[key]; });
             };
         }
-
         function updateAllUI() {
-            updateWalletUI(); updatePlayerList();
-            updateTimer(engineState.timer); updatePhase(engineState.gamePhase);
-            updatePickStatus(); renderNumberPicker(); updateWheel();
-            updatePrizeDisplay(); updateTotalBetDisplay();
+            updateWalletUI(); updatePlayerList(); updateTimer(engineState.timer);
+            updatePhase(engineState.gamePhase); updatePickStatus(); renderNumberPicker();
+            updateWheel(); updatePrizeDisplay(); updateTotalBetDisplay();
         }
         function updatePlayerList() { if (playerCountEl) playerCountEl.textContent = engineState.activePlayersCount; }
         function updateTimer(value) { if (timerDisplay) timerDisplay.textContent = value; }
@@ -1868,12 +1746,8 @@
             if (authSignupBtn) authSignupBtn.onclick = handleSignup;
             if (bet15Btn) bet15Btn.onclick = () => { selectBet(15); };
             if (bet30Btn) bet30Btn.onclick = () => { selectBet(30); };
-            if (welcomeLogoutBtn) welcomeLogoutBtn.onclick = function() {
-                if (confirm('Are you sure you want to logout? All your local data will be cleared.')) performLogout();
-            };
-            if (gameLogoutBtn) gameLogoutBtn.onclick = function() {
-                if (confirm('Are you sure you want to logout? All your local data will be cleared.')) performLogout();
-            };
+            if (welcomeLogoutBtn) welcomeLogoutBtn.onclick = function() { if (confirm('Are you sure you want to logout? All your local data will be cleared.')) performLogout(); };
+            if (gameLogoutBtn) gameLogoutBtn.onclick = function() { if (confirm('Are you sure you want to logout? All your local data will be cleared.')) performLogout(); };
             if (welcomeDepositBtn) welcomeDepositBtn.onclick = openDepositModal;
             if (depositBtn) depositBtn.onclick = openDepositModal;
             if (withdrawBtn) withdrawBtn.onclick = () => {
@@ -1888,19 +1762,13 @@
             };
             if (transferBtn) transferBtn.onclick = () => {
                 const amount = prompt('Enter amount to transfer from Main to Play:', '10');
-                if (amount !== null) {
-                    const num = parseInt(amount);
-                    if (!isNaN(num) && num > 0) transferToPlay(num);
-                    else alert('Please enter a valid positive number.');
-                }
+                if (amount !== null) { const num = parseInt(amount); if (!isNaN(num) && num > 0) transferToPlay(num); else alert('Please enter a valid positive number.'); }
                 closeMoreDropdown();
             };
             if (switchRoomBtn) switchRoomBtn.onclick = function() {
                 if (currentUser) {
                     const pick = getMyPick();
-                    if (pick !== null) {
-                        if (!confirm('You have an active pick. Switching rooms will clear it. Continue?')) return;
-                    }
+                    if (pick !== null) { if (!confirm('You have an active pick. Switching rooms will clear it. Continue?')) return; }
                     switchRoom();
                 } else showWelcomeScreen();
                 closeMoreDropdown();
@@ -1909,14 +1777,12 @@
             if (customerServiceBtn) customerServiceBtn.onclick = () => {
                 closeMoreDropdown();
                 const url = 'https://t.me/winzosupportcenter';
-                if (tg && tg.openTelegramLink) tg.openTelegramLink(url);
-                else window.open(url, '_blank');
+                if (tg && tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url, '_blank');
             };
             if (referralCloseBtn) referralCloseBtn.onclick = () => { if (referralModal) referralModal.classList.remove('active'); };
             if (referralCopyBtn) referralCopyBtn.onclick = async () => {
                 const link = referralLink ? referralLink.value : '';
-                try { await navigator.clipboard.writeText(link); }
-                catch (e) { if (referralLink) { referralLink.select(); document.execCommand('copy'); } }
+                try { await navigator.clipboard.writeText(link); } catch (e) { if (referralLink) { referralLink.select(); document.execCommand('copy'); } }
                 referralCopyBtn.textContent = '✅ Copied';
                 setTimeout(() => referralCopyBtn.textContent = '📋 Copy', 1500);
             };
@@ -1924,8 +1790,7 @@
                 const link = referralLink ? referralLink.value : '';
                 const shareText = `Join Winzo and play games with me! ${link}`;
                 const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`;
-                if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
-                else window.open(shareUrl, '_blank');
+                if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl); else window.open(shareUrl, '_blank');
             };
             if (moreBtn) moreBtn.onclick = toggleMoreDropdown;
             if (depositConfirm) depositConfirm.onclick = async () => {
@@ -1978,9 +1843,9 @@
         }
 
         // ============================================================
-        //  PRODUCTION HARDENING v8.0
+        //  PRODUCTION HARDENING v8.1
         // ============================================================
-        const WINZO_PRODUCTION_VERSION = '8.0.0';
+        const WINZO_PRODUCTION_VERSION = '8.1.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -2030,9 +1895,11 @@
                 return now + SELECTION_SECONDS * 1000;
             });
         }
-
         function generateSeed() { return Math.floor(Math.random() * 2000000000) + 1; }
 
+        // ============================================================
+        //  initGameConnection
+        // ============================================================
         function initGameConnection() {
             const generation = ++roomConnectionGeneration;
             if (isGameInitialized) {
@@ -2052,31 +1919,27 @@
             ref.once('value').then(snapshot => {
                 if (generation !== roomConnectionGeneration) return;
                 if (!snapshot.exists()) {
-                    // New room: Firebase creates the seed
                     return ref.set({
                         gameState: 'selection', round: 1, timer: SELECTION_SECONDS,
                         selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000,
                         drawnNumbers: [], winners: [], spinCount: 0, cumulativeRotation: 0,
                         players: {}, gameStarted: true, betAmount: currentBet,
                         potAmount: 0, totalBets: 0, numbersTaken: {},
-                        wheelSeed: generateSeed()
+                        wheelSeed: generateSeed(), targetAngle: 0, spinStartedAt: 0
                     });
                 }
                 const data = snapshot.val() || {};
                 if (data.gameState === 'spinning' && !data.winningNumber && !data.spinLock) {
                     return ref.transaction(room => {
                         if (!room || room.gameState !== 'spinning' || room.winningNumber || room.spinLock) return room;
-                        room.gameState = 'selection';
-                        room.spinCount = 0;
+                        room.gameState = 'selection'; room.spinCount = 0;
                         room.winners = []; room.drawnNumbers = []; room.numbersTaken = {};
+                        room.targetAngle = 0; room.spinStartedAt = 0;
                         room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
                         return room;
                     });
                 }
-                // If room exists but has no wheelSeed, add one
-                if (!data.wheelSeed) {
-                    ref.child('wheelSeed').set(generateSeed()).catch(() => {});
-                }
+                if (!data.wheelSeed) ref.child('wheelSeed').set(generateSeed()).catch(() => {});
                 if (!data.selectionEndsAt && data.gameState === 'selection') ensureSelectionDeadline();
             }).catch(() => {});
             ref.on('value', snapshot => {
@@ -2085,7 +1948,6 @@
                 if (data) syncGameState(data);
             });
             attachLastResultListener(ref);
-            reapplyAuthoritativeResult();
             const playerRef = ref.child('players/' + currentUser);
             playerRef.onDisconnect().remove();
             playerRef.set({
@@ -2097,6 +1959,9 @@
             setTimeout(() => { if (generation === roomConnectionGeneration) renderNumberPicker(); }, 300);
         }
 
+        // ============================================================
+        //  syncGameState
+        // ============================================================
         function syncGameState(data) {
             if (syncInProgress) return;
             syncInProgress = true;
@@ -2105,17 +1970,8 @@
                 const playerNames = Object.keys(players);
                 const phase = data.gameState || 'selection';
                 const round = Number(data.round) || 1;
-                const incomingSeed = Number(data.wheelSeed) || 0;
 
-                // Handle round change: clear old card, reset slot cache
                 const roundChanged = (round !== engineState.roundNumber);
-                const seedChanged = (incomingSeed !== engineState.wheelSeed);
-
-                if (seedChanged && incomingSeed > 0) {
-                    engineState.wheelSeed = incomingSeed;
-                    cachedSlotMap = null;
-                    cachedSeedForMap = null;
-                }
 
                 engineState.players = players;
                 engineState.playerNames = playerNames;
@@ -2130,6 +1986,9 @@
                 engineState.cumulativeRotation = Number(data.cumulativeRotation) || 0;
                 engineState.potAmount = Number(data.potAmount) || 0;
                 engineState.totalBetsPlaced = Number(data.totalBets) || 0;
+                engineState.wheelSeed = Number(data.wheelSeed) || 0;
+                engineState.targetAngle = Number(data.targetAngle) || 0;
+                engineState.spinStartedAt = Number(data.spinStartedAt) || 0;
                 engineState.allTakenNumbers = new Set(
                     Object.keys(data.numbersTaken || {})
                         .filter(k => data.numbersTaken[k] === true)
@@ -2137,10 +1996,18 @@
                         .filter(n => n >= 1 && n <= 200)
                 );
 
+                if (roundChanged) {
+                    // New round: reset card + spin tracking
+                    displayedCardRound = null;
+                    lastSpunRound = null;
+                    lastResultData = null;
+                    if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
+                }
+
                 if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
                 updateTotalBetDisplay();
 
-                // Orphan refund check
+                // Orphan refund
                 try {
                     const currentNamesSet = new Set(playerNames);
                     Object.keys(lastKnownPlayersCache).forEach(name => {
@@ -2166,7 +2033,17 @@
                     stopTimer(); hideWaitingModal();
                 }
 
-                // Card is driven ONLY by phase + lastResult listener
+                updateUIFromState();
+
+                // Arrow — driven by phase and Firebase-stored targetAngle
+                applyArrowState();
+
+                // Trigger a one-time executeSpin per round when in spinning phase
+                if (phase === 'spinning' && !engineState.isSpinning && !engineState.spinInProgress && lastSpunRound !== round) {
+                    setTimeout(() => { if (engineState.gamePhase === 'spinning') executeSpin(); }, 30);
+                }
+
+                // Results: audio + countdown once
                 if (phase === 'results') {
                     if (!engineState.winnersModalShown) {
                         engineState.winnersModalShown = true;
@@ -2174,28 +2051,21 @@
                         if (winners.length) { startFireworks(); playWinningAudio(); } else playNoWinnerAudio();
                         startResultsCountdown();
                     }
-                    if (winnersModal) winnersModal.classList.add('active');
-                    reapplyAuthoritativeResult();
                 } else {
-                    // Non-results phase: hide modal, clear card
-                    if (winnersModal) winnersModal.classList.remove('active');
-                    if (engineState.winnersModalShown || roundChanged) {
-                        resetWinningNumberCard();
-                    }
                     engineState.winnersModalShown = false;
                 }
 
-                updateUIFromState();
-
-                if (phase === 'spinning' && !engineState.isSpinning && !engineState.spinInProgress) {
-                    setTimeout(() => { if (engineState.gamePhase === 'spinning') executeSpin(); }, 30);
-                }
+                // Card — driven purely by gameState + lastResult
+                applyCardState();
 
                 updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
                 lastRoomSyncAt = Date.now();
             } finally { syncInProgress = false; }
         }
 
+        // ============================================================
+        //  requestSpin — Firebase picks winningNumber AND targetAngle
+        // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
             const round = Number(engineState.roundNumber);
@@ -2228,11 +2098,8 @@
                                     const players = r.players || {};
                                     for (const n of Object.keys(players)) {
                                         if (players[n]) {
-                                            players[n].pick = null;
-                                            players[n].ready = false;
-                                            players[n].betDeducted = false;
-                                            players[n].betSources = {};
-                                            players[n].round = null;
+                                            players[n].pick = null; players[n].ready = false;
+                                            players[n].betDeducted = false; players[n].betSources = {}; players[n].round = null;
                                         }
                                     }
                                     r.players = players; r.numbersTaken = {};
@@ -2243,6 +2110,7 @@
                             });
                         });
                 }
+                // Multi-player spin — Firebase picks winner, targetAngle, spinStartedAt
                 return gameRef.transaction(room => {
                     if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
                     if (room.spinLock && Number(room.spinLock.round) === round) return room;
@@ -2259,6 +2127,16 @@
                     const bet = Number(room.betAmount || currentBet);
                     const pot = eligibleInner.length * bet;
                     const pool = Math.floor(pot * 0.85);
+
+                    // Compute the deterministic target angle HERE and store it.
+                    // Every device will read this same value and animate to it.
+                    const seed = Number(room.wheelSeed) || 1;
+                    const offset = (((seed % 200) + 200) % 200);
+                    const slot = ((winningNumber - 1 + offset) % 200 + 200) % 200;
+                    const slotAngle = slot * (360 / 200);
+                    const fullTurns = 5 + ((round * 7) % 3);
+                    const targetAngle = slotAngle + fullTurns * 360;
+
                     room.spinLock = { round: round, timestamp: firebase.database.ServerValue.TIMESTAMP };
                     room.winningNumber = winningNumber;
                     room.winners = winners;
@@ -2268,6 +2146,8 @@
                     room.timer = 5;
                     room.spinCount = Number(room.spinCount || 0) + 1;
                     room.spinFinishedAt = null;
+                    room.targetAngle = targetAngle;
+                    room.spinStartedAt = Date.now();
                     return room;
                 }).then(result => result && result.committed);
             }).catch(() => false);
@@ -2320,7 +2200,6 @@
                     .then(result => {
                         if (!result.committed) return;
                         gameRef.child('singlePlayerHandled/' + round).remove().catch(() => {});
-                        // Firebase assigns a new seed for the new round
                         return gameRef.transaction(room => {
                             if (!room || Number(room.round) !== round || room.gameState !== 'results') return room;
                             const players = room.players || {};
@@ -2340,8 +2219,9 @@
                             room.numbersTaken = {};
                             room.winningNumber = null; room.spinLock = null; room.spinStartedRound = null;
                             room.spinFinishedAt = null;
-                            // New seed for new round layout
                             room.wheelSeed = generateSeed();
+                            room.targetAngle = 0;
+                            room.spinStartedAt = 0;
                             return room;
                         });
                     }).then(() => {
@@ -2355,7 +2235,6 @@
                         engineState.waitingModalShown = false;
                         engineState.winnersModalShown = false;
                         engineState.roundNumber = round + 1;
-                        cachedSlotMap = null; cachedSeedForMap = null;
 
                         Object.keys(engineState.players || {}).forEach(name => {
                             if (engineState.players[name]) {
@@ -2367,7 +2246,6 @@
                             }
                         });
 
-                        // Clear card AND local round data on round change
                         if (winnersModal) winnersModal.classList.remove('active');
                         resetWinningNumberCard();
                         clearLocalRoundData();
@@ -2394,7 +2272,7 @@
         function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } isTimerRunning = false; }
 
         // ============================================================
-        //  executeSpin — arrow uses Firebase-seeded slot of winner
+        //  executeSpin — arrow is driven by applyArrowState, not here
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
@@ -2407,33 +2285,14 @@
                 const round = Number(room.round);
                 const winningNumber = Number(room.winningNumber);
                 const winners = Array.isArray(room.winners) ? room.winners.filter(Boolean) : [];
-                const seed = Number(room.wheelSeed) || engineState.wheelSeed || 1;
                 const numbers = Object.keys(room.numbersTaken || {}).filter(k => room.numbersTaken[k] === true).map(Number).filter(n => n >= 1 && n <= 200);
 
                 if (round !== Number(engineState.roundNumber)) throw new Error('Spin round changed');
                 if (!numbers.includes(winningNumber)) throw new Error('Authoritative winning number missing');
 
-                engineState.wheelSeed = seed;
                 engineState.allTakenNumbers = new Set(numbers);
                 engineState.winners = winners;
                 updateWheel();
-                if (wheelContainer) wheelContainer.classList.remove('hidden');
-
-                // Compute target from seed-based slot
-                const slotIndex = getSlotIndexForNumber(winningNumber, seed);
-                const targetAngle = getSlotAngle(slotIndex) + getDeterministicFullTurns(round) * 360;
-
-                suppressArrowUpdate = true;
-                if (arrowContainer) {
-                    arrowContainer.style.transition = 'none';
-                    arrowContainer.style.transform = `rotate(${ARROW_REST_ROTATION}deg)`;
-                    void arrowContainer.offsetWidth;
-                    arrowContainer.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-                    requestAnimationFrame(() => {
-                        arrowContainer.style.transform = `rotate(${targetAngle}deg)`;
-                    });
-                }
-                engineState.cumulativeRotation = targetAngle;
 
                 return new Promise(resolve => setTimeout(resolve, 4300)).then(() => {
                     return gameRef.transaction(current => {
@@ -2441,13 +2300,12 @@
                         current.drawnNumbers = [winningNumber];
                         current.gameState = 'results';
                         current.timer = 5;
-                        current.cumulativeRotation = targetAngle;
                         current.spinFinishedAt = firebase.database.ServerValue.TIMESTAMP;
                         return current;
                     });
                 }).then(result => {
                     if (!result || !result.committed) return;
-
+                    // Publish the authoritative result — everyone reads from this
                     return gameRef.child('lastResult').set({
                         round: round,
                         winningNumber: winningNumber,
@@ -2457,20 +2315,6 @@
                         const finalWinners = Array.isArray(finalRoom.winners) ? finalRoom.winners.filter(Boolean) : winners;
                         const pool = Number(finalRoom.prizePool ?? finalRoom.potAmount ?? 0);
                         const winAmount = finalWinners.length ? Math.floor(pool / finalWinners.length) : 0;
-
-                        engineState.drawnNumbers = [winningNumber];
-                        engineState.winners = finalWinners;
-                        engineState.gamePhase = 'results';
-                        engineState.winnersModalShown = true;
-
-                        displayWinningNumberCard(round, winningNumber);
-
-                        if (arrowCenter) { arrowCenter.textContent = String(winningNumber); arrowCenter.classList.add('reveal'); }
-                        if (spinningIndicator) spinningIndicator.classList.remove('active');
-                        updateWheel();
-
-                        if (finalWinners.length) { startFireworks(); playWinningAudio(); } else playNoWinnerAudio();
-                        if (winnersModal) winnersModal.classList.add('active');
 
                         if (finalWinners.length && winAmount > 0) {
                             Promise.allSettled(finalWinners.map(name => creditWinnerAndReferral(name, winAmount)))
@@ -2482,9 +2326,8 @@
                                     }
                                 });
                         }
-
                         if (tg && tg.HapticFeedback && finalWinners.includes(currentUser)) tg.HapticFeedback.notificationOccurred('success');
-                        startResultsCountdown();
+                        // DO NOT display the card here. The lastResult listener does that.
                     });
                 });
             }).catch(err => {
@@ -2494,7 +2337,6 @@
                 engineState.isSpinning = false;
                 engineState.spinInProgress = false;
                 if (spinningIndicator) spinningIndicator.classList.remove('active');
-                setTimeout(() => { suppressArrowUpdate = false; }, 4200);
             });
         }
 
@@ -2531,11 +2373,7 @@
                     if (current.referralWinPayouts[refKey]) return current;
                     current.mainWallet += commission;
                     current.referralEarnings += commission;
-                    current.referralWinPayouts[refKey] = {
-                        from: winnerName, room: currentRoom, round: round,
-                        amount: commission,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP
-                    };
+                    current.referralWinPayouts[refKey] = { from: winnerName, room: currentRoom, round: round, amount: commission, timestamp: firebase.database.ServerValue.TIMESTAMP };
                     return current;
                 }).then(refResult => {
                     if (!refResult || !refResult.committed) return false;
@@ -2547,16 +2385,9 @@
 
         function withdrawFromMain(amount, name, phone) {
             if (!currentUser || !database) return false;
-            amount = Number(amount);
-            name = safeProductionName(name); phone = safeProductionName(phone);
-            if (!Number.isFinite(amount) || amount <= 0 || !name || !phone) {
-                if (withdrawError) withdrawError.textContent = 'Please fill in all fields.';
-                return false;
-            }
-            if (Number(walletData.main || 0) < amount) {
-                if (withdrawError) withdrawError.textContent = 'Insufficient main balance.';
-                return false;
-            }
+            amount = Number(amount); name = safeProductionName(name); phone = safeProductionName(phone);
+            if (!Number.isFinite(amount) || amount <= 0 || !name || !phone) { if (withdrawError) withdrawError.textContent = 'Please fill in all fields.'; return false; }
+            if (Number(walletData.main || 0) < amount) { if (withdrawError) withdrawError.textContent = 'Insufficient main balance.'; return false; }
             if (withdrawError) withdrawError.textContent = '';
             if (withdrawModal) withdrawModal.classList.remove('active');
             return requestTransaction('withdraw', amount, '', null, { name, phone });
@@ -2567,11 +2398,7 @@
             amount = Number(amount);
             if (!['deposit', 'withdraw'].includes(type) || !Number.isFinite(amount) || amount <= 0) return Promise.resolve(false);
             const txRef = database.ref('transactions').push();
-            const txData = {
-                id: txRef.key, username: currentUser, type, amount,
-                status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP,
-                requestVersion: 3, createdBy: 'player'
-            };
+            const txData = { id: txRef.key, username: currentUser, type, amount, status: 'pending', timestamp: firebase.database.ServerValue.TIMESTAMP, requestVersion: 3, createdBy: 'player' };
             if (type === 'deposit') { if (reference) txData.reference = safeProductionName(reference); }
             else { txData.fullName = safeProductionName(extra.name); txData.phoneNumber = safeProductionName(extra.phone); }
             transactionStatus.textContent = '⏳ Sending request to admin...';
@@ -2581,16 +2408,12 @@
                 transactionStatus.textContent = '⏳ Pending admin approval...';
                 if (type === 'deposit' && imageFile && storage) {
                     const storageRef = storage.ref(`deposits/${currentUser}/${txRef.key}.jpg`);
-                    return storageRef.put(imageFile)
-                        .then(s => s.ref.getDownloadURL())
-                        .then(url => txRef.update({ imageUrl: url }))
-                        .catch(() => null);
+                    return storageRef.put(imageFile).then(s => s.ref.getDownloadURL()).then(url => txRef.update({ imageUrl: url })).catch(() => null);
                 }
                 return null;
             }).then(() => new Promise(resolve => {
                 const handler = snap => {
-                    const data = snap.val();
-                    if (!data) return;
+                    const data = snap.val(); if (!data) return;
                     if (data.status === 'approved') {
                         transactionStatus.textContent = data.type === 'withdraw' ? '✅ Withdrawal approved.' : '✅ Deposit approved.';
                         transactionStatus.className = 'status-text approved';
