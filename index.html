@@ -102,11 +102,9 @@
         .title { text-align: center; font-weight: 800; font-size: 1.1rem; letter-spacing: 3px; color: #f0e6ff; text-shadow: 0 0 30px rgba(180, 120, 255, 0.2), 0 2px 0 #6a4a9a; line-height: 1.2; flex-shrink: 0; margin-bottom: 2px; }
         .title small { font-size: 0.45rem; letter-spacing: 2px; opacity: 0.6; display: block; font-weight: 400; color: #b8a0d0; }
         .bet-switcher { display: flex; justify-content: center; align-items: center; gap: 8px; background: rgba(20, 10, 40, 0.5); backdrop-filter: blur(8px); border-radius: 30px; padding: 3px 12px; margin: 2px 0 3px; border: 1px solid rgba(120, 80, 200, 0.1); flex-shrink: 0; }
-        .bet-switcher .label { color: #b8a0d0; font-size: 0.6rem; font-weight: 600; }
         .bet-switcher .bet-btn { background: rgba(120, 80, 200, 0.1); border: 2px solid rgba(120, 80, 200, 0.15); border-radius: 20px; padding: 2px 14px; color: #b8a0d0; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-        .bet-switcher .bet-btn:hover { background: rgba(120, 80, 200, 0.2); }
         .switch-room-btn { background: linear-gradient(135deg, #ffdf6b, #f5b52e 52%, #d98a16) !important; border: 2px solid #ffcc44 !important; border-radius: 20px !important; padding: 3px 18px !important; color: #2a1600 !important; font-size: 0.75rem !important; font-weight: 800 !important; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25); box-shadow: 0 3px 10px rgba(255, 180, 40, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.45); cursor: pointer; }
-        .switch-room-btn:hover { background: linear-gradient(135deg, #ffe98f, #ffc43d 52%, #e49a20) !important; color: #2a1600 !important; border-color: #ffe06a !important; box-shadow: 0 5px 16px rgba(255, 190, 50, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+        .switch-room-btn:hover { background: linear-gradient(135deg, #ffe98f, #ffc43d 52%, #e49a20) !important; color: #2a1600 !important; border-color: #ffe06a !important; }
         .switch-room-btn:active { transform: scale(0.95); }
         .game-info-bar { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; background: rgba(20, 10, 40, 0.5); backdrop-filter: blur(8px); border-radius: 30px; padding: 4px 12px; margin: 2px 0 3px; border: 1px solid rgba(120, 80, 200, 0.1); flex-shrink: 0; min-height: 2rem; }
         .game-info-bar .info-item { display: flex; align-items: center; gap: 4px; color: #b8a0d0; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
@@ -142,68 +140,66 @@
         .num-picker-wrapper::-webkit-scrollbar { width: 4px; }
         .num-picker-wrapper::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 10px; }
         .num-picker-wrapper::-webkit-scrollbar-thumb { background: rgba(120, 80, 200, 0.3); border-radius: 10px; }
-        .num-picker-wrapper::-webkit-scrollbar-thumb:hover { background: rgba(120, 80, 200, 0.5); }
         .num-picker { display: grid; width: 100%; min-height: max-content; grid-template-columns: repeat(8, 1fr); gap: 3px; padding: 3px; }
-        .num-btn { background: #6a3a9a; border: 2px solid rgba(240, 230, 255, 0.3); border-radius: 6px; padding: 0; font-weight: 800; font-size: 0.9rem; color: #f0e6ff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1); cursor: pointer; transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1); text-align: center; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; line-height: 1; text-shadow: 0 0 10px rgba(255, 255, 255, 0.1); user-select: none; -webkit-tap-highlight-color: transparent; }
-        .num-btn:hover:not(:disabled) { background: #8a5aba; transform: translateY(-2px) scale(1.04); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2); border-color: #ffcc44; }
-        .num-btn:active:not(:disabled) { transform: translateY(2px) scale(0.95); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
-        .num-btn.selected { background: linear-gradient(135deg, #f5c542, #e8a020) !important; color: #1a0a2e !important; border-color: #ffcc44 !important; box-shadow: 0 0 20px rgba(255, 204, 68, 0.25), 0 4px 12px rgba(255, 204, 68, 0.15) !important; transform: scale(1.06) !important; z-index: 2; }
-        .num-btn.taken { background: red; color: yellow; border-color: rgba(120, 80, 200, 0.2); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); cursor: not-allowed; opacity: 100; transform: scale(0.95); }
-        .num-btn:disabled { opacity: 100; transform: scale(0.92); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); pointer-events: none; cursor: not-allowed; }
-        .num-btn.loading { background: #3a2a4a; color: #5a4a6a; border-color: rgba(120, 80, 200, 0.05); animation: shimmer 1.2s ease-in-out infinite; cursor: default; }
+        .num-btn { background: #6a3a9a; border: 2px solid rgba(240, 230, 255, 0.3); border-radius: 6px; padding: 0; font-weight: 800; font-size: 0.9rem; color: #f0e6ff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1); cursor: pointer; transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1); text-align: center; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; line-height: 1; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .num-btn:hover:not(:disabled) { background: #8a5aba; transform: translateY(-2px) scale(1.04); border-color: #ffcc44; }
+        .num-btn:active:not(:disabled) { transform: translateY(2px) scale(0.95); }
+        .num-btn.selected { background: linear-gradient(135deg, #f5c542, #e8a020) !important; color: #1a0a2e !important; border-color: #ffcc44 !important; box-shadow: 0 0 20px rgba(255, 204, 68, 0.25) !important; transform: scale(1.06) !important; z-index: 2; }
+        .num-btn.taken { background: red; color: yellow; cursor: not-allowed; opacity: 100; transform: scale(0.95); }
+        .num-btn:disabled { opacity: 100; transform: scale(0.92); pointer-events: none; cursor: not-allowed; }
+        .num-btn.loading { background: #3a2a4a; color: #5a4a6a; animation: shimmer 1.2s ease-in-out infinite; cursor: default; }
         @keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
         .footer { color: #7a6a9a; text-align: center; font-size: 0.4rem; margin-top: auto; opacity: 0.9; border-top: 1px solid rgba(120, 80, 200, 0.08); padding-top: 2px; flex-shrink: 0; letter-spacing: 1px; }
-        .spinning-indicator { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #f0e6ff; font-size: 0.65rem; font-weight: 700; background: rgba(20, 10, 40, 0.85); padding: 2px 12px; border-radius: 30px; backdrop-filter: blur(4px); border: 1px solid rgba(180, 120, 255, 0.2); z-index: 20; pointer-events: none; letter-spacing: 1px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+        .spinning-indicator { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #f0e6ff; font-size: 0.65rem; font-weight: 700; background: rgba(20, 10, 40, 0.85); padding: 2px 12px; border-radius: 30px; backdrop-filter: blur(4px); border: 1px solid rgba(180, 120, 255, 0.2); z-index: 20; pointer-events: none; letter-spacing: 1px; }
         .spinning-indicator.active { display: block; animation: pulseText 0.8s infinite alternate; }
         @keyframes pulseText { 0% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.95); } 100% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); } }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.35); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; padding: 20px; animation: fadeIn 0.3s ease; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.55); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; padding: 20px; animation: fadeIn 0.3s ease; }
         .modal-overlay.active { display: flex; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-        .modal-content { background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9)); backdrop-filter: blur(20px); border-radius: 28px; padding: 24px 20px 20px; max-width: 380px; width: 100%; max-height: 85vh; overflow-y: auto; border: 1px solid rgba(180, 120, 255, 0.2); box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03); }
-        .modal-content h2, .modal-content h3 { color: #f0e6ff; text-align: center; font-size: 1.4rem; font-weight: 800; margin-bottom: 12px; border-bottom: 2px solid rgba(120, 80, 200, 0.15); padding-bottom: 8px; letter-spacing: 1px; text-shadow: 0 0 20px rgba(180, 120, 255, 0.2); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content { background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9)); backdrop-filter: blur(20px); border-radius: 28px; padding: 24px 20px 20px; max-width: 380px; width: 100%; max-height: 85vh; overflow-y: auto; border: 1px solid rgba(180, 120, 255, 0.2); box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5); }
+        .modal-content h2, .modal-content h3 { color: #f0e6ff; text-align: center; font-size: 1.4rem; font-weight: 800; margin-bottom: 12px; border-bottom: 2px solid rgba(120, 80, 200, 0.15); padding-bottom: 8px; letter-spacing: 1px; }
         .modal-content h3 { font-size: 1.1rem; }
         .deposit-modal, .withdraw-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.35); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1000; padding: 20px; animation: fadeIn 0.3s ease; }
         .deposit-modal.active, .withdraw-modal.active { display: flex; }
         .modal-error { color: #ff6b6b; text-align: center; font-size: 0.75rem; min-height: 1.1rem; }
         .balance-info { color: #b8a0d0; text-align: center; font-size: 0.8rem; margin-bottom: 10px; }
         .balance-info .amount { color: #ffcc44; font-weight: 800; }
-        .modal-input { width: 100%; padding: 10px 16px; border-radius: 30px; border: 2px solid rgba(120, 80, 200, 0.25); background: rgba(0, 0, 0, 0.3); color: #f0e6ff; font-size: 0.95rem; margin-bottom: 8px; outline: none; transition: border-color 0.3s; }
+        .modal-input { width: 100%; padding: 10px 16px; border-radius: 30px; border: 2px solid rgba(120, 80, 200, 0.25); background: rgba(0, 0, 0, 0.3); color: #f0e6ff; font-size: 0.95rem; margin-bottom: 8px; outline: none; }
         .modal-input:focus { border-color: #ffcc44; }
         .modal-btns { display: flex; gap: 8px; }
-        .modal-btns button { flex: 1; padding: 10px; border-radius: 30px; border: none; font-weight: 700; cursor: pointer; transition: all 0.08s linear; font-size: 0.85rem; }
+        .modal-btns button { flex: 1; padding: 10px; border-radius: 30px; border: none; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
         .modal-btns .confirm { background: linear-gradient(135deg, #ffcc44, #f5a623); color: #1a0a2e; box-shadow: 0 3px 0 #b87a15; }
         .modal-btns .confirm:active { transform: translateY(3px); box-shadow: 0 1px 0 #b87a15; }
         .modal-btns .cancel { background: rgba(120, 80, 200, 0.15); color: #d4c0f0; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2); border: 1px solid rgba(120, 80, 200, 0.1); }
-        .modal-btns .cancel:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2); }
-        .transaction-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.35); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1001; padding: 20px; animation: fadeIn 0.3s ease; }
+        .modal-btns .cancel:active { transform: translateY(3px); }
+        .transaction-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.35); backdrop-filter: blur(6px); justify-content: center; align-items: center; z-index: 1001; padding: 20px; }
         .transaction-modal.active { display: flex; }
-        .transaction-modal .modal-content { max-width: 380px; width: 100%; padding: 24px 20px 20px; border-radius: 28px; background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9)); border: 1px solid rgba(180, 120, 255, 0.2); box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5); }
-        .transaction-modal .modal-content h3 { color: #f0e6ff; text-align: center; font-size: 1.2rem; margin-bottom: 12px; border-bottom: 2px solid rgba(120, 80, 200, 0.15); padding-bottom: 8px; }
+        .transaction-modal .modal-content { max-width: 380px; }
+        .transaction-modal .modal-content h3 { color: #f0e6ff; text-align: center; font-size: 1.2rem; margin-bottom: 12px; }
         .transaction-modal .modal-content .status-text { color: #b8a0d0; text-align: center; font-size: 0.9rem; padding: 8px 0; }
         .transaction-modal .modal-content .status-text.pending { color: #ffd866; }
         .transaction-modal .modal-content .status-text.approved { color: #8affb0; }
         .transaction-modal .modal-content .status-text.rejected { color: #ff6b6b; }
-        .transaction-modal .modal-content .close-btn { width: 100%; padding: 10px; border-radius: 30px; border: none; background: rgba(120, 80, 200, 0.15); color: #d4c0f0; font-weight: 700; cursor: pointer; margin-top: 10px; transition: all 0.2s; }
-        .transaction-modal .modal-content .close-btn:hover { background: rgba(120, 80, 200, 0.25); }
-        .waiting-modal { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(20, 10, 40, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 204, 68, 0.2); border-radius: 18px; padding: 16px 24px; max-width: 90%; z-index: 2000; animation: slideUp 0.3s ease; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); text-align: center; }
+        .transaction-modal .modal-content .close-btn { width: 100%; padding: 10px; border-radius: 30px; border: none; background: rgba(120, 80, 200, 0.15); color: #d4c0f0; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        .waiting-modal { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(20, 10, 40, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 204, 68, 0.2); border-radius: 18px; padding: 16px 24px; max-width: 90%; z-index: 2000; text-align: center; }
         .waiting-modal.active { display: block; }
         .waiting-modal .icon { font-size: 1.6rem; display: block; margin-bottom: 4px; }
         .waiting-modal h3 { color: #f0e6ff; font-size: 1rem; margin-bottom: 2px; }
         .waiting-modal p { color: #b8a0d0; font-size: 0.8rem; line-height: 1.4; margin-bottom: 6px; }
-        .waiting-modal .close-waiting { background: rgba(120, 80, 200, 0.15); border: none; color: #b8a0d0; padding: 4px 14px; border-radius: 30px; font-size: 0.7rem; cursor: pointer; transition: 0.2s; }
-        .waiting-modal .close-waiting:hover { background: rgba(120, 80, 200, 0.25); }
-        @keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
-        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(20, 10, 40, 0.95); backdrop-filter: blur(12px); border: 2px solid #ffcc44; border-radius: 18px; padding: 16px 24px; max-width: 90%; z-index: 3000; animation: slideDown 0.5s ease; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); text-align: center; display: none; }
+        .waiting-modal .close-waiting { background: rgba(120, 80, 200, 0.15); border: none; color: #b8a0d0; padding: 4px 14px; border-radius: 30px; font-size: 0.7rem; cursor: pointer; }
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(20, 10, 40, 0.95); backdrop-filter: blur(12px); border: 2px solid #ffcc44; border-radius: 18px; padding: 16px 24px; max-width: 90%; z-index: 3000; text-align: center; display: none; }
         .toast.active { display: block; }
         .toast .icon { font-size: 2rem; display: block; margin-bottom: 4px; }
         .toast h3 { color: #f0e6ff; font-size: 1.1rem; margin-bottom: 2px; }
         .toast p { color: #b8a0d0; font-size: 0.85rem; line-height: 1.4; }
-        @keyframes slideDown { from { transform: translateX(-50%) translateY(-20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
-        #fireworksCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 998; display: none; }
+
+        /* [FIX] Fireworks sit ABOVE the modal so they run with the card */
+        #fireworksCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3000; display: none; }
         #fireworksCanvas.active { display: block; pointer-events: none; }
+
         .ocr-progress-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.7); backdrop-filter: blur(12px); justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
         .ocr-progress-modal.active { display: flex; }
-        .ocr-progress-modal .modal-content { max-width: 340px; width: 100%; text-align: center; padding: 30px 20px; background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9)); border-radius: 28px; border: 1px solid rgba(180, 120, 255, 0.2); box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5); }
+        .ocr-progress-modal .modal-content { max-width: 340px; text-align: center; padding: 30px 20px; }
         .ocr-progress-modal .spinner { width: 60px; height: 60px; margin: 0 auto 16px; border: 4px solid rgba(255, 204, 68, 0.1); border-top: 4px solid #ffcc44; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .ocr-progress-modal .status-text { color: #f0e6ff; font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
@@ -215,16 +211,16 @@
         .network-offline-overlay .icon { font-size: 3rem; }
         .network-offline-overlay h3 { color: #f0e6ff; font-size: 1.2rem; font-weight: 700; }
         .network-offline-overlay p { color: #b8a0d0; font-size: 0.85rem; max-width: 280px; }
-        .network-offline-overlay .retry-btn { background: linear-gradient(135deg, #ffcc44, #f5a623); border: none; border-radius: 30px; padding: 10px 32px; font-weight: 700; color: #1a0a2e; cursor: pointer; box-shadow: 0 4px 0 #b87a15; transition: 0.08s linear; }
+        .network-offline-overlay .retry-btn { background: linear-gradient(135deg, #ffcc44, #f5a623); border: none; border-radius: 30px; padding: 10px 32px; font-weight: 700; color: #1a0a2e; cursor: pointer; box-shadow: 0 4px 0 #b87a15; }
         .network-offline-overlay .retry-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #b87a15; }
-        .session-conflict-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.7); backdrop-filter: blur(12px); justify-content: center; align-items: center; z-index: 4000; padding: 20px; animation: fadeIn 0.3s ease; }
+        .session-conflict-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.7); backdrop-filter: blur(12px); justify-content: center; align-items: center; z-index: 4000; padding: 20px; }
         .session-conflict-modal.active { display: flex; }
-        .session-conflict-modal .modal-content { max-width: 340px; width: 100%; text-align: center; padding: 30px 20px; background: linear-gradient(160deg, #2a1a4a, #1a2a4a); border-radius: 28px; border: 2px solid #ff6b6b; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6); }
+        .session-conflict-modal .modal-content { max-width: 340px; text-align: center; padding: 30px 20px; border: 2px solid #ff6b6b; }
         .session-conflict-modal .icon { font-size: 3rem; display: block; margin-bottom: 8px; }
         .session-conflict-modal h3 { color: #ff6b6b; font-size: 1.2rem; margin-bottom: 8px; }
         .session-conflict-modal p { color: #b8a0d0; font-size: 0.9rem; line-height: 1.4; margin-bottom: 12px; }
-        .session-conflict-modal button { background: linear-gradient(135deg, #ff6b6b, #e05555); border: none; border-radius: 30px; padding: 10px 32px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: 0 4px 0 #8a2a2a; transition: 0.08s linear; }
-        .session-conflict-modal button:active { transform: translateY(4px); box-shadow: 0 1px 0 #8a2a2a; }
+        .session-conflict-modal button { background: linear-gradient(135deg, #ff6b6b, #e05555); border: none; border-radius: 30px; padding: 10px 32px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: 0 4px 0 #8a2a2a; }
+        .session-conflict-modal button:active { transform: translateY(4px); }
         .referral-box { background: rgba(20, 10, 40, 0.5); border: 1px solid rgba(120, 80, 200, 0.15); border-radius: 18px; padding: 12px; margin-bottom: 10px; }
         .referral-box .referral-stat { text-align: center; color: #b8a0d0; font-size: 0.75rem; margin-bottom: 10px; }
         .referral-box .referral-stat strong { color: #ffcc44; font-size: 1.1rem; }
@@ -235,119 +231,174 @@
         .referral-actions .copy { background: rgba(120, 80, 200, 0.18); color: #d4c0f0; border: 1px solid rgba(120, 80, 200, 0.18); }
 
         /* ============================================================
-           WINNING NUMBER CARD
+           BEAUTIFUL WINNING NUMBER CARD
            ============================================================ */
-        .winners-modal-content { max-width: 340px !important; text-align: center; }
+        .winners-modal-content {
+            max-width: 360px !important;
+            width: 100%;
+            text-align: center;
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            padding: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            position: relative;
+            animation: none !important;
+        }
+        .winning-card-halo {
+            position: absolute;
+            inset: -40px;
+            background: radial-gradient(circle at 50% 45%, rgba(255, 204, 68, 0.45), transparent 62%);
+            filter: blur(38px);
+            z-index: 0;
+            pointer-events: none;
+            animation: haloPulse 2.5s ease-in-out infinite alternate;
+        }
+        @keyframes haloPulse {
+            0% { opacity: 0.55; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1.12); }
+        }
         .winning-number-card {
             position: relative;
-            background: linear-gradient(160deg, rgba(255, 204, 68, 0.15), rgba(245, 166, 35, 0.06));
-            border: 2px solid rgba(255, 204, 68, 0.4);
-            border-radius: 24px;
-            padding: 22px 16px 18px;
-            margin: 8px auto 4px;
-            box-shadow: 0 0 40px rgba(255, 204, 68, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            z-index: 1;
+            padding: 26px 22px 24px;
+            border-radius: 30px;
+            background:
+                radial-gradient(circle at 50% 0%, rgba(255, 204, 68, 0.22), transparent 55%),
+                radial-gradient(circle at 50% 100%, rgba(120, 80, 200, 0.25), transparent 55%),
+                linear-gradient(160deg, #2e1c58 0%, #1a1030 50%, #241646 100%);
+            border: 1.5px solid rgba(255, 204, 68, 0.55);
+            box-shadow:
+                0 0 0 1px rgba(255, 204, 68, 0.18),
+                0 0 50px rgba(255, 204, 68, 0.3),
+                0 24px 70px rgba(0, 0, 0, 0.7),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -24px 50px rgba(0, 0, 0, 0.35);
             overflow: hidden;
+            animation: cardIn 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes cardIn {
+            0% { transform: scale(0.55) translateY(30px) rotate(-4deg); opacity: 0; }
+            60% { transform: scale(1.06) translateY(-6px) rotate(1.5deg); opacity: 1; }
+            100% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; }
         }
         .winning-number-card::before {
             content: "";
             position: absolute;
-            top: -50%; left: -50%;
-            width: 200%; height: 200%;
-            background: radial-gradient(circle, rgba(255, 204, 68, 0.18), transparent 60%);
-            animation: cardGlow 3s ease-in-out infinite alternate;
+            top: -10%; left: -160%;
+            width: 160%; height: 120%;
+            background: linear-gradient(
+                115deg,
+                transparent 32%,
+                rgba(255, 240, 180, 0.42) 50%,
+                transparent 68%
+            );
+            animation: cardShimmer 3.2s ease-in-out infinite;
             pointer-events: none;
+            z-index: 3;
         }
-        @keyframes cardGlow {
-            0% { opacity: 0.4; transform: scale(1); }
-            100% { opacity: 0.9; transform: scale(1.15); }
+        @keyframes cardShimmer {
+            0% { left: -160%; }
+            55% { left: 160%; }
+            100% { left: 160%; }
         }
-        .winning-number-label {
-            position: relative; z-index: 1;
-            color: #ffd866;
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 2px;
+        .winning-card-sparkles { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+        .winning-card-sparkles span {
+            position: absolute;
+            width: 4px; height: 4px;
+            background: #ffd866;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ffd866, 0 0 22px rgba(255, 216, 102, 0.65);
+            animation: sparkleTwinkle 2.4s ease-in-out infinite;
+        }
+        .winning-card-sparkles span:nth-child(1) { top: 14%; left: 16%; animation-delay: 0s; }
+        .winning-card-sparkles span:nth-child(2) { top: 24%; right: 14%; animation-delay: 0.6s; }
+        .winning-card-sparkles span:nth-child(3) { bottom: 22%; left: 11%; animation-delay: 1.2s; }
+        .winning-card-sparkles span:nth-child(4) { bottom: 18%; right: 18%; animation-delay: 1.8s; }
+        .winning-card-sparkles span:nth-child(5) { top: 52%; left: 7%; animation-delay: 0.9s; }
+        .winning-card-sparkles span:nth-child(6) { top: 52%; right: 7%; animation-delay: 1.4s; }
+        @keyframes sparkleTwinkle {
+            0%, 100% { opacity: 0.15; transform: scale(0.6); }
+            50% { opacity: 1; transform: scale(1.5); }
+        }
+        .winning-card-title {
+            position: relative;
+            z-index: 4;
+            color: #cbb8e6;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 4px;
             text-transform: uppercase;
+            margin-bottom: 10px;
+            text-shadow: 0 0 24px rgba(180, 120, 255, 0.35);
+        }
+        .winning-card-round {
+            position: relative;
+            z-index: 4;
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(255, 204, 68, 0.24), rgba(245, 166, 35, 0.12));
+            border: 1px solid rgba(255, 204, 68, 0.45);
+            color: #ffd866;
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            padding: 4px 16px;
+            border-radius: 22px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            box-shadow: 0 0 22px rgba(255, 204, 68, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
         }
         .winning-number-big {
-            position: relative; z-index: 1;
-            font-size: 5rem;
+            position: relative;
+            z-index: 4;
+            font-size: 6.2rem;
             font-weight: 900;
             line-height: 1;
-            color: #ffcc44;
-            text-shadow: 0 0 40px rgba(255, 204, 68, 0.5), 0 4px 0 #8a5a10;
-            margin: 6px 0 4px;
-            letter-spacing: 2px;
-            animation: numberPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            margin: 2px 0 10px;
+            letter-spacing: 3px;
+            background: linear-gradient(180deg, #fff8d6 0%, #ffcc44 42%, #f5a623 72%, #b87a15 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            filter:
+                drop-shadow(0 0 34px rgba(255, 204, 68, 0.75))
+                drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+            animation: numberPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         @keyframes numberPop {
-            0% { transform: scale(0.3); opacity: 0; }
-            60% { transform: scale(1.15); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
+            0% { transform: scale(0.25) rotate(-10deg); opacity: 0; }
+            55% { transform: scale(1.18) rotate(4deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
-        .winning-number-sub {
-            position: relative; z-index: 1;
+        .winning-card-divider {
+            position: relative;
+            z-index: 4;
+            width: 62%;
+            height: 1px;
+            margin: 6px auto 10px;
+            background: linear-gradient(90deg, transparent, rgba(255, 204, 68, 0.6), transparent);
+        }
+        .winning-card-sub {
+            position: relative;
+            z-index: 4;
             color: #b8a0d0;
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             font-weight: 600;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
         }
 
         @media (max-height:700px) {
-            .game-wrapper { padding: 8px 10px 12px; max-height: 680px; border-radius: 28px; }
-            .title { font-size: 1rem; }
-            .wheel-container { max-width: 150px; }
-            .num-btn { font-size: 0.55rem; border-radius: 4px; border-width: 1.5px; }
-            .profile-area { padding: 3px 4px; min-height: 190px; }
-            .wallet-item { font-size: 0.5rem; padding: 1px 5px; }
-            .wallet-item .amount { font-size: 0.65rem; }
-            .more-btn { width: 24px; height: 24px; font-size: 0.9rem; }
-            .more-dropdown { min-width: 150px; }
-            .more-dropdown .dropdown-item { font-size: 0.7rem; padding: 5px 10px; }
-            .auth-screen .logo h2 { font-size: 2rem; }
-            .modal-content { padding: 18px 14px 16px; }
-            .welcome-screen .bet-options button { font-size: 1.4rem; padding: 16px; }
-            .game-info-bar { padding: 2px 10px; gap: 8px; }
-            .game-info-bar .info-item { font-size: 0.6rem; }
-            .game-info-bar .info-item .value { font-size: 0.75rem; }
-            .game-info-bar .info-item .value.timer { font-size: 0.85rem; }
-            .bet-switcher { padding: 2px 8px; }
-            .bet-switcher .bet-btn { font-size: 0.65rem; padding: 1px 10px; }
-            .switch-room-btn { font-size: 0.65rem !important; padding: 2px 14px !important; }
-            .winning-number-big { font-size: 3.5rem; }
+            .winning-number-big { font-size: 4.6rem; }
+            .winning-number-card { padding: 20px 18px 18px; }
         }
         @media (max-width:380px) {
-            .game-wrapper { padding: 4px 6px 8px; border-radius: 24px; }
-            .title { font-size: 0.85rem; }
-            .wheel-container { max-width: 120px; }
-            .num-btn { font-size: 0.45rem; border-radius: 3px; border-width: 1px; }
-            .wallet-item { font-size: 0.45rem; padding: 1px 4px; }
-            .wallet-item .amount { font-size: 0.6rem; }
-            .more-btn { width: 22px; height: 22px; font-size: 0.8rem; }
-            .more-dropdown { min-width: 130px; right: -5px; }
-            .more-dropdown .dropdown-item { font-size: 0.65rem; padding: 4px 8px; gap: 6px; }
-            .modal-content { padding: 14px 12px 12px; border-radius: 20px; }
-            .welcome-screen .bet-options button { font-size: 1.2rem; padding: 14px; }
-            .welcome-screen .bet-options { gap: 10px; }
-            .game-info-bar { padding: 2px 8px; gap: 6px; }
-            .game-info-bar .info-item { font-size: 0.5rem; }
-            .game-info-bar .info-item .value { font-size: 0.65rem; }
-            .game-info-bar .info-item .value.timer { font-size: 0.75rem; }
-            .game-info-bar .info-item .value.bet-total,
-            .game-info-bar .info-item .value.prize { font-size: 0.7rem; min-width: 32px; }
-            .bet-switcher { padding: 2px 6px; }
-            .bet-switcher .bet-btn { font-size: 0.6rem; padding: 1px 8px; }
-            .winning-number-big { font-size: 3.5rem; }
+            .winning-number-big { font-size: 4.6rem; }
+            .winning-number-card { padding: 20px 16px 18px; border-radius: 24px; }
         }
-        @media (max-width: 430px) {
-            #usernameWalletItem { display: none !important; }
-        }
-        @media (max-height: 700px) {
-            #usernameWalletItem { display: none !important; }
-        }
-        .num-picker-wrapper { -webkit-overflow-scrolling: touch; touch-action: pan-y; }
-        .num-picker { touch-action: pan-y; }
-        .num-btn { touch-action: manipulation; }
     </style>
 </head>
 <body>
@@ -496,13 +547,19 @@
 
     <div class="modal-overlay" id="winnersModal">
         <div class="modal-content winners-modal-content">
-            <h2>🎯 WINNING NUMBER</h2>
+            <div class="winning-card-halo"></div>
             <div class="winning-number-card">
-                <div class="winning-number-label">Round <span id="winningNumberRound">#1</span></div>
+                <div class="winning-card-sparkles">
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                </div>
+                <div class="winning-card-title">🎯 Winning Number</div>
+                <div class="winning-card-round">Round <span id="winningNumberRound">#--</span></div>
                 <div class="winning-number-big" id="winningNumberBig">--</div>
-                <div class="winning-number-sub">This round's result</div>
+                <div class="winning-card-divider"></div>
+                <div class="winning-card-sub">This Round's Result</div>
             </div>
-            <div style="text-align:center;margin-top:8px;color:#7a6a9a;font-size:0.6rem;">closes in 5s · auto restart</div>
+            <div style="text-align:center;margin-top:14px;color:#7a6a9a;font-size:0.6rem;letter-spacing:1px;">closes in 5s · auto restart</div>
         </div>
     </div>
 
@@ -597,22 +654,12 @@
                     if (/^[A-Za-z0-9_]{1,32}$/.test(ref)) {
                         pendingReferralCode = ref;
                         localStorage.setItem('winzo_pending_referral', ref);
-                        console.log('🔗 Referral captured:', ref);
-                    } else {
-                        console.warn('🔗 Referral rejected (invalid format):', ref);
                     }
                 } else if (!pendingReferralCode) {
                     const saved = localStorage.getItem('winzo_pending_referral');
-                    if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) {
-                        pendingReferralCode = saved;
-                        console.log('🔗 Referral restored from localStorage:', saved);
-                    } else {
-                        console.log('🔗 No referral param in URL and none stored.');
-                    }
+                    if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) pendingReferralCode = saved;
                 }
-            } catch (e) {
-                console.warn('Referral capture error:', e);
-            }
+            } catch (e) {}
         }
 
         // ============================================================
@@ -624,7 +671,7 @@
         function initAudio() {
             if (!audioInitialized) {
                 try { audioCtx = new(window.AudioContext || window.webkitAudioContext)(); audioInitialized = true; }
-                catch (e) { console.log('Web Audio not supported:', e); }
+                catch (e) {}
             }
             return audioCtx;
         }
@@ -654,28 +701,22 @@
         function playWinningAudio() {
             const ctx = initAudio();
             if (!ctx) return;
-            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
             const notes = [523.25, 659.25, 783.99, 1046.50];
             const durations = [0.20, 0.20, 0.25, 0.35];
             const volumes = [0.28, 0.28, 0.28, 0.26];
             notes.forEach((freq, i) => {
-                const delay = i * 0.16;
-                playTone(freq, durations[i], 'sine', volumes[i], delay);
+                playTone(freq, durations[i], 'sine', volumes[i], i * 0.16);
             });
             playTone(1318.51, 0.20, 'sine', 0.10, 0.55);
             playTone(1567.98, 0.15, 'sine', 0.07, 0.70);
         }
 
         function playNoWinnerAudio() {
-            const ctx = initAudio();
-            if (!ctx) return;
-            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
             const notes = [783.99, 659.25, 523.25];
             const durations = [0.22, 0.22, 0.28];
             const volumes = [0.22, 0.22, 0.20];
             notes.forEach((freq, i) => {
-                const delay = i * 0.20;
-                playTone(freq, durations[i], 'sine', volumes[i], delay);
+                playTone(freq, durations[i], 'sine', volumes[i], i * 0.20);
             });
             playTone(392.00, 0.25, 'sine', 0.08, 0.50);
         }
@@ -769,7 +810,7 @@
         function animateFireworks() {
             if (!fireworksRunning) { ctx2.clearRect(0, 0, canvas.width, canvas.height); return; }
             ctx2.clearRect(0, 0, canvas.width, canvas.height);
-            if (Math.random() < 0.08 && fireworks.length < 6) fireworks.push(new Firework());
+            if (Math.random() < 0.10 && fireworks.length < 7) fireworks.push(new Firework());
             for (let i = fireworks.length - 1; i >= 0; i--) {
                 const f = fireworks[i];
                 f.update(); f.draw();
@@ -784,10 +825,13 @@
             fireworksRunning = true;
             fireworks = []; particles = [];
             canvas.classList.add('active');
+            // Immediate opening burst for drama
+            for (let i = 0; i < 3; i++) fireworks.push(new Firework());
             if (fireworksRAF) cancelAnimationFrame(fireworksRAF);
             animateFireworks();
             if (fireworksAutoStopTimer) clearTimeout(fireworksAutoStopTimer);
-            fireworksAutoStopTimer = setTimeout(() => stopFireworks(), 6000);
+            // Stay up while the card is visible (7s to outlast the 5s countdown)
+            fireworksAutoStopTimer = setTimeout(() => stopFireworks(), 7000);
         }
 
         function stopFireworks() {
@@ -843,7 +887,7 @@
                     }
                 }
                 return false;
-            } catch (e) { console.warn('Telegram detection error:', e); return false; }
+            } catch (e) { return false; }
         }
 
         function attemptTelegramDetection() {
@@ -900,8 +944,6 @@
         let sessionId = null;
         let sessionListener = null;
         let sessionConflictModal = document.getElementById('sessionConflictModal');
-
-        // Authoritative result listener (card source of truth)
         let lastResultListenerRef = null;
 
         try {
@@ -910,9 +952,7 @@
             storage = firebase.storage();
             firebaseAvailable = true;
             isMultiplayer = true;
-            console.log('✅ Firebase ready');
         } catch (e) {
-            console.warn('⚠️ Firebase init error:', e);
             firebaseAvailable = false; isMultiplayer = false;
         }
 
@@ -948,12 +988,10 @@
                 localStorage.removeItem('bingo_saved_bet');
                 localStorage.removeItem('bingo_toast_shown');
                 localStorage.removeItem('bingo_app_version');
-                console.log('🧹 All local data cleared.');
             }
         };
 
         if (DB.getVersion() !== APP_VERSION) {
-            console.warn('App version changed, clearing localStorage');
             DB.clearAll();
             DB.setVersion();
         }
@@ -990,6 +1028,9 @@
         let watchdogInterval = null;
         let lastRoomSyncAt = 0;
 
+        // [FIX] Suppress arrow update while the local animation runs
+        let suppressArrowUpdate = false;
+
         // ============================================================
         //  NETWORK LISTENER
         // ============================================================
@@ -1024,15 +1065,12 @@
         function handleNetworkOnline() {
             if (isNetworkConnected) return;
             isNetworkConnected = true;
-            console.log('🌐 Network reconnected');
             networkOverlay.classList.remove('active');
             updateStatus('✅ Network restored. Game will continue.');
             if (gameRef) {
-                // Re-read full room + last result
                 gameRef.once('value').then(snapshot => {
                     if (snapshot.exists()) syncGameState(snapshot.val());
-                }).catch(err => console.warn('Reconnect sync failed:', err));
-                // Also re-read lastResult directly
+                }).catch(() => {});
                 reapplyAuthoritativeResult();
             }
             renderNumberPicker();
@@ -1042,7 +1080,6 @@
         function handleNetworkOffline() {
             if (!isNetworkConnected) return;
             isNetworkConnected = false;
-            console.log('🚫 Network disconnected');
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
             networkOverlay.classList.add('active');
@@ -1068,13 +1105,10 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) return;
             if (!currentUser) return;
-            console.log('👁️ App resumed from background');
             if (gameRef) {
                 gameRef.once('value').then(snap => {
                     if (snap.exists()) syncGameState(snap.val());
-                }).catch(err => console.warn('Visibility resync failed:', err));
-                // Reapply authoritative result — a device waking up during 'results'
-                // will show the same number as everyone else
+                }).catch(() => {});
                 reapplyAuthoritativeResult();
             }
             if (engineState.gamePhase === 'selection' && !isTimerRunning && phaseDeadline) {
@@ -1099,7 +1133,6 @@
             sessionListener = sessionRef.on('value', (snap) => {
                 const data = snap.val();
                 if (!data || data.sessionId !== sessionId) {
-                    console.warn('Session conflict detected!');
                     sessionConflictModal.classList.add('active');
                     stopTimer(); stopResultsCountdown();
                     if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -1127,8 +1160,8 @@
             takenRef.transaction(current => {
                 if (current === true) return;
                 return true;
-            }, (error, committed, snapshot) => {
-                if (error) { console.error('Claim number error:', error); callback(false); return; }
+            }, (error, committed) => {
+                if (error) { callback(false); return; }
                 if (committed) callback(true); else callback(false);
             }, false);
         }
@@ -1136,11 +1169,6 @@
         function releaseNumber(number) {
             if (!gameRef) return;
             gameRef.child('numbersTaken/' + number).set(false);
-        }
-
-        function resetNumbersTaken() {
-            if (!gameRef) return;
-            gameRef.child('numbersTaken').set({});
         }
 
         // ============================================================
@@ -1157,11 +1185,7 @@
         // ============================================================
         //  DOM REFS
         // ============================================================
-        const $ = (id) => {
-            const el = document.getElementById(id);
-            if (!el) console.warn(`Element #${id} not found`);
-            return el;
-        };
+        const $ = (id) => document.getElementById(id);
 
         const authScreen = $('authScreen');
         const welcomeScreen = $('welcomeScreen');
@@ -1250,7 +1274,7 @@
         const ocrProgressSub = $('ocrProgressSub');
 
         // ============================================================
-        //  WINNING NUMBER — localStorage fallback keyed by day + round
+        //  WINNING NUMBER — localStorage fallback (day + round keyed)
         // ============================================================
         function getSessionDay() {
             const d = new Date();
@@ -1318,7 +1342,7 @@
                 numEl.textContent = (display && !isNaN(display)) ? String(display) : '--';
                 numEl.style.animation = 'none';
                 void numEl.offsetWidth;
-                numEl.style.animation = 'numberPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                numEl.style.animation = 'numberPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
             }
             if (roundEl) roundEl.textContent = '#' + round;
         }
@@ -1333,14 +1357,6 @@
         // ============================================================
         //  AUTHORITATIVE RESULT — the single source of truth for the card
         // ============================================================
-        // Written once per round by the client whose transaction commits the
-        // 'results' transition. Every device reads this node; no local logic
-        // can produce a different value.
-        //
-        // Guard rules:
-        //   - lastResult.round must equal engineState.roundNumber
-        //   - engineState.gamePhase must be 'results'
-        //   - modal opens/closes purely on gameState
         function handleAuthoritativeResult(r) {
             if (!r || r.round == null || r.winningNumber == null) return;
             const round = Number(r.round);
@@ -1348,15 +1364,8 @@
             if (!isFinite(round) || round <= 0) return;
             if (!isFinite(winningNumber) || winningNumber <= 0) return;
 
-            // Reject stale results that belong to a different round
-            if (round !== Number(engineState.roundNumber)) {
-                console.log('🚫 lastResult ignored — round mismatch', round, 'vs', engineState.roundNumber);
-                return;
-            }
-            // Only display while the room is in the results phase
-            if (engineState.gamePhase !== 'results') {
-                return;
-            }
+            if (round !== Number(engineState.roundNumber)) return;
+            if (engineState.gamePhase !== 'results') return;
 
             saveWinningNumber(round, winningNumber);
             cleanupOldWinningNumbers(round);
@@ -1403,9 +1412,6 @@
             totalBetDisplayEl.textContent = String(winAmount);
         }
 
-        // ============================================================
-        //  CONNECTION STATUS
-        // ============================================================
         function setConnectionStatus(online, message) {
             const cls = online ? 'online' : 'offline';
             if (authStatus) {
@@ -1456,10 +1462,6 @@
             if (!currentUser || !database) return;
             const txRef = database.ref('transactions');
             if (pendingTxListener) { pendingTxListener.off(); pendingTxListener = null; }
-            txRef.orderByChild('username').equalTo(currentUser).on('child_added', snapshot => {
-                const tx = snapshot.val();
-                if (tx && tx.status === 'pending') {}
-            });
             pendingTxListener = txRef.orderByChild('username').equalTo(currentUser).on('child_changed', snapshot => {
                 const tx = snapshot.val();
                 if (!tx) return;
@@ -1552,11 +1554,7 @@
                 }
                 return current;
             }, (error, committed) => {
-                if (error) handleError(error, 'Transfer');
-                else if (committed) {
-                    updateStatus(`✅ Transferred ${amount} Birr from Main to Play.`);
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                }
+                if (committed) updateStatus(`✅ Transferred ${amount} Birr from Main to Play.`);
             });
             return true;
         }
@@ -1575,7 +1573,7 @@
             if (ocrSpinner) ocrSpinner.style.display = 'block';
             if (ocrDoneIcon) ocrDoneIcon.classList.remove('show');
             if (ocrProgressStatus) ocrProgressStatus.textContent = 'Preparing image...';
-            if (ocrProgressSub) ocrProgressSub.textContent = 'Running multiple OCR passes for the full 10-character reference.';
+            if (ocrProgressSub) ocrProgressSub.textContent = 'Running multiple OCR passes.';
             let imageUrl = null;
             const objectUrls = [];
             try {
@@ -1653,32 +1651,9 @@
                         if (joined.length === 10) addCandidate(joined, 90);
                     }
                 }
-                const labelWindows = [];
                 for (const m of cleaned.matchAll(/(?:reference|transaction\s*(?:id|number|no)?|ref\.?\s*(?:id|no)?|receipt\s*(?:no|number)?)[^\n]{0,90}/gi)) {
-                    labelWindows.push(m[0]);
-                }
-                for (const win of labelWindows) {
-                    const compact = win.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                    const compact = m[0].replace(/[^A-Z0-9]/gi, '').toUpperCase();
                     for (let i = 0; i <= compact.length - 10; i++) addCandidate(compact.slice(i, i + 10), 140);
-                }
-                for (let i = 0; i < allWords.length; i++) {
-                    const word = String(allWords[i].text || '');
-                    if (!labelRe.test(word)) continue;
-                    const base = allWords[i];
-                    const near = allWords.filter(wd => {
-                        const dx = Math.abs((wd.bbox?.x0 || 0) - (base.bbox?.x1 || 0));
-                        const dy = Math.abs((wd.bbox?.y0 || 0) - (base.bbox?.y0 || 0));
-                        return wd !== base && dy < 180 && dx < 1200;
-                    });
-                    const fragments = near.map(wd => String(wd.text || '').replace(/[^A-Z0-9]/gi, '')).filter(Boolean);
-                    for (let a = 0; a < fragments.length; a++) {
-                        let joined = '';
-                        for (let b = a; b < Math.min(fragments.length, a + 5); b++) {
-                            joined += fragments[b];
-                            if (joined.length > 10) break;
-                            if (joined.length === 10) addCandidate(joined, 160);
-                        }
-                    }
                 }
                 for (const line of text.split(/\r?\n/)) {
                     const compact = line.replace(/[^A-Z0-9]/gi, '').toUpperCase();
@@ -1702,10 +1677,6 @@
                 if (amount === null) {
                     const decimalMatches = [...text.matchAll(/\b(\d+\.\d{2})\b/g)].map(m => parseFloat(m[1])).filter(v => v < 1900 || v > 2100);
                     if (decimalMatches.length) amount = Math.max(...decimalMatches);
-                    else {
-                        const intMatches = [...text.matchAll(/\b(\d{2,4})\b/g)].map(m => parseInt(m[1], 10)).filter(v => v < 1900 || v > 2100);
-                        if (intMatches.length) amount = Math.max(...intMatches);
-                    }
                 }
                 if (ocrSpinner) ocrSpinner.style.display = 'none';
                 if (ocrDoneIcon) ocrDoneIcon.classList.add('show');
@@ -1719,11 +1690,9 @@
                 ocrBusy = false;
                 return resultObj;
             } catch (e) {
-                console.error('OCR error:', e);
                 if (ocrSpinner) ocrSpinner.style.display = 'none';
                 if (ocrDoneIcon) ocrDoneIcon.classList.add('show');
                 if (ocrProgressStatus) ocrProgressStatus.textContent = '❌ OCR failed.';
-                if (ocrProgressSub) ocrProgressSub.textContent = 'Please enter data manually.';
                 setTimeout(() => { if (ocrProgressModal) ocrProgressModal.classList.remove('active'); }, 1500);
                 lastOCRResult = { reference: null, amount: null };
                 ocrBusy = false;
@@ -1929,7 +1898,7 @@
                 if (!claim.committed) return false;
                 return database.ref('users/' + username + '/playWallet').transaction(w => (w || 0) + Number(amount))
                     .then(() => true);
-            }).catch(err => { console.error('refundBetIdempotent failed:', err); return false; });
+            }).catch(() => false);
         }
 
         function performLogout() {
@@ -1979,7 +1948,6 @@
             updateWalletUI();
             updateAllUI();
             showAuthScreen();
-            if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         }
 
         if (document.getElementById('sessionConflictOkBtn')) {
@@ -2044,7 +2012,6 @@
             updatePickStatus();
             updateWalletUI();
             updateTotalBetDisplay();
-            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
         function updateWelcomeUI() {
@@ -2236,6 +2203,15 @@
         }
 
         // ============================================================
+        //  [FIX] DETERMINISTIC WHEEL ORDER
+        //  Sorted numerically so every device sees the same index for the
+        //  same winning number, and therefore the same target angle.
+        // ============================================================
+        function getSortedTakenNumbers() {
+            return Array.from(engineState.allTakenNumbers).sort((a, b) => a - b);
+        }
+
+        // ============================================================
         //  UI UPDATE
         // ============================================================
         let updatePending = false;
@@ -2264,7 +2240,8 @@
                 updatePickStatus();
                 updateWheel();
                 updateTotalBetDisplay();
-                if (engineState.cumulativeRotation > 0 && (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results')) {
+                // [FIX] Skip during local animation to avoid fighting the CSS transition
+                if (!suppressArrowUpdate && engineState.cumulativeRotation > 0 && (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results')) {
                     if (arrowContainer) arrowContainer.style.transform = `rotate(${engineState.cumulativeRotation}deg)`;
                 } else if (engineState.gamePhase === 'selection') {
                     if (arrowContainer) arrowContainer.style.transform = 'rotate(0deg)';
@@ -2371,7 +2348,6 @@
                 if (engineState.activePlayersCount <= 1) { showWaitingModal(); return; }
                 if (engineState.gamePhase !== 'selection') {
                     updateStatus('⛔ Cannot pick numbers now.');
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                     return;
                 }
                 const myPick = getMyPick();
@@ -2394,22 +2370,18 @@
                     refundPickBetFast(currentUser, currentBet);
                     renderNumberPicker(); updatePickStatus(); updatePrizeDisplay(); updateTotalBetDisplay();
                     updateStatus(`↩️ Removed ${num}.`);
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
                     return;
                 }
                 if (engineState.allTakenNumbers.has(num)) {
                     updateStatus(`❌ Number ${num} is already taken!`);
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                     return;
                 }
                 if (myPick !== null) {
                     updateStatus(`❌ You already picked ${myPick}. Unselect it first.`);
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                     return;
                 }
                 if (walletData.play < currentBet) {
                     updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`);
-                    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                     return;
                 }
                 if (!engineState.players[currentUser]) {
@@ -2435,7 +2407,6 @@
                         }
                         renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
                         updateStatus(`❌ Number ${num} was just taken!`);
-                        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
                         return;
                     }
                     deductPickBetFast(currentUser, currentBet).then(success => {
@@ -2468,18 +2439,17 @@
                         }
                         updatePickStatus(); updateTotalBetDisplay();
                         updateStatus(`✅ ${currentUser} picked ${num} for ${currentBet} Birr!`);
-                        if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
                     });
                 });
             });
         }
 
         // ============================================================
-        //  WHEEL
+        //  [FIX] WHEEL — sorted order so every device agrees on layout
         // ============================================================
         function updateWheel() {
             if (!wheelNumbers) return;
-            const numbers = Array.from(engineState.allTakenNumbers);
+            const numbers = getSortedTakenNumbers();
             if (numbers.length === 0) {
                 wheelNumbers.innerHTML = '<div style="color:#7a6a9a;font-size:0.55rem;text-align:center;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:4;font-weight:500;">no picks</div>';
                 return;
@@ -2499,8 +2469,9 @@
             wheelNumbers.innerHTML = html;
         }
 
+        // [FIX] Uses sorted order so the same winning number always yields the same angle
         function getAngleForNumber(targetNumber) {
-            const numbers = Array.from(engineState.allTakenNumbers);
+            const numbers = getSortedTakenNumbers();
             if (numbers.length === 0) return 0;
             const index = numbers.indexOf(targetNumber);
             if (index === -1) return 0;
@@ -2673,9 +2644,9 @@
         }
 
         // ============================================================
-        //  PRODUCTION HARDENING v7.4
+        //  PRODUCTION HARDENING v7.5
         // ============================================================
-        const WINZO_PRODUCTION_VERSION = '7.4.0';
+        const WINZO_PRODUCTION_VERSION = '7.5.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -2756,7 +2727,7 @@
             database.ref('.info/serverTimeOffset').once('value').then(snap => {
                 if (generation !== roomConnectionGeneration) return;
                 serverTimeOffset = Number(snap.val()) || 0;
-            }).catch(err => console.warn('Server time offset unavailable:', err));
+            }).catch(() => {});
             ref.once('value').then(snapshot => {
                 if (generation !== roomConnectionGeneration) return;
                 if (!snapshot.exists()) {
@@ -2782,22 +2753,20 @@
                     });
                 }
                 if (!data.selectionEndsAt && data.gameState === 'selection') ensureSelectionDeadline();
-            }).catch(err => console.error('Room initialization failed:', err));
+            }).catch(() => {});
             ref.on('value', snapshot => {
                 if (generation !== roomConnectionGeneration) return;
                 const data = snapshot.val();
                 if (data) syncGameState(data);
             });
-            // Attach authoritative last-result listener
             attachLastResultListener(ref);
-            // Fetch any existing lastResult right away (e.g. client joined mid-results)
             reapplyAuthoritativeResult();
             const playerRef = ref.child('players/' + currentUser);
             playerRef.onDisconnect().remove();
             playerRef.set({
                 name: currentUser, pick: null, bet: currentBet, ready: false,
                 betDeducted: false, betSources: {}, round: engineState.roundNumber || 1
-            }).catch(err => console.error('Player registration failed:', err));
+            }).catch(() => {});
             isGameInitialized = true;
             setConnectionStatus(true, '🔑 Connected to ' + currentBet + ' Birr room');
             setTimeout(() => { if (generation === roomConnectionGeneration) renderNumberPicker(); }, 300);
@@ -2835,7 +2804,6 @@
                 if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
                 updateTotalBetDisplay();
 
-                // Refund players who left the room with an active bet
                 try {
                     const currentNamesSet = new Set(playerNames);
                     Object.keys(lastKnownPlayersCache).forEach(name => {
@@ -2850,7 +2818,7 @@
                         const amount = Number(prev.bet || currentBet);
                         refundBetIdempotent(name, prevRound, amount, currentRoom);
                     });
-                } catch (e) { console.warn('Orphan refund scan failed:', e); }
+                } catch (e) {}
                 lastKnownPlayersCache = JSON.parse(JSON.stringify(players));
 
                 if (phase === 'selection') {
@@ -2864,8 +2832,6 @@
                     hideWaitingModal();
                 }
 
-                // Modal open/close is driven ONLY by gameState.
-                // The card content is driven ONLY by lastResult (see listener).
                 if (phase === 'results') {
                     if (!engineState.winnersModalShown) {
                         engineState.winnersModalShown = true;
@@ -2873,13 +2839,9 @@
                         if (winners.length) { startFireworks(); playWinningAudio(); } else playNoWinnerAudio();
                         startResultsCountdown();
                     }
-                    // Ensure the modal is open (idempotent)
                     if (winnersModal) winnersModal.classList.add('active');
-                    // Re-apply the authoritative result in case lastResult arrived
-                    // before we transitioned into 'results' locally
                     reapplyAuthoritativeResult();
                 } else {
-                    // Any non-results phase closes the modal and resets the card
                     if (winnersModal) winnersModal.classList.remove('active');
                     resetWinningNumberCard();
                     engineState.winnersModalShown = false;
@@ -2981,10 +2943,7 @@
                     room.spinFinishedAt = null;
                     return room;
                 }).then(result => result && result.committed);
-            }).catch(err => {
-                console.error('requestSpin failed:', err);
-                return false;
-            });
+            }).catch(() => false);
         }
 
         function runRoomWatchdog() {
@@ -2994,8 +2953,7 @@
             if (engineState.gamePhase === 'selection') {
                 const expiredFor = getServerNow() - (Number(phaseDeadline) || 0);
                 if (phaseDeadline && expiredFor > 12000) {
-                    console.log('🐕 Watchdog: selection expired', expiredFor, 'ms ago — forcing progress');
-                    requestSpin().catch(err => console.warn('Watchdog spin failed:', err));
+                    requestSpin().catch(() => {});
                 }
             } else if (engineState.gamePhase === 'spinning') {
                 const now = Date.now();
@@ -3120,7 +3078,7 @@
 
                         if (!isTimerRunning) startTimer();
                         if (engineState.activePlayersCount <= 1) showWaitingModal();
-                    }).catch(err => console.error('Round finalization failed:', err));
+                    }).catch(() => {});
                 }
             }, 1000);
         }
@@ -3136,7 +3094,7 @@
         }
 
         // ============================================================
-        //  executeSpin – commits results AND writes lastResult
+        //  executeSpin — deterministic rotation, writes lastResult
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
@@ -3149,10 +3107,12 @@
                 const round = Number(room.round);
                 const winningNumber = Number(room.winningNumber);
                 const winners = Array.isArray(room.winners) ? room.winners.filter(Boolean) : [];
+                // [FIX] Sort taken numbers so every device sees the same layout
                 const numbers = Object.keys(room.numbersTaken || {})
                     .filter(k => room.numbersTaken[k] === true)
                     .map(Number)
-                    .filter(n => n >= 1 && n <= 200);
+                    .filter(n => n >= 1 && n <= 200)
+                    .sort((a, b) => a - b);
 
                 if (round !== Number(engineState.roundNumber)) throw new Error('Spin round changed');
                 if (!numbers.includes(winningNumber)) throw new Error('Authoritative winning number missing');
@@ -3163,9 +3123,13 @@
                 if (wheelContainer) wheelContainer.classList.remove('hidden');
                 if (spinResults) spinResults.classList.remove('hidden');
 
+                // [FIX] Deterministic target angle AND rotation count
                 const targetAngle = getAngleForNumber(winningNumber);
-                const rotations = 4 + Math.floor(Math.random() * 2);
+                const rotations = 4 + ((round * 7) % 3); // deterministic: 4, 5, or 6
                 const degrees = rotations * 360 + targetAngle;
+
+                // [FIX] Suppress the updateUIFromState arrow sync during the local animation
+                suppressArrowUpdate = true;
 
                 if (arrowContainer) {
                     arrowContainer.style.transition = 'none';
@@ -3189,14 +3153,12 @@
                 }).then(result => {
                     if (!result || !result.committed) return;
 
-                    // ---- AUTHORITATIVE PUBLISH ----
-                    // Only the client whose transaction committed writes lastResult.
-                    // Every other device receives it via the value listener.
+                    // Publish the authoritative result — everyone reads this
                     return gameRef.child('lastResult').set({
                         round: round,
                         winningNumber: winningNumber,
                         setAt: Date.now()
-                    }).catch(err => console.warn('Could not publish lastResult:', err)).then(() => {
+                    }).catch(() => {}).then(() => {
                         const finalRoom = result.snapshot.val() || {};
                         const finalWinners = Array.isArray(finalRoom.winners) ? finalRoom.winners.filter(Boolean) : winners;
                         const pool = Number(finalRoom.prizePool ?? finalRoom.potAmount ?? 0);
@@ -3207,7 +3169,6 @@
                         engineState.gamePhase = 'results';
                         engineState.winnersModalShown = true;
 
-                        // Locally display immediately for the local client
                         saveWinningNumber(round, winningNumber);
                         cleanupOldWinningNumbers(round);
                         displayWinningNumberCard(round, winningNumber);
@@ -3251,6 +3212,8 @@
                 engineState.isSpinning = false;
                 engineState.spinInProgress = false;
                 if (spinningIndicator) spinningIndicator.classList.remove('active');
+                // Release the arrow suppression after the animation completes
+                setTimeout(() => { suppressArrowUpdate = false; }, 4200);
             });
         }
 
@@ -3304,7 +3267,7 @@
                     }
                     return true;
                 });
-            }).catch(err => { console.error('Atomic winner wallet update failed:', err); return false; });
+            }).catch(() => false);
         }
 
         function withdrawFromMain(amount, name, phone) {
@@ -3350,11 +3313,7 @@
                     return storageRef.put(imageFile)
                         .then(s => s.ref.getDownloadURL())
                         .then(url => txRef.update({ imageUrl: url }))
-                        .catch(err => {
-                            console.warn('Deposit proof upload failed; request remains pending:', err);
-                            transactionStatus.textContent = '⏳ Pending admin approval (proof upload failed).';
-                            return null;
-                        });
+                        .catch(() => null);
                 }
                 return null;
             }).then(() => new Promise(resolve => {
@@ -3376,12 +3335,10 @@
                         resolve(false);
                     }
                 };
-                txRef.on('value', handler, err => {
-                    console.error('Transaction status listener failed:', err);
+                txRef.on('value', handler, () => {
                     if (transactionStatus) transactionStatus.textContent = '⚠️ Request sent, but status cannot be monitored.';
                 });
             })).catch(err => {
-                console.error('Transaction request failed:', err);
                 if (transactionStatus) transactionStatus.textContent = '⚠️ Could not submit request: ' + (err.message || 'Firebase error');
                 return false;
             });
