@@ -94,7 +94,7 @@
         .num-btn:disabled { opacity: 100; pointer-events: none; cursor: not-allowed; }
         .num-btn.loading { background: #3a2a4a; color: #5a4a6a; animation: shimmer 1.2s ease-in-out infinite; }
         @keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
-        .footer { color: #7a6a9a; text-align: center; font-size: 0.4rem; margin-top: auto; border-top: 1px solid rgba(120, 80, 200, 0.08); padding-top: 2px; flex-shrink: 0; }
+        .footer { color: #7a6a9a; text-align: center; font-size: 0.4rem; margin-top: auto; border-top: 1px solid rgba(120, 80, 200, 0.08); padding-top: 2px; flex-shrink: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.55); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
         .modal-overlay.active { display: flex; }
         .modal-content { background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9)); border-radius: 28px; padding: 24px 20px 20px; max-width: 380px; width: 100%; max-height: 85vh; overflow-y: auto; border: 1px solid rgba(180, 120, 255, 0.2); }
@@ -177,10 +177,16 @@
         .winning-card-sparkles span:nth-child(6) { top: 52%; right: 7%; animation-delay: 1.4s; }
         @keyframes sparkleTwinkle { 0%, 100% { opacity: 0.15; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.5); } }
         .winning-card-title { position: relative; z-index: 4; color: #cbb8e6; font-size: 0.68rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 10px; }
-        .winning-card-round { position: relative; z-index: 4; display: inline-block; background: linear-gradient(135deg, rgba(255, 204, 68, 0.24), rgba(245, 166, 35, 0.12)); border: 1px solid rgba(255, 204, 68, 0.45); color: #ffd866; font-size: 0.65rem; font-weight: 800; letter-spacing: 2px; padding: 4px 16px; border-radius: 22px; margin-bottom: 14px; text-transform: uppercase; }
+        .winning-card-round { position: relative; z-index: 4; display: inline-block; max-width: 92%; background: linear-gradient(135deg, rgba(255, 204, 68, 0.24), rgba(245, 166, 35, 0.12)); border: 1px solid rgba(255, 204, 68, 0.45); color: #ffd866; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.5px; line-height: 1.35; padding: 5px 16px; border-radius: 22px; margin-bottom: 12px; word-break: break-word; overflow-wrap: anywhere; text-transform: none; }
+        .winning-card-round.no-winner { color: #b8a0d0; border-color: rgba(184, 160, 208, 0.35); background: linear-gradient(135deg, rgba(120, 80, 200, 0.18), rgba(120, 80, 200, 0.06)); }
         .winning-number-big { position: relative; z-index: 4; font-size: 6.2rem; font-weight: 900; line-height: 1; margin: 2px 0 10px; letter-spacing: 3px; background: linear-gradient(180deg, #fff8d6 0%, #ffcc44 42%, #f5a623 72%, #b87a15 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; filter: drop-shadow(0 0 34px rgba(255, 204, 68, 0.75)) drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55)); animation: numberPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
         @keyframes numberPop { 0% { transform: scale(0.25) rotate(-10deg); opacity: 0; } 55% { transform: scale(1.18) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
         .winning-card-divider { position: relative; z-index: 4; width: 62%; height: 1px; margin: 6px auto 10px; background: linear-gradient(90deg, transparent, rgba(255, 204, 68, 0.6), transparent); }
+        .winning-card-amount { position: relative; z-index: 4; display: none; font-size: 1.25rem; font-weight: 900; letter-spacing: 1.5px; margin: 0 0 8px; color: #8affb0; text-shadow: 0 0 18px rgba(138, 255, 176, 0.55), 0 2px 6px rgba(0, 0, 0, 0.6); animation: amountPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .winning-card-amount.show { display: block; }
+        .winning-card-amount .amt-label { display: block; font-size: 0.6rem; font-weight: 700; letter-spacing: 3px; color: #b8a0d0; text-shadow: none; margin-bottom: 2px; text-transform: uppercase; }
+        .winning-card-amount .amt-value { background: linear-gradient(180deg, #d6ffe6 0%, #8affb0 45%, #3fbf74 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+        @keyframes amountPop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
         .winning-card-sub { position: relative; z-index: 4; color: #b8a0d0; font-size: 0.68rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
         @media (max-height:700px) { .winning-number-big { font-size: 4.6rem; } .winning-number-card { padding: 20px 18px 18px; } }
         @media (max-width:380px) { .winning-number-big { font-size: 4.6rem; } .winning-number-card { padding: 20px 16px 18px; border-radius: 24px; } }
@@ -282,7 +288,7 @@
                     <div class="num-picker" id="numPicker"></div>
                 </div>
             </div>
-            <div class="footer">7354-1834-8904-9614</div>
+            <div class="footer" id="hiddenCleanupFooter">7354-1834-8904-9614</div>
         </div>
     </div>
     <div class="modal-overlay" id="referralModal">
@@ -306,9 +312,13 @@
             <div class="winning-number-card">
                 <div class="winning-card-sparkles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
                 <div class="winning-card-title">🎯 Winning Number</div>
-                <div class="winning-card-round">Round <span id="winningNumberRound">#--</span></div>
+                <div class="winning-card-round" id="winningCardWinners">Waiting for result…</div>
                 <div class="winning-number-big" id="winningNumberBig">--</div>
                 <div class="winning-card-divider"></div>
+                <div class="winning-card-amount" id="winningCardAmount">
+                    <span class="amt-label">Win Amount</span>
+                    <span class="amt-value" id="winningCardAmountValue">0 Birr</span>
+                </div>
                 <div class="winning-card-sub">This Round's Result</div>
             </div>
             <div style="text-align:center;margin-top:14px;color:#7a6a9a;font-size:0.6rem;letter-spacing:1px;">closes in 5s · auto restart</div>
@@ -438,8 +448,6 @@
 
         // ============================================================
         //  ENHANCED FIREWORKS
-        //  More particles, more concurrent bursts, gold-themed rings,
-        //  sparkle trails, and a longer runtime synced with the win card.
         // ============================================================
         const canvas = document.getElementById('fireworksCanvas');
         const ctx2 = canvas.getContext('2d');
@@ -460,7 +468,6 @@
                 this.trail = [];
                 this.exploded = false;
                 this.size = 2.5 + Math.random() * 2.5;
-                // Golden bias for win theme
                 this.hue = (Math.random() < 0.45)
                     ? 35 + Math.random() * 22
                     : Math.random() * 360;
@@ -483,7 +490,6 @@
                     '#ffffff',
                     '#fff8d6'
                 ];
-                // Main radial burst
                 for (let i = 0; i < count; i++) {
                     const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.15;
                     const speed = 2 + Math.random() * 7;
@@ -500,7 +506,6 @@
                         sparkle: isGold && Math.random() < 0.35
                     });
                 }
-                // Extra golden ring for gold-toned fireworks
                 if (isGold) {
                     const ringCount = 40 + Math.floor(Math.random() * 30);
                     for (let i = 0; i < ringCount; i++) {
@@ -574,7 +579,6 @@
             if (fireworksRunning) return;
             fireworksRunning = true; fireworks = []; particles = [];
             canvas.classList.add('active');
-            // Opening barrage — 6 simultaneous launches across the screen
             for (let i = 0; i < 6; i++) {
                 fireworks.push(new Firework({
                     x: (i + 0.5) * (canvas.width / 6) + (Math.random() - 0.5) * 60,
@@ -676,7 +680,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '9.0';
+        const APP_VERSION = '9.2';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(u) { if (u) localStorage.setItem('bingo_current_user', u); else localStorage.removeItem('bingo_current_user'); },
@@ -861,30 +865,141 @@
         const gamePhaseLabel = $('gamePhaseLabel'); const totalBetDisplayEl = $('totalBetDisplay');
         const ocrProgressModal = $('ocrProgressModal'); const ocrSpinner = $('ocrSpinner');
         const ocrDoneIcon = $('ocrDoneIcon'); const ocrProgressStatus = $('ocrProgressStatus'); const ocrProgressSub = $('ocrProgressSub');
+        const winningCardWinnersEl = $('winningCardWinners');
+        const winningCardAmountEl = $('winningCardAmount');
+        const winningCardAmountValueEl = $('winningCardAmountValue');
 
         // ============================================================
-        //  CARD DISPLAY
+        //  HIDDEN 5-TAP CLEANUP TRIGGER (mobile-friendly)
+        //  Tap the footer number strip 5× quickly to wipe old round data.
         // ============================================================
-        function displayWinningNumberCard(round, number) {
+        (function attachHiddenCleanup() {
+            let tapCount = 0;
+            let tapTimer = null;
+
+            function firebaseCleanup() {
+                if (!database) { alert('Firebase not ready. Wait a moment and try again.'); return; }
+                if (!confirm('⚠️ Clear ALL old round data from Firebase?\n\nOnly do this when no one is mid-round.')) return;
+
+                const rooms = ['room_15', 'room_30'];
+                const nodes = [
+                    'lastResult', 'singlePlayerHandled', 'finalizedRounds', 'spinLock',
+                    'winningNumber', 'spinStartedRound', 'spinFinishedAt', 'drawnNumbers',
+                    'winners', 'spinCount', 'cumulativeRotation', 'prizePool', 'potAmount',
+                    'totalBets', 'numbersTaken'
+                ];
+                const totalOps = (rooms.length * nodes.length) + rooms.length + 1;
+                let doneOps = 0;
+                let errored = false;
+
+                function tick() {
+                    doneOps++;
+                    if (doneOps >= totalOps) {
+                        localStorage.removeItem('winzo_cleanup_version');
+                        alert(errored
+                            ? '⚠️ Cleanup finished with some errors. Reloading…'
+                            : '✅ Cleanup complete! Reloading…');
+                        setTimeout(() => location.reload(), 800);
+                    }
+                }
+
+                rooms.forEach(room => {
+                    nodes.forEach(node => {
+                        database.ref(`rooms/${room}/${node}`).remove()
+                            .then(tick)
+                            .catch(() => { errored = true; tick(); });
+                    });
+                    database.ref(`rooms/${room}`).update({
+                        gameState: 'selection',
+                        timer: 30,
+                        selectionEndsAt: Date.now() + 30000,
+                        players: {}
+                    }).then(tick).catch(() => { errored = true; tick(); });
+                });
+
+                database.ref('refunds').remove()
+                    .then(tick)
+                    .catch(() => { errored = true; tick(); });
+            }
+
+            function bindFooter() {
+                const footer = document.getElementById('hiddenCleanupFooter');
+                if (!footer || footer._cleanupBound) return;
+                footer._cleanupBound = true;
+                footer.addEventListener('click', () => {
+                    tapCount++;
+                    clearTimeout(tapTimer);
+                    tapTimer = setTimeout(() => { tapCount = 0; }, 900);
+                    if (tapCount >= 5) {
+                        tapCount = 0;
+                        firebaseCleanup();
+                    }
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', bindFooter);
+            } else {
+                bindFooter();
+            }
+        })();
+
+        // ============================================================
+        //  CARD DISPLAY  (winner names + win amount strictly from Firebase)
+        // ============================================================
+        function formatWinnerNames(winners) {
+            const list = Array.isArray(winners)
+                ? winners.filter(Boolean).map(w => String(w).trim()).filter(Boolean)
+                : [];
+            if (!list.length) return '😔 No Winner';
+            if (list.length === 1) return '🏆 ' + list[0];
+            if (list.length <= 3) return '🏆 ' + list.join(' · ');
+            return '🏆 ' + list.slice(0, 3).join(' · ') + `  +${list.length - 3} more`;
+        }
+
+        function displayWinningNumberCard(round, number, winners, winAmount) {
             const r = Number(round); const n = Number(number);
             if (!isFinite(r) || r <= 0 || !isFinite(n) || n <= 0) return;
+
+            if (winningCardWinnersEl) {
+                const hasWinner = Array.isArray(winners) && winners.filter(Boolean).length > 0;
+                winningCardWinnersEl.textContent = formatWinnerNames(winners);
+                winningCardWinnersEl.classList.toggle('no-winner', !hasWinner);
+            }
+
             const numEl = document.getElementById('winningNumberBig');
-            const roundEl = document.getElementById('winningNumberRound');
-            if (roundEl) roundEl.textContent = '#' + r;
             if (numEl) {
                 numEl.textContent = String(n);
                 numEl.style.animation = 'none';
                 void numEl.offsetWidth;
                 numEl.style.animation = 'numberPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
             }
+
+            if (winningCardAmountEl && winningCardAmountValueEl) {
+                const amt = Number(winAmount);
+                if (isFinite(amt) && amt > 0) {
+                    winningCardAmountValueEl.textContent = amt.toLocaleString() + ' Birr';
+                    winningCardAmountEl.classList.add('show');
+                    winningCardAmountEl.style.animation = 'none';
+                    void winningCardAmountEl.offsetWidth;
+                    winningCardAmountEl.style.animation = 'amountPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                } else {
+                    winningCardAmountEl.classList.remove('show');
+                }
+            }
         }
+
         function resetWinningNumberCard() {
             displayedCardRound = null;
             if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
             const numEl = document.getElementById('winningNumberBig');
-            const roundEl = document.getElementById('winningNumberRound');
             if (numEl) numEl.textContent = '--';
-            if (roundEl) roundEl.textContent = '#--';
+            if (winningCardWinnersEl) {
+                winningCardWinnersEl.textContent = 'Waiting for result…';
+                winningCardWinnersEl.classList.remove('no-winner');
+            }
+            if (winningCardAmountEl) winningCardAmountEl.classList.remove('show');
+            if (winningCardAmountValueEl) winningCardAmountValueEl.textContent = '0 Birr';
         }
 
         function applyCardState() {
@@ -904,7 +1019,12 @@
                 const num = Number(lastResultData.winningNumber);
                 if (isFinite(num) && num > 0) {
                     displayedCardRound = round;
-                    displayWinningNumberCard(round, num);
+                    displayWinningNumberCard(
+                        round,
+                        num,
+                        lastResultData.winners,
+                        lastResultData.winAmount
+                    );
                     if (winnersModal) winnersModal.classList.add('active');
                     if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
                     return;
@@ -921,7 +1041,10 @@
                     const num = Number(nums[0]);
                     if (isFinite(num) && num > 0) {
                         displayedCardRound = round;
-                        displayWinningNumberCard(round, num);
+                        const roomWinners = Array.isArray(engineState.winners) ? engineState.winners.filter(Boolean) : [];
+                        const pool = Number(engineState.prizePool ?? engineState.potAmount ?? 0);
+                        const derivedWin = roomWinners.length && pool > 0 ? Math.floor(pool / roomWinners.length) : 0;
+                        displayWinningNumberCard(round, num, roomWinners, derivedWin);
                         if (winnersModal) winnersModal.classList.add('active');
                     }
                 }
@@ -1790,9 +1913,9 @@
         }
 
         // ============================================================
-        //  PRODUCTION HARDENING v9.0
+        //  PRODUCTION HARDENING
         // ============================================================
-        const WINZO_PRODUCTION_VERSION = '9.0.0';
+        const WINZO_PRODUCTION_VERSION = '9.2.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -1928,6 +2051,7 @@
                 engineState.spinCount = Number(data.spinCount) || 0;
                 engineState.cumulativeRotation = Number(data.cumulativeRotation) || 0;
                 engineState.potAmount = Number(data.potAmount) || 0;
+                engineState.prizePool = Number(data.prizePool) || 0;
                 engineState.totalBetsPlaced = Number(data.totalBets) || 0;
                 engineState.allTakenNumbers = new Set(
                     Object.keys(data.numbersTaken || {})
@@ -1946,7 +2070,6 @@
                 if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
                 updateTotalBetDisplay();
 
-                // Orphan refund
                 try {
                     const currentNamesSet = new Set(playerNames);
                     Object.keys(lastKnownPlayersCache).forEach(name => {
@@ -1974,13 +2097,11 @@
 
                 updateUIFromState();
 
-                // Trigger executeSpin exactly once per round
                 if (phase === 'spinning' && !engineState.isSpinning && !engineState.spinInProgress && executedSpinRound !== round) {
                     executedSpinRound = round;
                     setTimeout(() => { if (engineState.gamePhase === 'spinning') executeSpin(); }, 30);
                 }
 
-                // Results: audio + countdown once
                 if (phase === 'results') {
                     if (!engineState.winnersModalShown) {
                         engineState.winnersModalShown = true;
@@ -1992,7 +2113,6 @@
                     engineState.winnersModalShown = false;
                 }
 
-                // Card — driven purely by gameState + lastResult
                 applyCardState();
 
                 updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
@@ -2001,7 +2121,7 @@
         }
 
         // ============================================================
-        //  requestSpin — Firebase picks winner
+        //  requestSpin — Firebase picks winner, refunds single-player
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
@@ -2014,6 +2134,7 @@
                     const p = ps[name];
                     return p && p.pick !== null && p.pick !== undefined && Number(p.round) === round && p.betDeducted === true;
                 });
+
                 if (eligible.length === 0) {
                     return gameRef.transaction(r => {
                         if (!r || r.gameState !== 'selection' || Number(r.round) !== round) return r;
@@ -2022,6 +2143,7 @@
                         return r;
                     }).then(res => res && res.committed);
                 }
+
                 if (eligible.length === 1) {
                     const only = eligible[0];
                     const amount = Number(ps[only].bet || currentBet);
@@ -2047,6 +2169,7 @@
                             });
                         });
                 }
+
                 return gameRef.transaction(room => {
                     if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
                     if (room.spinLock && Number(room.spinLock.round) === round) return room;
@@ -2149,7 +2272,7 @@
                     }).then(() => {
                         engineState.allTakenNumbers = new Set();
                         engineState.drawnNumbers = []; engineState.winners = [];
-                        engineState.spinCount = 0; engineState.potAmount = 0;
+                        engineState.spinCount = 0; engineState.potAmount = 0; engineState.prizePool = 0;
                         engineState.totalBetsPlaced = 0;
                         engineState.gamePhase = 'selection';
                         engineState.isSpinning = false; engineState.spinInProgress = false;
@@ -2192,7 +2315,7 @@
         function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } isTimerRunning = false; }
 
         // ============================================================
-        //  executeSpin — commit to results after a short delay
+        //  executeSpin — commits result and writes lastResult
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
@@ -2212,7 +2335,6 @@
                 engineState.allTakenNumbers = new Set(numbers);
                 engineState.winners = winners;
 
-                // Brief suspense pause before the result is committed
                 return new Promise(resolve => setTimeout(resolve, 2000)).then(() => {
                     return gameRef.transaction(current => {
                         if (!current || Number(current.round) !== round || current.gameState !== 'spinning') return current;
@@ -2224,16 +2346,18 @@
                     });
                 }).then(result => {
                     if (!result || !result.committed) return;
+                    const finalRoom = result.snapshot.val() || {};
+                    const finalWinners = Array.isArray(finalRoom.winners) ? finalRoom.winners.filter(Boolean) : winners;
+                    const pool = Number(finalRoom.prizePool ?? finalRoom.potAmount ?? 0);
+                    const winAmount = finalWinners.length ? Math.floor(pool / finalWinners.length) : 0;
+
                     return gameRef.child('lastResult').set({
                         round: round,
                         winningNumber: winningNumber,
+                        winners: finalWinners,
+                        winAmount: winAmount,
                         setAt: Date.now()
                     }).catch(() => {}).then(() => {
-                        const finalRoom = result.snapshot.val() || {};
-                        const finalWinners = Array.isArray(finalRoom.winners) ? finalRoom.winners.filter(Boolean) : winners;
-                        const pool = Number(finalRoom.prizePool ?? finalRoom.potAmount ?? 0);
-                        const winAmount = finalWinners.length ? Math.floor(pool / finalWinners.length) : 0;
-
                         if (finalWinners.length && winAmount > 0) {
                             Promise.allSettled(finalWinners.map(name => creditWinnerAndReferral(name, winAmount)))
                                 .then(results => {
