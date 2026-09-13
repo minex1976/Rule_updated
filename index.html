@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Winzo 🏆 Games Room</title>
+    <title>Winzo Games Room</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -79,16 +79,146 @@
         .game-info-bar .info-item .value.bet-total { color: #74ffb9; font-size: 0.95rem; }
         .pick-status { background: rgba(20, 10, 40, 0.5); border-radius: 20px; padding: 4px 12px; margin: 2px 0 3px; text-align: center; font-weight: 600; font-size: 0.7rem; color: #b8a0d0; border: 1px solid rgba(120, 80, 200, 0.1); min-height: 1.8rem; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; flex-shrink: 0; }
         .pick-status .highlight { color: #ffcc44; font-weight: 800; }
-        .wheel-container { position: relative; width: 100%; max-width: 220px; margin: 2px auto; aspect-ratio: 1/1; flex-shrink: 0; }
-        .wheel { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(from 0deg, #f5d6a0 0%, #f5c542 12%, #f5d6a0 24%, #f5c542 36%, #f5d6a0 48%, #f5c542 60%, #f5d6a0 72%, #f5c542 84%, #f5d6a0 100%); position: relative; box-shadow: 0 0 0 6px rgba(255, 204, 68, 0.15), 0 0 0 12px rgba(20, 10, 40, 0.6), 0 0 60px rgba(255, 204, 68, 0.08); display: flex; align-items: center; justify-content: center; }
-        .arrow-container { position: absolute; width: 100%; height: 100%; top: 0; left: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 15; transform-origin: 50% 50%; }
-        .arrow-shaft { position: absolute; width: 4px; height: 35%; background: linear-gradient(to bottom, #ff6b6b, #e05555); top: 15%; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 0 12px rgba(255, 80, 80, 0.3)); border-radius: 4px; }
-        .arrow-head { position: absolute; width: 16px; height: 16px; background: #ff6b6b; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); top: 11%; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 0 16px rgba(255, 80, 80, 0.3)); }
-        .arrow-center-circle { position: absolute; width: 26px; height: 26px; background: radial-gradient(circle at 40% 35%, #fff5e0, #f5c542); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 16; border: 3px solid rgba(20, 10, 40, 0.8); box-shadow: 0 0 30px rgba(255, 204, 68, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.3); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.65rem; color: #1a0a2e; pointer-events: none; transition: all 0.3s; }
-        .arrow-center-circle.reveal { background: radial-gradient(circle at 40% 35%, #ff8a8a, #e05555); color: #fff; box-shadow: 0 0 40px rgba(255, 80, 80, 0.3); border-color: #ff6b6b; transform: translate(-50%, -50%) scale(1.15); }
-        .wheel-numbers { position: absolute; width: 100%; height: 100%; border-radius: 50%; pointer-events: none; z-index: 5; }
-        .wheel-number { position: absolute; font-weight: 700; font-size: 0.55rem; color: #1a0a2e; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3); pointer-events: none; z-index: 6; transition: all 0.5s ease; opacity: 0.85; }
-        .wheel-number.highlighted { color: #e05555; font-size: 0.9rem; text-shadow: 0 0 30px rgba(255, 80, 80, 0.4); font-weight: 900; opacity: 1; transform: translate(-50%, -50%) scale(1.3) !important; }
+
+        /* ============================================================
+           BOOK ANIMATION (replaces wheel)
+           ============================================================ */
+        .book-container {
+            position: relative;
+            width: 100%;
+            max-width: 260px;
+            margin: 6px auto;
+            flex-shrink: 0;
+            perspective: 1400px;
+        }
+        .book-frame {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1.15 / 1;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #6b4520 0%, #4a2f12 50%, #6b4520 100%);
+            padding: 12px;
+            box-shadow:
+                0 0 0 3px #b87a15,
+                0 0 0 5px #8b5a2b,
+                0 20px 50px rgba(0, 0, 0, 0.6),
+                0 0 60px rgba(255, 204, 68, 0.12),
+                inset 0 0 30px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+        .book-frame::before {
+            content: "";
+            position: absolute;
+            inset: 7px;
+            border: 1px solid rgba(255, 204, 68, 0.35);
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 3;
+        }
+        .book-frame::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 50%;
+            width: 2px; height: 100%;
+            background: linear-gradient(180deg, transparent, rgba(0,0,0,0.35) 15%, rgba(0,0,0,0.35) 85%, transparent);
+            transform: translateX(-50%);
+            z-index: 4;
+            pointer-events: none;
+        }
+        .book-pages {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .book-pages.no-transition { transition: none !important; }
+        .book-page {
+            flex: 0 0 100%;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: radial-gradient(ellipse at center, #fdf6e3 0%, #f5e6c8 70%, #ead9b5 100%);
+            box-shadow: inset 0 0 40px rgba(139, 90, 43, 0.15);
+        }
+        .book-page::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, transparent 0, transparent 22px, rgba(139, 90, 43, 0.05) 22px, rgba(139, 90, 43, 0.05) 24px);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .book-page + .book-page::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0;
+            width: 32px; height: 100%;
+            background: linear-gradient(90deg, rgba(139, 90, 43, 0.32), transparent);
+            pointer-events: none;
+            z-index: 2;
+        }
+        .book-num {
+            position: relative;
+            z-index: 3;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-size: 5rem;
+            font-weight: 900;
+            color: #3d2817;
+            text-shadow: 0 4px 0 rgba(255, 255, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.15);
+            line-height: 1;
+        }
+        .book-page-label {
+            position: relative;
+            z-index: 3;
+            margin-top: 12px;
+            font-family: 'Georgia', serif;
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #8b5a2b;
+            opacity: 0.65;
+        }
+        .book-page.winning {
+            background: radial-gradient(ellipse at center, #fff5d0 0%, #ffd88a 55%, #f0b64a 100%);
+        }
+        .book-page.winning::before {
+            background: radial-gradient(ellipse at center, rgba(255, 204, 68, 0.5) 0%, transparent 70%);
+            animation: winningGlow 1.2s ease-in-out infinite alternate;
+        }
+        @keyframes winningGlow {
+            0% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .book-page.winning .book-num {
+            background: linear-gradient(180deg, #fff8d6 0%, #ffcc44 42%, #f5a623 72%, #b87a15 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            filter: drop-shadow(0 0 30px rgba(255, 204, 68, 0.9)) drop-shadow(0 4px 0 rgba(255, 255, 255, 0.4));
+            animation: winningNumPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes winningNumPop {
+            0% { transform: scale(0.4); }
+            60% { transform: scale(1.22); }
+            100% { transform: scale(1); }
+        }
+        .book-page.winning .book-page-label { color: #b87a15; opacity: 1; font-weight: 700; }
+        .book-container.fade-out {
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        @media (max-height:700px) { .book-container { max-width: 220px; } .book-num { font-size: 4rem; } }
+        @media (max-width:380px) { .book-container { max-width: 210px; } .book-num { font-size: 4rem; } }
+
         .status-area { background: rgba(20, 10, 40, 0.6); border-radius: 30px; padding: 4px 10px; margin: 2px 0 3px; text-align: center; font-weight: 600; font-size: 0.65rem; color: #b8a0d0; border: 1px solid rgba(120, 80, 200, 0.1); min-height: 1.8rem; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 3px; flex-shrink: 0; }
         .status-area .highlight { color: #ffcc44; font-weight: 800; }
         .win-badge { background: linear-gradient(135deg, #f5c542, #e8a020); color: #1a0a2e; padding: 2px 14px; border-radius: 40px; font-weight: 800; animation: pulse 1s infinite alternate; font-size: 0.7rem; }
@@ -105,9 +235,6 @@
         .num-btn.loading { background: #3a2a4a; color: #5a4a6a; animation: shimmer 1.2s ease-in-out infinite; }
         @keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
         .footer { color: #7a6a9a; text-align: center; font-size: 0.4rem; margin-top: auto; border-top: 1px solid rgba(120, 80, 200, 0.08); padding-top: 2px; flex-shrink: 0; }
-        .spinning-indicator { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #f0e6ff; font-size: 0.65rem; font-weight: 700; background: rgba(20, 10, 40, 0.85); padding: 2px 12px; border-radius: 30px; z-index: 20; pointer-events: none; letter-spacing: 1px; }
-        .spinning-indicator.active { display: block; animation: pulseText 0.8s infinite alternate; }
-        @keyframes pulseText { 0% { opacity: 0.6; transform: translate(-50%, -50%) scale(0.95); } 100% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); } }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.55); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
         .modal-overlay.active { display: flex; }
         .modal-content { background: linear-gradient(160deg, rgba(42, 26, 74, 0.9), rgba(26, 42, 74, 0.9)); border-radius: 28px; padding: 24px 20px 20px; max-width: 380px; width: 100%; max-height: 85vh; overflow-y: auto; border: 1px solid rgba(180, 120, 255, 0.2); }
@@ -195,8 +322,8 @@
         @keyframes numberPop { 0% { transform: scale(0.25) rotate(-10deg); opacity: 0; } 55% { transform: scale(1.18) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
         .winning-card-divider { position: relative; z-index: 4; width: 62%; height: 1px; margin: 6px auto 10px; background: linear-gradient(90deg, transparent, rgba(255, 204, 68, 0.6), transparent); }
         .winning-card-sub { position: relative; z-index: 4; color: #b8a0d0; font-size: 0.68rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
-        @media (max-height:700px) { .winning-number-big { font-size: 4.6rem; } .winning-number-card { padding: 20px 18px 18px; } .wheel-container { max-width: 180px; } }
-        @media (max-width:380px) { .winning-number-big { font-size: 4.6rem; } .winning-number-card { padding: 20px 16px 18px; border-radius: 24px; } .wheel-container { max-width: 160px; } }
+        @media (max-height:700px) { .winning-number-big { font-size: 4.6rem; } .winning-number-card { padding: 20px 18px 18px; } }
+        @media (max-width:380px) { .winning-number-big { font-size: 4.6rem; } .winning-number-card { padding: 20px 16px 18px; border-radius: 24px; } }
         @media (max-width: 430px) { #usernameWalletItem { display: none !important; } }
         @media (max-height: 700px) { #usernameWalletItem { display: none !important; } }
     </style>
@@ -282,17 +409,14 @@
                 <div class="info-item">🏆 Prize: <span class="value bet-total" id="totalBetDisplay">0</span> Birr</div>
             </div>
             <div class="pick-status" id="pickStatus"><span>Pick <span class="highlight">one</span> number</span></div>
-            <div class="wheel-container hidden" id="wheelContainer">
-                <div class="wheel" id="wheel">
-                    <div class="wheel-numbers" id="wheelNumbers"></div>
-                    <div class="arrow-container" id="arrowContainer">
-                        <div class="arrow-shaft"></div>
-                        <div class="arrow-head"></div>
-                    </div>
-                    <div class="arrow-center-circle" id="arrowCenter">🎯</div>
-                    <div class="spinning-indicator" id="spinningIndicator">SPINNING...</div>
+
+            <!-- BOOK (replaces spin wheel) -->
+            <div class="book-container hidden" id="bookContainer">
+                <div class="book-frame">
+                    <div class="book-pages" id="bookPages"></div>
                 </div>
             </div>
+
             <div class="status-area" id="statusMessage">
                 <span>⏳ Pick one number · Bet: <span class="highlight" id="betDisplay">15</span> Birr</span>
             </div>
@@ -626,7 +750,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '8.1';
+        const APP_VERSION = '9.0';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(u) { if (u) localStorage.setItem('bingo_current_user', u); else localStorage.removeItem('bingo_current_user'); },
@@ -656,7 +780,7 @@
             timer: 30, activePlayersCount: 0, cumulativeRotation: 0, playerNames: [],
             gameStarted: true, spinInProgress: false, waitingModalShown: false,
             potAmount: 0, totalBetsPlaced: 0, winnersModalShown: false,
-            wheelSeed: 0, targetAngle: 0, spinStartedAt: 0
+            wheelSeed: 0, targetAngle: 0, spinStartedAt: 0, winningNumber: 0
         };
         let timerInterval = null; let isTimerRunning = false; let audioPlayedThisRound = false;
         let resultsCountdownInterval = null; let isResultsCountdownRunning = false;
@@ -664,15 +788,15 @@
         let numbersTakenListenerRef = null; let numbersTakenInitialized = false;
         let lastKnownPlayersCache = {}; let watchdogInterval = null; let lastRoomSyncAt = 0;
 
-        // [FIX] Single-writer bookkeeping
-        let displayedCardRound = null;     // round number whose card we've shown
-        let lastSpunRound = null;          // round number whose arrow animation we've triggered
-        let cardFallbackTimer = null;      // timer to fall back to drawnNumbers if lastResult is slow
-        let lastResultData = null;         // latest lastResult object
+        // [FIX] Three separate trackers to prevent cross-blocking
+        let displayedCardRound = null;
+        let lastSpunRound = null;
+        let executedSpinRound = null;
+        let cardFallbackTimer = null;
+        let lastResultData = null;
 
-        const TOTAL_WHEEL_NUMBERS = 200;
-        const DEGREES_PER_SLOT = 360 / TOTAL_WHEEL_NUMBERS; // 1.8°
-        const ARROW_REST_ROTATION = 90;
+        // Book animation state
+        let bookSlideTimeout = null;
 
         // ============================================================
         //  NETWORK LISTENER
@@ -706,7 +830,6 @@
             isNetworkConnected = true;
             networkOverlay.classList.remove('active');
             updateStatus('✅ Network restored. Game will continue.');
-            // Just re-sync. Do NOT trigger any spin logic.
             if (gameRef) {
                 gameRef.once('value').then(snapshot => {
                     if (snapshot.exists()) syncGameState(snapshot.val());
@@ -810,9 +933,9 @@
         const winnersModal = $('winnersModal'); const transactionModal = $('transactionModal');
         const transactionStatus = $('transactionStatus'); const transactionCloseBtn = $('transactionCloseBtn');
         const waitingModal = $('waitingModal'); const closeWaitingBtn = $('closeWaitingBtn'); const welcomeToast = $('welcomeToast');
-        const wheelContainer = $('wheelContainer'); const wheelNumbers = $('wheelNumbers');
-        const arrowContainer = $('arrowContainer'); const arrowCenter = $('arrowCenter');
-        const spinningIndicator = $('spinningIndicator'); const statusEl = $('statusMessage');
+        // Book DOM refs (replacing wheel)
+        const bookContainer = $('bookContainer'); const bookPages = $('bookPages');
+        const statusEl = $('statusMessage');
         const numPicker = $('numPicker'); const numPickerWrapper = $('numPickerWrapper');
         const selectedCountSpan = $('selectedCount'); const prizeDisplay = $('prizeDisplay');
         const timerDisplay = $('timerDisplay'); const playerCountEl = $('playerCount');
@@ -821,7 +944,7 @@
         const ocrDoneIcon = $('ocrDoneIcon'); const ocrProgressStatus = $('ocrProgressStatus'); const ocrProgressSub = $('ocrProgressSub');
 
         // ============================================================
-        //  CARD DISPLAY — single source of truth
+        //  CARD DISPLAY
         // ============================================================
         function displayWinningNumberCard(round, number) {
             const r = Number(round); const n = Number(number);
@@ -845,7 +968,6 @@
             if (roundEl) roundEl.textContent = '#--';
         }
 
-        // Card state applier — called from syncGameState AND lastResult listener
         function applyCardState() {
             const phase = engineState.gamePhase;
             const round = Number(engineState.roundNumber);
@@ -857,9 +979,8 @@
                 return;
             }
             if (!isFinite(round) || round <= 0) return;
-            if (displayedCardRound === round) return; // already displayed this round
+            if (displayedCardRound === round) return;
 
-            // Prefer lastResult if it matches current round
             if (lastResultData && Number(lastResultData.round) === round) {
                 const num = Number(lastResultData.winningNumber);
                 if (isFinite(num) && num > 0) {
@@ -871,7 +992,6 @@
                 }
             }
 
-            // Wait a moment for lastResult to arrive before falling back
             if (cardFallbackTimer) return;
             cardFallbackTimer = setTimeout(() => {
                 cardFallbackTimer = null;
@@ -906,54 +1026,116 @@
         }
 
         // ============================================================
-        //  ARROW SPIN — driven by Firebase-stored targetAngle
+        //  BOOK ANIMATION
         // ============================================================
-        function startArrowSpin(targetAngle, spinStartedAt) {
-            if (!arrowContainer) return;
-            const elapsed = spinStartedAt > 0 ? (Date.now() - spinStartedAt) : 0;
-            if (elapsed > 800) {
-                // Late — jump straight to final angle, no animation
-                arrowContainer.style.transition = 'none';
-                arrowContainer.style.transform = `rotate(${targetAngle}deg)`;
-                return;
+        function hideBook() {
+            if (bookContainer) {
+                bookContainer.classList.add('hidden');
+                bookContainer.classList.remove('fade-out');
             }
-            // Full animation from rest position
-            arrowContainer.style.transition = 'none';
-            arrowContainer.style.transform = `rotate(${ARROW_REST_ROTATION}deg)`;
-            arrowContainer.getBoundingClientRect();
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    arrowContainer.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-                    arrowContainer.style.transform = `rotate(${targetAngle}deg)`;
-                });
-            });
+            if (bookSlideTimeout) { clearTimeout(bookSlideTimeout); bookSlideTimeout = null; }
         }
 
-        function applyArrowState() {
+        function showBook() {
+            if (!bookContainer) return;
+            bookContainer.classList.remove('hidden');
+            bookContainer.classList.remove('fade-out');
+        }
+
+        function buildBookPages(pickedNumbers) {
+            if (!bookPages) return;
+            bookPages.innerHTML = '';
+            pickedNumbers.forEach(num => {
+                const page = document.createElement('div');
+                page.className = 'book-page';
+                page.innerHTML = `<div class="book-num">${num}</div><div class="book-page-label">Picked</div>`;
+                bookPages.appendChild(page);
+            });
+            // Reset position without transition
+            bookPages.classList.add('no-transition');
+            bookPages.style.transform = 'translateX(0%)';
+            void bookPages.offsetWidth;
+            bookPages.classList.remove('no-transition');
+        }
+
+        function highlightWinnerPage(winnerIdx) {
+            if (!bookPages) return;
+            const page = bookPages.children[winnerIdx];
+            if (page) page.classList.add('winning');
+        }
+
+        function startBookSlide(winnerIdx) {
+            if (!bookPages) return;
+            if (winnerIdx <= 0) {
+                // First page is the winner — just highlight after a beat
+                bookSlideTimeout = setTimeout(() => {
+                    highlightWinnerPage(winnerIdx);
+                    bookSlideTimeout = null;
+                }, 900);
+                return;
+            }
+            // Duration scales with number of pages but capped
+            const duration = Math.min(3.2, 1.2 + winnerIdx * 0.22);
+            bookPages.classList.remove('no-transition');
+            bookPages.style.transition = `transform ${duration}s cubic-bezier(0.15, 0.85, 0.25, 1)`;
+            requestAnimationFrame(() => {
+                bookPages.style.transform = `translateX(-${winnerIdx * 100}%)`;
+            });
+            bookSlideTimeout = setTimeout(() => {
+                highlightWinnerPage(winnerIdx);
+                bookSlideTimeout = null;
+            }, duration * 1000 + 120);
+        }
+
+        function jumpBookToPage(winnerIdx) {
+            if (!bookPages) return;
+            bookPages.classList.add('no-transition');
+            bookPages.style.transform = `translateX(-${winnerIdx * 100}%)`;
+            void bookPages.offsetWidth;
+            bookPages.classList.remove('no-transition');
+            // Immediately highlight
+            setTimeout(() => highlightWinnerPage(winnerIdx), 60);
+        }
+
+        function applyBookState() {
             const phase = engineState.gamePhase;
             const round = Number(engineState.roundNumber);
-            const targetAngle = Number(engineState.targetAngle);
-            const spinStartedAt = Number(engineState.spinStartedAt) || 0;
 
             if (phase === 'selection') {
+                hideBook();
                 if (lastSpunRound !== null && lastSpunRound !== round) lastSpunRound = null;
-                if (arrowContainer) { arrowContainer.style.transition = 'none'; arrowContainer.style.transform = `rotate(${ARROW_REST_ROTATION}deg)`; }
-                if (arrowCenter) { arrowCenter.textContent = '🎯'; arrowCenter.classList.remove('reveal'); }
                 return;
             }
 
-            if (!isFinite(targetAngle) || targetAngle === 0) return;
-            if (lastSpunRound === round) return;
-
             if (phase === 'spinning') {
+                if (lastSpunRound === round) return;
                 lastSpunRound = round;
-                startArrowSpin(targetAngle, spinStartedAt);
-            } else if (phase === 'results') {
-                lastSpunRound = round;
-                if (arrowContainer) { arrowContainer.style.transition = 'none'; arrowContainer.style.transform = `rotate(${targetAngle}deg)`; }
-                if (engineState.drawnNumbers.length > 0) {
-                    if (arrowCenter) { arrowCenter.textContent = String(engineState.drawnNumbers[0]); arrowCenter.classList.add('reveal'); }
+
+                const picked = Array.from(engineState.allTakenNumbers).sort((a, b) => a - b);
+                const winner = Number(engineState.winningNumber) || 0;
+                const winnerIdx = picked.indexOf(winner);
+                if (winnerIdx === -1 || picked.length === 0) {
+                    // No info yet, stay hidden — will retry on next sync
+                    lastSpunRound = null;
+                    return;
                 }
+                buildBookPages(picked);
+                showBook();
+                startBookSlide(winnerIdx);
+                return;
+            }
+
+            if (phase === 'results') {
+                if (lastSpunRound === round) return;
+                // Late joiner — jump to final page without animation
+                lastSpunRound = round;
+                const picked = Array.from(engineState.allTakenNumbers).sort((a, b) => a - b);
+                const winner = Number(engineState.drawnNumbers[0]) || Number(engineState.winningNumber) || 0;
+                const winnerIdx = picked.indexOf(winner);
+                if (winnerIdx === -1 || picked.length === 0) return;
+                buildBookPages(picked);
+                showBook();
+                jumpBookToPage(winnerIdx);
             }
         }
 
@@ -1040,7 +1222,7 @@
         }
 
         // ============================================================
-        //  DEPOSIT / TRANSFER / OCR (kept as-is, condensed)
+        //  DEPOSIT / TRANSFER / OCR
         // ============================================================
         function openDepositModal() {
             if (depositPlayBalance) depositPlayBalance.textContent = walletData.play;
@@ -1329,6 +1511,7 @@
         function performLogout() {
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
+            hideBook();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -1346,10 +1529,10 @@
                 timer: 30, activePlayersCount: 0, cumulativeRotation: 0, playerNames: [],
                 gameStarted: true, spinInProgress: false, waitingModalShown: false,
                 potAmount: 0, totalBetsPlaced: 0, winnersModalShown: false,
-                wheelSeed: 0, targetAngle: 0, spinStartedAt: 0
+                wheelSeed: 0, targetAngle: 0, spinStartedAt: 0, winningNumber: 0
             };
             lastKnownPlayersCache = {};
-            displayedCardRound = null; lastSpunRound = null; lastResultData = null;
+            displayedCardRound = null; lastSpunRound = null; executedSpinRound = null; lastResultData = null;
             closeMoreDropdown(); hideWaitingModal();
             if (welcomeToast) welcomeToast.classList.remove('active');
             stopFireworks();
@@ -1372,6 +1555,7 @@
         function switchRoom() {
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
+            hideBook();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -1384,18 +1568,16 @@
             engineState.drawnNumbers = []; engineState.winners = []; engineState.spinCount = 0;
             engineState.isSpinning = false; engineState.gamePhase = 'selection'; engineState.spinInProgress = false;
             engineState.waitingModalShown = false; engineState.potAmount = 0; engineState.totalBetsPlaced = 0;
-            engineState.winnersModalShown = false; engineState.wheelSeed = 0; engineState.targetAngle = 0; engineState.spinStartedAt = 0;
+            engineState.winnersModalShown = false; engineState.wheelSeed = 0; engineState.targetAngle = 0; engineState.spinStartedAt = 0; engineState.winningNumber = 0;
             lastKnownPlayersCache = {};
-            displayedCardRound = null; lastSpunRound = null; lastResultData = null;
+            displayedCardRound = null; lastSpunRound = null; executedSpinRound = null; lastResultData = null;
             DB.setSavedBet(null);
             if (winnersModal) winnersModal.classList.remove('active');
             resetWinningNumberCard(); clearLocalRoundData();
             showWelcomeScreen();
             updateStatus('🔄 Choose your room.');
             closeMoreDropdown(); hideWaitingModal();
-            if (arrowContainer) { arrowContainer.style.transition = 'none'; arrowContainer.style.transform = `rotate(${ARROW_REST_ROTATION}deg)`; }
-            if (arrowCenter) { arrowCenter.textContent = '🎯'; arrowCenter.classList.remove('reveal'); }
-            if (wheelContainer) wheelContainer.classList.add('hidden');
+            if (bookPages) { bookPages.innerHTML = ''; }
             if (timerDisplay) timerDisplay.textContent = '30';
             if (prizeDisplay) prizeDisplay.textContent = '0';
             if (playerCountEl) playerCountEl.textContent = '0';
@@ -1409,6 +1591,7 @@
             if (walletData.play < amount) { alert('⚠️ Insufficient play balance. Please deposit.'); return; }
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
+            hideBook();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -1421,11 +1604,12 @@
             engineState.drawnNumbers = []; engineState.winners = []; engineState.spinCount = 0;
             engineState.isSpinning = false; engineState.gamePhase = 'selection'; engineState.spinInProgress = false;
             engineState.waitingModalShown = false; engineState.potAmount = 0; engineState.totalBetsPlaced = 0;
-            engineState.winnersModalShown = false; engineState.wheelSeed = 0; engineState.targetAngle = 0; engineState.spinStartedAt = 0;
+            engineState.winnersModalShown = false; engineState.wheelSeed = 0; engineState.targetAngle = 0; engineState.spinStartedAt = 0; engineState.winningNumber = 0;
             lastKnownPlayersCache = {};
-            displayedCardRound = null; lastSpunRound = null; lastResultData = null;
+            displayedCardRound = null; lastSpunRound = null; executedSpinRound = null; lastResultData = null;
             if (winnersModal) winnersModal.classList.remove('active');
             resetWinningNumberCard(); clearLocalRoundData();
+            if (bookPages) { bookPages.innerHTML = ''; }
             currentBet = amount;
             currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
@@ -1501,15 +1685,15 @@
                 const data = snapshot.val() || {}; const newSet = new Set();
                 Object.keys(data).forEach(key => { if (data[key] === true) newSet.add(Number(key)); });
                 engineState.allTakenNumbers = newSet;
-                renderNumberPicker(); updatePickStatus(); updateWheel(); updateTotalBetDisplay();
+                renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
             });
-            const onChildAdded = (snap) => { if (snap.val() === true) { engineState.allTakenNumbers.add(Number(snap.key)); renderNumberPicker(); updatePickStatus(); updateWheel(); updateTotalBetDisplay(); } };
+            const onChildAdded = (snap) => { if (snap.val() === true) { engineState.allTakenNumbers.add(Number(snap.key)); renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay(); } };
             const onChildChanged = (snap) => {
                 const num = Number(snap.key);
                 if (snap.val() === true) engineState.allTakenNumbers.add(num); else engineState.allTakenNumbers.delete(num);
-                renderNumberPicker(); updatePickStatus(); updateWheel(); updateTotalBetDisplay();
+                renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
             };
-            const onChildRemoved = (snap) => { engineState.allTakenNumbers.delete(Number(snap.key)); renderNumberPicker(); updatePickStatus(); updateWheel(); updateTotalBetDisplay(); };
+            const onChildRemoved = (snap) => { engineState.allTakenNumbers.delete(Number(snap.key)); renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay(); };
             ref.on('child_added', onChildAdded);
             ref.on('child_changed', onChildChanged);
             ref.on('child_removed', onChildRemoved);
@@ -1542,16 +1726,12 @@
             requestAnimationFrame(() => {
                 if (!isResultsCountdownRunning && timerDisplay) timerDisplay.textContent = engineState.timer;
                 if (playerCountEl) playerCountEl.textContent = engineState.activePlayersCount;
-                const labels = { 'selection': '⏳ Selecting', 'spinning': '🎡 Spinning', 'results': '🏆 Results' };
+                const labels = { 'selection': '⏳ Selecting', 'spinning': '📖 Flipping', 'results': '🏆 Results' };
                 if (gamePhaseLabel) gamePhaseLabel.textContent = labels[engineState.gamePhase] || '⏳';
                 if (engineState.gamePhase === 'spinning' || engineState.gamePhase === 'results') {
-                    if (wheelContainer) wheelContainer.classList.remove('hidden');
-                } else {
-                    if (wheelContainer) wheelContainer.classList.add('hidden');
+                    // Book visible during spin/results (managed by applyBookState)
                 }
-                if (engineState.gamePhase === 'spinning') { if (spinningIndicator) spinningIndicator.classList.add('active'); }
-                else { if (spinningIndicator) spinningIndicator.classList.remove('active'); }
-                renderNumberPicker(); updatePickStatus(); updateWheel(); updateTotalBetDisplay();
+                renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
                 updatePending = false;
             });
         }
@@ -1686,35 +1866,6 @@
         }
 
         // ============================================================
-        //  WHEEL — seed-rotated layout (Firebase-driven)
-        // ============================================================
-        function getSlotIndexForNumber(num, seed) {
-            const offset = (((Number(seed) || 1) % TOTAL_WHEEL_NUMBERS) + TOTAL_WHEEL_NUMBERS) % TOTAL_WHEEL_NUMBERS;
-            return ((num - 1 + offset) % TOTAL_WHEEL_NUMBERS + TOTAL_WHEEL_NUMBERS) % TOTAL_WHEEL_NUMBERS;
-        }
-        function updateWheel() {
-            if (!wheelNumbers) return;
-            const taken = Array.from(engineState.allTakenNumbers);
-            if (taken.length === 0) {
-                wheelNumbers.innerHTML = '<div style="color:#7a6a9a;font-size:0.55rem;text-align:center;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:4;font-weight:500;">no picks</div>';
-                return;
-            }
-            const seed = engineState.wheelSeed || 1;
-            const radius = 38;
-            let html = '';
-            taken.forEach(num => {
-                const slot = getSlotIndexForNumber(num, seed);
-                const angle = slot * DEGREES_PER_SLOT;
-                const rad = (angle * Math.PI) / 180;
-                const x = 50 + radius * Math.sin(rad);
-                const y = 50 - radius * Math.cos(rad);
-                const isHighlighted = engineState.drawnNumbers.includes(num);
-                html += `<div class="wheel-number ${isHighlighted ? 'highlighted' : ''}" style="left:${x}%;top:${y}%;transform:translate(-50%,-50%);">${num}</div>`;
-            });
-            wheelNumbers.innerHTML = html;
-        }
-
-        // ============================================================
         //  WAITING MODAL & MISC
         // ============================================================
         function showWaitingModal() { if (waitingModal) waitingModal.classList.add('active'); engineState.waitingModalShown = true; }
@@ -1729,12 +1880,12 @@
         function updateAllUI() {
             updateWalletUI(); updatePlayerList(); updateTimer(engineState.timer);
             updatePhase(engineState.gamePhase); updatePickStatus(); renderNumberPicker();
-            updateWheel(); updatePrizeDisplay(); updateTotalBetDisplay();
+            updatePrizeDisplay(); updateTotalBetDisplay();
         }
         function updatePlayerList() { if (playerCountEl) playerCountEl.textContent = engineState.activePlayersCount; }
         function updateTimer(value) { if (timerDisplay) timerDisplay.textContent = value; }
         function updatePhase(phase) {
-            const labels = { 'selection': '⏳ Selecting', 'spinning': '🎡 Spinning', 'results': '🏆 Results' };
+            const labels = { 'selection': '⏳ Selecting', 'spinning': '📖 Flipping', 'results': '🏆 Results' };
             if (gamePhaseLabel) gamePhaseLabel.textContent = labels[phase] || '⏳';
         }
 
@@ -1825,6 +1976,7 @@
                         if (currentUser) { if (gameRef) gameRef.child('players/' + currentUser).remove(); }
                         if (gameRef) { gameRef.off(); gameRef = null; }
                         detachNumbersTakenListener(); detachLastResultListener();
+                        hideBook();
                         stopTimer(); stopResultsCountdown();
                         if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
                         isGameInitialized = false; audioPlayedThisRound = false; syncInProgress = false;
@@ -1843,9 +1995,9 @@
         }
 
         // ============================================================
-        //  PRODUCTION HARDENING v8.1
+        //  PRODUCTION HARDENING v9.0
         // ============================================================
-        const WINZO_PRODUCTION_VERSION = '8.1.0';
+        const WINZO_PRODUCTION_VERSION = '9.0.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -1989,6 +2141,7 @@
                 engineState.wheelSeed = Number(data.wheelSeed) || 0;
                 engineState.targetAngle = Number(data.targetAngle) || 0;
                 engineState.spinStartedAt = Number(data.spinStartedAt) || 0;
+                engineState.winningNumber = Number(data.winningNumber) || 0;
                 engineState.allTakenNumbers = new Set(
                     Object.keys(data.numbersTaken || {})
                         .filter(k => data.numbersTaken[k] === true)
@@ -1997,17 +2150,17 @@
                 );
 
                 if (roundChanged) {
-                    // New round: reset card + spin tracking
                     displayedCardRound = null;
                     lastSpunRound = null;
+                    executedSpinRound = null;
                     lastResultData = null;
                     if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
+                    if (bookSlideTimeout) { clearTimeout(bookSlideTimeout); bookSlideTimeout = null; }
                 }
 
                 if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
                 updateTotalBetDisplay();
 
-                // Orphan refund
                 try {
                     const currentNamesSet = new Set(playerNames);
                     Object.keys(lastKnownPlayersCache).forEach(name => {
@@ -2035,15 +2188,19 @@
 
                 updateUIFromState();
 
-                // Arrow — driven by phase and Firebase-stored targetAngle
-                applyArrowState();
+                // Book animation for this round
+                applyBookState();
 
-                // Trigger a one-time executeSpin per round when in spinning phase
-                if (phase === 'spinning' && !engineState.isSpinning && !engineState.spinInProgress && lastSpunRound !== round) {
-                    setTimeout(() => { if (engineState.gamePhase === 'spinning') executeSpin(); }, 30);
+                // Retry-safe spin trigger
+                if (phase === 'spinning' && !engineState.isSpinning && !engineState.spinInProgress) {
+                    const spinElapsed = engineState.spinStartedAt > 0 ? (Date.now() - engineState.spinStartedAt) : 0;
+                    const needsRetry = (executedSpinRound !== round) || (spinElapsed > 8000);
+                    if (needsRetry) {
+                        executedSpinRound = round;
+                        setTimeout(() => { if (engineState.gamePhase === 'spinning') executeSpin(); }, 30);
+                    }
                 }
 
-                // Results: audio + countdown once
                 if (phase === 'results') {
                     if (!engineState.winnersModalShown) {
                         engineState.winnersModalShown = true;
@@ -2055,7 +2212,6 @@
                     engineState.winnersModalShown = false;
                 }
 
-                // Card — driven purely by gameState + lastResult
                 applyCardState();
 
                 updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
@@ -2064,7 +2220,7 @@
         }
 
         // ============================================================
-        //  requestSpin — Firebase picks winningNumber AND targetAngle
+        //  requestSpin
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
@@ -2110,7 +2266,6 @@
                             });
                         });
                 }
-                // Multi-player spin — Firebase picks winner, targetAngle, spinStartedAt
                 return gameRef.transaction(room => {
                     if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
                     if (room.spinLock && Number(room.spinLock.round) === round) return room;
@@ -2128,15 +2283,6 @@
                     const pot = eligibleInner.length * bet;
                     const pool = Math.floor(pot * 0.85);
 
-                    // Compute the deterministic target angle HERE and store it.
-                    // Every device will read this same value and animate to it.
-                    const seed = Number(room.wheelSeed) || 1;
-                    const offset = (((seed % 200) + 200) % 200);
-                    const slot = ((winningNumber - 1 + offset) % 200 + 200) % 200;
-                    const slotAngle = slot * (360 / 200);
-                    const fullTurns = 5 + ((round * 7) % 3);
-                    const targetAngle = slotAngle + fullTurns * 360;
-
                     room.spinLock = { round: round, timestamp: firebase.database.ServerValue.TIMESTAMP };
                     room.winningNumber = winningNumber;
                     room.winners = winners;
@@ -2146,7 +2292,6 @@
                     room.timer = 5;
                     room.spinCount = Number(room.spinCount || 0) + 1;
                     room.spinFinishedAt = null;
-                    room.targetAngle = targetAngle;
                     room.spinStartedAt = Date.now();
                     return room;
                 }).then(result => result && result.committed);
@@ -2235,6 +2380,9 @@
                         engineState.waitingModalShown = false;
                         engineState.winnersModalShown = false;
                         engineState.roundNumber = round + 1;
+                        engineState.winningNumber = 0;
+                        executedSpinRound = null;
+                        lastSpunRound = null;
 
                         Object.keys(engineState.players || {}).forEach(name => {
                             if (engineState.players[name]) {
@@ -2249,17 +2397,16 @@
                         if (winnersModal) winnersModal.classList.remove('active');
                         resetWinningNumberCard();
                         clearLocalRoundData();
+                        hideBook();
+                        if (bookPages) bookPages.innerHTML = '';
 
-                        if (arrowContainer) { arrowContainer.style.transition = 'none'; arrowContainer.style.transform = `rotate(${ARROW_REST_ROTATION}deg)`; }
-                        if (arrowCenter) { arrowCenter.textContent = '🎯'; arrowCenter.classList.remove('reveal'); }
-                        if (wheelContainer) wheelContainer.classList.add('hidden');
                         if (timerDisplay) timerDisplay.textContent = '30';
                         if (prizeDisplay) prizeDisplay.textContent = '0';
                         if (playerCountEl) playerCountEl.textContent = String(engineState.activePlayersCount || 0);
 
                         stopFireworks();
                         updateTotalBetDisplay(); updatePrizeDisplay(); updatePickStatus();
-                        renderNumberPicker(); updateWheel(); updatePlayerList();
+                        renderNumberPicker(); updatePlayerList();
 
                         if (!isTimerRunning) startTimer();
                         if (engineState.activePlayersCount <= 1) showWaitingModal();
@@ -2272,13 +2419,12 @@
         function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } isTimerRunning = false; }
 
         // ============================================================
-        //  executeSpin — arrow is driven by applyArrowState, not here
+        //  executeSpin — waits for book animation, then commits
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
             engineState.isSpinning = true;
             engineState.spinInProgress = true;
-            if (spinningIndicator) spinningIndicator.classList.add('active');
 
             gameRef.once('value').then(snapshot => {
                 const room = snapshot.val() || {};
@@ -2292,8 +2438,9 @@
 
                 engineState.allTakenNumbers = new Set(numbers);
                 engineState.winners = winners;
-                updateWheel();
 
+                // Wait for the book slide to complete (approximate max) before committing
+                // to results. Book slide duration is capped at ~3.2s + 0.9s highlight = 4.1s.
                 return new Promise(resolve => setTimeout(resolve, 4300)).then(() => {
                     return gameRef.transaction(current => {
                         if (!current || Number(current.round) !== round || current.gameState !== 'spinning') return current;
@@ -2305,7 +2452,6 @@
                     });
                 }).then(result => {
                     if (!result || !result.committed) return;
-                    // Publish the authoritative result — everyone reads from this
                     return gameRef.child('lastResult').set({
                         round: round,
                         winningNumber: winningNumber,
@@ -2327,7 +2473,6 @@
                                 });
                         }
                         if (tg && tg.HapticFeedback && finalWinners.includes(currentUser)) tg.HapticFeedback.notificationOccurred('success');
-                        // DO NOT display the card here. The lastResult listener does that.
                     });
                 });
             }).catch(err => {
@@ -2336,7 +2481,6 @@
             }).finally(() => {
                 engineState.isSpinning = false;
                 engineState.spinInProgress = false;
-                if (spinningIndicator) spinningIndicator.classList.remove('active');
             });
         }
 
