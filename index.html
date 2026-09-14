@@ -1497,6 +1497,8 @@
         }
 
         function performLogout() {
+            localSelectionRound = null;
+            localSelectionPicks = [];
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
             clearCardFetchRetry();
@@ -1540,6 +1542,8 @@
         //  ROOM SWITCH / BET SELECT
         // ============================================================
         function resetEngineStateForNewRound() {
+            localSelectionRound = null;
+            localSelectionPicks = [];
             if (currentUser && engineState.players[currentUser]) {
                 engineState.players[currentUser].pick = null; engineState.players[currentUser].picks = []; engineState.players[currentUser].ready = false;
                 engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
@@ -1711,7 +1715,7 @@
         function updatePickStatus() {
             const picks = getMyPicks();
             if (pickStatus) {
-                if (picks.length) pickStatus.innerHTML = `🎯 Your picks: <span class="highlight">${picks.join(', ')}</span> (${picks.length}/3)`;
+                if (picks.length) pickStatus.innerHTML = `🎯 Your picks: <span class="highlight">${picks.join(', ')}</span> (${picks.length}/${MAX_PICKS_PER_ROUND})`;
                 else pickStatus.innerHTML = `🎯 Pick up to <span class="highlight">3</span> numbers`;
             }
             if (selectedCountSpan) {
@@ -1720,8 +1724,12 @@
             }
         }
         function getMyPicks() {
-            if (!currentUser || !engineState.players[currentUser]) return [];
-            return getPlayerPicks(engineState.players[currentUser]);
+            if (!currentUser) return [];
+            if (localSelectionRound === engineState.roundNumber && engineState.gamePhase === 'selection') {
+                return [...localSelectionPicks];
+            }
+            if (!engineState.players[currentUser]) return [];
+            return getPlayerPicks(engineState.players[currentUser]).slice(0, MAX_PICKS_PER_ROUND);
         }
         function getMyPick() {
             const picks = getMyPicks();
@@ -1760,6 +1768,13 @@
             });
         }
 
+        // Hard local selection state for the current round. This prevents a
+        // Firebase snapshot arriving between clicks from temporarily resetting
+        // the player's visible pick count and allowing more than 3 selections.
+        const MAX_PICKS_PER_ROUND = 3;
+        let localSelectionRound = null;
+        let localSelectionPicks = [];
+
         // ============================================================
         //  NUMBER PICK CLICK HANDLER
         // ============================================================
@@ -1775,6 +1790,14 @@
 
                 const myPicks = getMyPicks();
 
+                // HARD LIMIT: never allow more than 3 selections in one round,
+                // even if Firebase state has not yet finished syncing.
+                if (!myPicks.includes(num) && myPicks.length >= MAX_PICKS_PER_ROUND) {
+                    updateStatus(`❌ You can pick up to ${MAX_PICKS_PER_ROUND} numbers only.`);
+                    renderNumberPicker();
+                    return;
+                }
+
                 // Un-pick: refund FIRST, then clear only this selected number.
                 if (myPicks.includes(num)) {
                     refundPickBetFast(currentUser, currentBet).then(ok => {
@@ -1783,6 +1806,8 @@
                         releaseNumber(num);
 
                         const remaining = myPicks.filter(n => n !== num);
+                        localSelectionRound = engineState.roundNumber;
+                        localSelectionPicks = [...remaining];
                         if (gameRef) {
                             gameRef.child('players/' + currentUser + '/picks').set(remaining);
                             gameRef.child('players/' + currentUser + '/pick').set(remaining.length ? remaining[0] : null);
@@ -1809,7 +1834,7 @@
                 }
 
                 if (engineState.allTakenNumbers.has(num)) { updateStatus(`❌ Number ${num} is already taken!`); return; }
-                if (myPicks.length >= 3) { updateStatus('❌ You can pick up to 3 numbers only.'); return; }
+                if (myPicks.length >= MAX_PICKS_PER_ROUND) { updateStatus('❌ You can pick up to 3 numbers only.'); return; }
                 if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`); return; }
 
                 const pickRound = engineState.roundNumber;
@@ -1817,8 +1842,17 @@
                     name: currentUser, pick: null, picks: [], bet: currentBet, ready: false,
                     betDeducted: false, betSources: {}, round: pickRound
                 };
-                const currentPicks = getPlayerPicks(player);
+                const currentPicks = getPlayerPicks(player).slice(0, MAX_PICKS_PER_ROUND);
+                if (currentPicks.length >= MAX_PICKS_PER_ROUND) {
+                    updateStatus(`❌ You can pick up to ${MAX_PICKS_PER_ROUND} numbers only.`);
+                    return;
+                }
                 const nextPicks = [...currentPicks, num];
+
+                // Lock the new count locally immediately. Firebase may update
+                // asynchronously, but the 3-pick limit must remain absolute.
+                localSelectionRound = pickRound;
+                localSelectionPicks = [...nextPicks];
 
                 player.picks = nextPicks;
                 player.pick = nextPicks[0];
@@ -1833,6 +1867,8 @@
                     if (!success) {
                         engineState.allTakenNumbers.delete(num);
                         const rollback = getMyPicks().filter(n => n !== num);
+                        localSelectionRound = pickRound;
+                        localSelectionPicks = [...rollback];
                         if (engineState.players[currentUser]) {
                             engineState.players[currentUser].picks = rollback;
                             engineState.players[currentUser].pick = rollback.length ? rollback[0] : null;
@@ -1852,6 +1888,8 @@
                         if (!ok) {
                             releaseNumber(num);
                             const rollback = getMyPicks().filter(n => n !== num);
+                        localSelectionRound = pickRound;
+                        localSelectionPicks = [...rollback];
                             if (engineState.players[currentUser]) {
                                 engineState.players[currentUser].picks = rollback;
                                 engineState.players[currentUser].pick = rollback.length ? rollback[0] : null;
@@ -1874,6 +1912,8 @@
                             refundBetIdempotent(currentUser, pickRound, currentBet, currentRoom);
                             releaseNumber(num);
                             const rollback = getMyPicks().filter(n => n !== num);
+                        localSelectionRound = pickRound;
+                        localSelectionPicks = [...rollback];
                             if (engineState.players[currentUser]) {
                                 engineState.players[currentUser].picks = rollback;
                                 engineState.players[currentUser].pick = rollback.length ? rollback[0] : null;
@@ -2074,7 +2114,7 @@
                 for (let i = 1; i <= 200; i++) {
                     const selected = myPicks.includes(i);
                     const taken = engineState.allTakenNumbers.has(i) && !selected;
-                    const disabled = locked || taken || (myPicks.length >= 3 && !selected);
+                    const disabled = locked || taken || (myPicks.length >= MAX_PICKS_PER_ROUND && !selected);
                     let cls = 'num-btn';
                     if (selected) cls += ' selected';
                     if (taken) cls += ' taken';
@@ -2170,6 +2210,11 @@
             const phase = data.gameState || 'selection';
             const round = Number(data.round) || 1;
             const roundChanged = (round !== engineState.roundNumber);
+
+            if (roundChanged) {
+                localSelectionRound = null;
+                localSelectionPicks = [];
+            }
 
             engineState.players = players;
             engineState.playerNames = playerNames;
