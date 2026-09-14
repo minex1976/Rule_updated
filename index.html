@@ -274,9 +274,9 @@
                 <div class="info-item">Online: <span class="value players" id="playerCount">0</span></div>
                 <div class="info-item">🏆 Prize: <span class="value bet-total" id="totalBetDisplay">0</span> Birr</div>
             </div>
-            <div class="pick-status" id="pickStatus"><span>Pick <span class="highlight">one</span> number</span></div>
+            <div class="pick-status" id="pickStatus"><span>Pick up to <span class="highlight">3</span> numbers</span></div>
             <div class="status-area" id="statusMessage">
-                <span>⏳ Pick one number · Bet: <span class="highlight" id="betDisplay">15</span> Birr</span>
+                <span>⏳ Pick up to 3 numbers · Bet: <span class="highlight" id="betDisplay">15</span> Birr</span>
             </div>
             <div class="profile-area">
                 <div class="profile-row">
@@ -1089,20 +1089,30 @@
         // ============================================================
         //  UTILITIES
         // ============================================================
+        function getTotalPicks() {
+            const players = engineState.players || {};
+            let count = 0;
+            Object.keys(players).forEach(name => {
+                const p = players[name];
+                if (p && Number(p.round) === engineState.roundNumber) count += getPlayerPicks(p).length;
+            });
+            return count;
+        }
         function getPlayersWithPick() {
             const players = engineState.players || {};
             let count = 0;
             Object.keys(players).forEach(name => {
                 const p = players[name];
-                if (p && p.pick != null && Number(p.round) === engineState.roundNumber) count++;
+                if (p && Number(p.round) === engineState.roundNumber && getPlayerPicks(p).length) count++;
             });
             return count;
         }
         function updateTotalBetDisplay() {
             if (!totalBetDisplayEl) return;
             const bet = Number(currentBet || 0);
-            const picks = getPlayersWithPick();
-            const pool = picks >= 2 ? Math.floor(bet * picks * PAYOUT_RATE) : 0;
+            const players = getPlayersWithPick();
+            const totalPicks = getTotalPicks();
+            const pool = players >= 2 ? Math.floor(bet * totalPicks * PAYOUT_RATE) : 0;
             totalBetDisplayEl.textContent = String(pool);
         }
         function updatePrizeDisplay() { updateTotalBetDisplay(); }
@@ -1473,15 +1483,17 @@
         function refundMyActiveBet() {
             if (!currentUser || !engineState.players[currentUser]) return;
             const me = engineState.players[currentUser];
-            if (me.pick === null || me.pick === undefined || me.betDeducted !== true) return;
-            const num = Number(me.pick);
-            const amount = Number(me.bet || currentBet);
+            const picks = getPlayerPicks(me);
+            if (!picks.length || me.betDeducted !== true) return;
+            const amount = Number(me.bet || currentBet) * picks.length;
             const r = Number(me.round);
-            try { releaseNumber(num); } catch (e) {}
+            picks.forEach(num => {
+                try { releaseNumber(num); } catch (e) {}
+                engineState.allTakenNumbers.delete(num);
+            });
             if (r > 0 && isFinite(amount) && amount > 0) {
                 refundBetIdempotent(currentUser, r, amount, currentRoom).catch(() => {});
             }
-            engineState.allTakenNumbers.delete(num);
         }
 
         function performLogout() {
@@ -1529,7 +1541,7 @@
         // ============================================================
         function resetEngineStateForNewRound() {
             if (currentUser && engineState.players[currentUser]) {
-                engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false;
+                engineState.players[currentUser].pick = null; engineState.players[currentUser].picks = []; engineState.players[currentUser].ready = false;
                 engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
             }
             engineState.allTakenNumbers = new Set();
@@ -1620,7 +1632,21 @@
         // ============================================================
         //  HELPERS
         // ============================================================
-        function getPlayerPick(player) { if (!player) return null; if (player.pick !== null && player.pick !== undefined) return Number(player.pick); return null; }
+        function getPlayerPicks(player) {
+            if (!player) return [];
+            if (Array.isArray(player.picks)) {
+                return player.picks.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 200);
+            }
+            if (player.pick !== null && player.pick !== undefined) {
+                const n = Number(player.pick);
+                return Number.isInteger(n) && n >= 1 && n <= 200 ? [n] : [];
+            }
+            return [];
+        }
+        function getPlayerPick(player) {
+            const picks = getPlayerPicks(player);
+            return picks.length ? picks[0] : null;
+        }
         function getBetSources(player) { const s = player && player.betSources ? player.betSources : {}; return s && typeof s === 'object' ? s : {}; }
 
         // ============================================================
@@ -1683,17 +1709,24 @@
         }
 
         function updatePickStatus() {
-            const pick = getMyPick();
+            const picks = getMyPicks();
             if (pickStatus) {
-                if (pick !== null) pickStatus.innerHTML = `🎯 Your pick: <span class="highlight">${pick}</span>`;
-                else pickStatus.innerHTML = `🎯 Pick <span class="highlight">one</span> number`;
+                if (picks.length) pickStatus.innerHTML = `🎯 Your picks: <span class="highlight">${picks.join(', ')}</span> (${picks.length}/3)`;
+                else pickStatus.innerHTML = `🎯 Pick up to <span class="highlight">3</span> numbers`;
             }
             if (selectedCountSpan) {
-                if (pick !== null) { selectedCountSpan.textContent = pick; selectedCountSpan.style.color = '#ffcc44'; }
+                if (picks.length) { selectedCountSpan.textContent = picks.join(', '); selectedCountSpan.style.color = '#ffcc44'; }
                 else { selectedCountSpan.textContent = 'None'; selectedCountSpan.style.color = '#b8a0d0'; }
             }
         }
-        function getMyPick() { if (!currentUser || !engineState.players[currentUser]) return null; return getPlayerPick(engineState.players[currentUser]); }
+        function getMyPicks() {
+            if (!currentUser || !engineState.players[currentUser]) return [];
+            return getPlayerPicks(engineState.players[currentUser]);
+        }
+        function getMyPick() {
+            const picks = getMyPicks();
+            return picks.length ? picks[0] : null;
+        }
 
         function deductPickBetFast(username, betAmount) {
             if (!username || !database) return Promise.resolve(false);
@@ -1739,23 +1772,34 @@
                 if (isNaN(num)) return;
                 if (engineState.activePlayersCount <= 1) { showWaitingModal(); return; }
                 if (engineState.gamePhase !== 'selection') { updateStatus('⛔ Cannot pick numbers now.'); return; }
-                const myPick = getMyPick();
 
-                // Un-pick: refund FIRST, then clear the pick
-                if (myPick === num) {
+                const myPicks = getMyPicks();
+
+                // Un-pick: refund FIRST, then clear only this selected number.
+                if (myPicks.includes(num)) {
                     refundPickBetFast(currentUser, currentBet).then(ok => {
                         if (!ok) { updateStatus('⚠️ Could not release pick. Please try again.'); return; }
+
                         releaseNumber(num);
+
+                        const remaining = myPicks.filter(n => n !== num);
                         if (gameRef) {
-                            gameRef.child('players/' + currentUser + '/pick').set(null);
-                            gameRef.child('players/' + currentUser + '/ready').set(false);
-                            gameRef.child('players/' + currentUser + '/betDeducted').set(false);
-                            gameRef.child('players/' + currentUser + '/betSources').set({});
-                            gameRef.child('players/' + currentUser + '/round').set(null);
+                            gameRef.child('players/' + currentUser + '/picks').set(remaining);
+                            gameRef.child('players/' + currentUser + '/pick').set(remaining.length ? remaining[0] : null);
+                            gameRef.child('players/' + currentUser + '/ready').set(remaining.length > 0);
+                            gameRef.child('players/' + currentUser + '/betDeducted').set(remaining.length > 0);
+                            if (remaining.length === 0) {
+                                gameRef.child('players/' + currentUser + '/betSources').set({});
+                                gameRef.child('players/' + currentUser + '/round').set(null);
+                            }
                         }
+
                         if (engineState.players[currentUser]) {
-                            engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false;
-                            engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
+                            engineState.players[currentUser].picks = remaining;
+                            engineState.players[currentUser].pick = remaining.length ? remaining[0] : null;
+                            engineState.players[currentUser].ready = remaining.length > 0;
+                            engineState.players[currentUser].betDeducted = remaining.length > 0;
+                            if (!remaining.length) engineState.players[currentUser].betSources = {};
                         }
                         engineState.allTakenNumbers.delete(num);
                         renderNumberPicker(); updatePickStatus(); updatePrizeDisplay(); updateTotalBetDisplay();
@@ -1765,67 +1809,96 @@
                 }
 
                 if (engineState.allTakenNumbers.has(num)) { updateStatus(`❌ Number ${num} is already taken!`); return; }
-                if (myPick !== null) { updateStatus(`❌ You already picked ${myPick}. Unselect it first.`); return; }
+                if (myPicks.length >= 3) { updateStatus('❌ You can pick up to 3 numbers only.'); return; }
                 if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`); return; }
 
                 const pickRound = engineState.roundNumber;
+                const player = engineState.players[currentUser] || {
+                    name: currentUser, pick: null, picks: [], bet: currentBet, ready: false,
+                    betDeducted: false, betSources: {}, round: pickRound
+                };
+                const currentPicks = getPlayerPicks(player);
+                const nextPicks = [...currentPicks, num];
 
-                if (!engineState.players[currentUser]) {
-                    engineState.players[currentUser] = { name: currentUser, pick: null, bet: currentBet, ready: false, betDeducted: false, betSources: {}, round: pickRound };
-                }
-                engineState.players[currentUser].pick = num;
-                engineState.players[currentUser].ready = true;
+                player.picks = nextPicks;
+                player.pick = nextPicks[0];
+                player.ready = true;
+                player.bet = currentBet;
+                player.round = pickRound;
+                engineState.players[currentUser] = player;
                 engineState.allTakenNumbers.add(num);
                 renderNumberPicker(); updatePickStatus(); updatePrizeDisplay(); updateTotalBetDisplay();
 
                 claimNumber(num, function(success) {
                     if (!success) {
                         engineState.allTakenNumbers.delete(num);
-                        if (engineState.players[currentUser]) { engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false; }
-                        if (gameRef) { gameRef.child('players/' + currentUser + '/pick').set(null); gameRef.child('players/' + currentUser + '/ready').set(false); }
+                        const rollback = getMyPicks().filter(n => n !== num);
+                        if (engineState.players[currentUser]) {
+                            engineState.players[currentUser].picks = rollback;
+                            engineState.players[currentUser].pick = rollback.length ? rollback[0] : null;
+                            engineState.players[currentUser].ready = rollback.length > 0;
+                        }
+                        if (gameRef) {
+                            gameRef.child('players/' + currentUser + '/picks').set(rollback);
+                            gameRef.child('players/' + currentUser + '/pick').set(rollback.length ? rollback[0] : null);
+                            gameRef.child('players/' + currentUser + '/ready').set(rollback.length > 0);
+                        }
                         renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
                         updateStatus(`❌ Number ${num} was just taken!`);
                         return;
                     }
+
                     deductPickBetFast(currentUser, currentBet).then(ok => {
                         if (!ok) {
                             releaseNumber(num);
+                            const rollback = getMyPicks().filter(n => n !== num);
                             if (engineState.players[currentUser]) {
-                                engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false; engineState.players[currentUser].betDeducted = false;
+                                engineState.players[currentUser].picks = rollback;
+                                engineState.players[currentUser].pick = rollback.length ? rollback[0] : null;
+                                engineState.players[currentUser].ready = rollback.length > 0;
+                                engineState.players[currentUser].betDeducted = rollback.length > 0;
                             }
                             if (gameRef) {
-                                gameRef.child('players/' + currentUser + '/pick').set(null);
-                                gameRef.child('players/' + currentUser + '/ready').set(false);
-                                gameRef.child('players/' + currentUser + '/betDeducted').set(false);
+                                gameRef.child('players/' + currentUser + '/picks').set(rollback);
+                                gameRef.child('players/' + currentUser + '/pick').set(rollback.length ? rollback[0] : null);
+                                gameRef.child('players/' + currentUser + '/ready').set(rollback.length > 0);
+                                gameRef.child('players/' + currentUser + '/betDeducted').set(rollback.length > 0);
                             }
                             engineState.allTakenNumbers.delete(num);
                             renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
                             updateStatus('⚠️ Bet deduction failed. Number released.');
                             return;
                         }
+
                         if (engineState.roundNumber !== pickRound || engineState.gamePhase !== 'selection') {
                             refundBetIdempotent(currentUser, pickRound, currentBet, currentRoom);
                             releaseNumber(num);
+                            const rollback = getMyPicks().filter(n => n !== num);
                             if (engineState.players[currentUser]) {
-                                engineState.players[currentUser].pick = null;
-                                engineState.players[currentUser].ready = false;
-                                engineState.players[currentUser].betDeducted = false;
+                                engineState.players[currentUser].picks = rollback;
+                                engineState.players[currentUser].pick = rollback.length ? rollback[0] : null;
+                                engineState.players[currentUser].ready = rollback.length > 0;
+                                engineState.players[currentUser].betDeducted = rollback.length > 0;
                             }
                             engineState.allTakenNumbers.delete(num);
                             renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
                             updateStatus('⏱ Round ended — your bet was refunded.');
                             return;
                         }
+
+                        const sources = getBetSources(engineState.players[currentUser]);
+                        sources[num] = 'play';
+
                         if (gameRef) {
-                            gameRef.child('players/' + currentUser + '/pick').set(num);
+                            gameRef.child('players/' + currentUser + '/picks').set(getMyPicks());
+                            gameRef.child('players/' + currentUser + '/pick').set(getMyPick());
                             gameRef.child('players/' + currentUser + '/ready').set(true);
                             gameRef.child('players/' + currentUser + '/betDeducted').set(true);
                             gameRef.child('players/' + currentUser + '/round').set(pickRound);
-                            const sources = getBetSources(engineState.players[currentUser]);
-                            sources[num] = 'play';
                             gameRef.child('players/' + currentUser + '/betSources').set(sources);
-                            if (engineState.players[currentUser]) engineState.players[currentUser].betSources = sources;
                         }
+                        if (engineState.players[currentUser]) engineState.players[currentUser].betSources = sources;
+
                         updatePickStatus(); updateTotalBetDisplay();
                         updateStatus(`✅ ${currentUser} picked ${num} for ${currentBet} Birr!`);
                     });
@@ -1887,7 +1960,7 @@
             if (switchRoomBtn) switchRoomBtn.onclick = function() {
                 if (currentUser) {
                     const pick = getMyPick();
-                    if (pick !== null) { if (!confirm('You have an active pick. Switching rooms will clear it. Continue?')) return; }
+                    if (getMyPicks().length) { if (!confirm('You have active picks. Switching rooms will clear them. Continue?')) return; }
                     switchRoom();
                 } else showWelcomeScreen();
                 closeMoreDropdown();
@@ -1995,13 +2068,13 @@
                     numPicker.innerHTML = loading;
                     return;
                 }
-                const myPick = getMyPick();
+                const myPicks = getMyPicks();
                 const locked = engineState.gamePhase !== 'selection' || engineState.activePlayersCount <= 1;
                 let html = '';
                 for (let i = 1; i <= 200; i++) {
-                    const selected = myPick === i;
+                    const selected = myPicks.includes(i);
                     const taken = engineState.allTakenNumbers.has(i) && !selected;
-                    const disabled = locked || taken || (myPick !== null && !selected);
+                    const disabled = locked || taken || (myPicks.length >= 3 && !selected);
                     let cls = 'num-btn';
                     if (selected) cls += ' selected';
                     if (taken) cls += ' taken';
@@ -2079,7 +2152,7 @@
             const playerRef = ref.child('players/' + currentUser);
             playerRef.onDisconnect().remove();
             playerRef.set({
-                name: currentUser, pick: null, bet: currentBet, ready: false,
+                name: currentUser, pick: null, picks: [], bet: currentBet, ready: false,
                 betDeducted: false, betSources: {}, round: engineState.roundNumber || 1
             }).catch(() => {});
             isGameInitialized = true;
@@ -2153,13 +2226,16 @@
                     const prev = lastKnownPlayersCache[name];
                     if (!prev) return;
                     if (currentNamesSet.has(name)) return;
-                    if (prev.pick === null || prev.pick === undefined) return;
+                    const prevPicks = getPlayerPicks(prev);
+                    if (!prevPicks.length) return;
                     if (prev.betDeducted !== true) return;
                     const prevRound = Number(prev.round || 0);
                     if (prevRound <= 0) return;
-                    try { if (gameRef) gameRef.child('numbersTaken/' + Number(prev.pick)).set(false).catch(() => {}); } catch (e) {}
+                    try {
+                        if (gameRef) prevPicks.forEach(n => gameRef.child('numbersTaken/' + Number(n)).set(false).catch(() => {}));
+                    } catch (e) {}
                     if (name === currentUser) return;
-                    refundBetIdempotent(name, prevRound, Number(prev.bet || currentBet), currentRoom).catch(() => {});
+                    refundBetIdempotent(name, prevRound, Number(prev.bet || currentBet) * prevPicks.length, currentRoom).catch(() => {});
                 });
             } catch (e) {}
             lastKnownPlayersCache = JSON.parse(JSON.stringify(players));
@@ -2209,7 +2285,7 @@
                 const ps = roomSnap.players || {};
                 const eligible = Object.keys(ps).filter(name => {
                     const p = ps[name];
-                    return p && p.pick !== null && p.pick !== undefined && Number(p.round) === round && p.betDeducted === true;
+                    return p && getPlayerPicks(p).length > 0 && Number(p.round) === round && p.betDeducted === true;
                 });
 
                 if (eligible.length === 0) {
@@ -2221,21 +2297,22 @@
                     }).then(res => res && res.committed);
                 }
 
+                // A round still requires at least two players, even if one player selected 2-3 numbers.
                 if (eligible.length === 1) {
                     const only = eligible[0];
-                    const amount = Number(ps[only].bet || currentBet);
+                    const amount = Number(ps[only].bet || currentBet) * getPlayerPicks(ps[only]).length;
                     return gameRef.transaction(r => {
                         if (!r || Number(r.round) !== round || r.gameState !== 'selection') return r;
                         const rps = r.players || {};
                         const stillEligible = Object.keys(rps).filter(n => {
                             const p = rps[n];
-                            return p && p.pick != null && Number(p.round) === round && p.betDeducted === true;
+                            return p && getPlayerPicks(p).length > 0 && Number(p.round) === round && p.betDeducted === true;
                         });
                         if (stillEligible.length !== 1 || stillEligible[0] !== only) return r;
                         const players = r.players || {};
                         for (const n of Object.keys(players)) {
                             if (players[n]) {
-                                players[n].pick = null; players[n].ready = false;
+                                players[n].pick = null; players[n].picks = []; players[n].ready = false;
                                 players[n].betDeducted = false; players[n].betSources = {}; players[n].round = null;
                             }
                         }
@@ -2269,15 +2346,20 @@
                     const psInner = room.players || {};
                     const eligibleInner = Object.keys(psInner).filter(name => {
                         const p = psInner[name];
-                        return p && p.pick !== null && p.pick !== undefined && Number(p.round) === round && p.betDeducted === true;
+                        return p && getPlayerPicks(p).length > 0 && Number(p.round) === round && p.betDeducted === true;
                     });
                     if (eligibleInner.length <= 1) return room;
-                    const taken = Object.keys(room.numbersTaken || {}).filter(k => room.numbersTaken[k] === true).map(Number).filter(n => n >= 1 && n <= 200);
+
+                    const taken = Object.keys(room.numbersTaken || {})
+                        .filter(k => room.numbersTaken[k] === true)
+                        .map(Number).filter(n => n >= 1 && n <= 200);
                     if (!taken.length) return room;
+
                     const winningNumber = taken[Math.floor(Math.random() * taken.length)];
-                    const winners = eligibleInner.filter(name => Number(psInner[name].pick) === winningNumber);
+                    const winners = eligibleInner.filter(name => getPlayerPicks(psInner[name]).includes(winningNumber));
                     const bet = Number(room.betAmount || currentBet);
-                    const pot = eligibleInner.length * bet;
+                    const totalPicks = eligibleInner.reduce((sum, name) => sum + getPlayerPicks(psInner[name]).length, 0);
+                    const pot = totalPicks * bet;
                     const pool = Math.floor(pot * PAYOUT_RATE);
 
                     room.spinLock = { round, timestamp: firebase.database.ServerValue.TIMESTAMP };
@@ -2359,7 +2441,7 @@
                             const players = room.players || {};
                             Object.keys(players).forEach(name => {
                                 if (players[name]) {
-                                    players[name].pick = null; players[name].ready = false;
+                                    players[name].pick = null; players[name].picks = []; players[name].ready = false;
                                     players[name].betDeducted = false; players[name].betSources = {}; players[name].round = null;
                                 }
                             });
@@ -2390,6 +2472,7 @@
                         Object.keys(engineState.players || {}).forEach(name => {
                             if (engineState.players[name]) {
                                 engineState.players[name].pick = null;
+                                engineState.players[name].picks = [];
                                 engineState.players[name].ready = false;
                                 engineState.players[name].betDeducted = false;
                                 engineState.players[name].betSources = {};
