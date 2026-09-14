@@ -411,11 +411,17 @@
         }
 
         // ============================================================
-        //  AUDIO
+        //  AUDIO  (fix #9 — iOS resume on first interaction)
         // ============================================================
         let audioCtx = null; let audioInitialized = false;
         function initAudio() { if (!audioInitialized) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); audioInitialized = true; } catch (e) {} } return audioCtx; }
-        document.addEventListener('click', function resumeAudio() { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {}); }, { once: false });
+        ['touchstart', 'pointerdown', 'click', 'keydown'].forEach(ev => {
+            document.addEventListener(ev, function resumeOnce() {
+                const ctx = initAudio();
+                if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+                document.removeEventListener(ev, resumeOnce);
+            }, { once: false, passive: true });
+        });
         function playTone(freq, duration, type = 'sine', volume = 0.30, delay = 0) {
             const ctx = initAudio(); if (!ctx) return;
             if (ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -461,16 +467,12 @@
                 opts = opts || {};
                 this.x = (opts.x != null) ? opts.x : Math.random() * canvas.width;
                 this.y = (opts.y != null) ? opts.y : canvas.height + 20;
-                this.targetY = (opts.targetY != null)
-                    ? opts.targetY
-                    : Math.random() * canvas.height * 0.45 + canvas.height * 0.08;
+                this.targetY = (opts.targetY != null) ? opts.targetY : Math.random() * canvas.height * 0.45 + canvas.height * 0.08;
                 this.speed = 5 + Math.random() * 5;
                 this.trail = [];
                 this.exploded = false;
                 this.size = 2.5 + Math.random() * 2.5;
-                this.hue = (Math.random() < 0.45)
-                    ? 35 + Math.random() * 22
-                    : Math.random() * 360;
+                this.hue = (Math.random() < 0.45) ? 35 + Math.random() * 22 : Math.random() * 360;
             }
             update() {
                 if (this.exploded) return;
@@ -487,41 +489,20 @@
                     `hsl(${baseHue}, 95%, 65%)`,
                     `hsl(${(baseHue + 20) % 360}, 95%, 60%)`,
                     `hsl(${(baseHue - 20 + 360) % 360}, 95%, 65%)`,
-                    '#ffffff',
-                    '#fff8d6'
+                    '#ffffff', '#fff8d6'
                 ];
                 for (let i = 0; i < count; i++) {
                     const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.15;
                     const speed = 2 + Math.random() * 7;
                     const color = colors[Math.floor(Math.random() * colors.length)];
-                    particles.push({
-                        x: this.x, y: this.y,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        life: 1,
-                        decay: 0.006 + Math.random() * 0.012,
-                        size: 2.5 + Math.random() * 3.5,
-                        color: color,
-                        gravity: 0.045,
-                        sparkle: isGold && Math.random() < 0.35
-                    });
+                    particles.push({ x: this.x, y: this.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, decay: 0.006 + Math.random() * 0.012, size: 2.5 + Math.random() * 3.5, color, gravity: 0.045, sparkle: isGold && Math.random() < 0.35 });
                 }
                 if (isGold) {
                     const ringCount = 40 + Math.floor(Math.random() * 30);
                     for (let i = 0; i < ringCount; i++) {
                         const angle = (Math.PI * 2 * i) / ringCount;
                         const speed = 6 + Math.random() * 2;
-                        particles.push({
-                            x: this.x, y: this.y,
-                            vx: Math.cos(angle) * speed,
-                            vy: Math.sin(angle) * speed,
-                            life: 1,
-                            decay: 0.008,
-                            size: 3,
-                            color: '#ffd866',
-                            gravity: 0.03,
-                            sparkle: true
-                        });
+                        particles.push({ x: this.x, y: this.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, decay: 0.008, size: 3, color: '#ffd866', gravity: 0.03, sparkle: true });
                     }
                 }
             }
@@ -548,14 +529,11 @@
                 p.x += p.vx; p.y += p.vy; p.vy += p.gravity;
                 p.vx *= 0.985; p.vy *= 0.985; p.life -= p.decay;
                 if (p.life <= 0) { particles.splice(i, 1); continue; }
-                const alpha = p.life;
-                ctx2.globalAlpha = alpha;
+                ctx2.globalAlpha = p.life;
                 ctx2.shadowBlur = p.sparkle ? 18 : 10;
                 ctx2.shadowColor = p.color;
                 ctx2.beginPath();
-                const size = p.sparkle
-                    ? p.size * p.life * (1 + Math.sin(Date.now() * 0.02 + p.x) * 0.3)
-                    : p.size * p.life;
+                const size = p.sparkle ? p.size * p.life * (1 + Math.sin(Date.now() * 0.02 + p.x) * 0.3) : p.size * p.life;
                 ctx2.arc(p.x, p.y, size, 0, Math.PI * 2);
                 ctx2.fillStyle = p.color;
                 ctx2.fill();
@@ -580,11 +558,7 @@
             fireworksRunning = true; fireworks = []; particles = [];
             canvas.classList.add('active');
             for (let i = 0; i < 6; i++) {
-                fireworks.push(new Firework({
-                    x: (i + 0.5) * (canvas.width / 6) + (Math.random() - 0.5) * 60,
-                    y: canvas.height + 20,
-                    targetY: canvas.height * (0.15 + Math.random() * 0.35)
-                }));
+                fireworks.push(new Firework({ x: (i + 0.5) * (canvas.width / 6) + (Math.random() - 0.5) * 60, y: canvas.height + 20, targetY: canvas.height * (0.15 + Math.random() * 0.35) }));
             }
             if (fireworksRAF) cancelAnimationFrame(fireworksRAF);
             animateFireworks();
@@ -680,7 +654,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '9.2';
+        const APP_VERSION = '9.3';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(u) { if (u) localStorage.setItem('bingo_current_user', u); else localStorage.removeItem('bingo_current_user'); },
@@ -709,15 +683,16 @@
             spinCount: 0, isSpinning: false, gamePhase: 'selection', roundNumber: 1,
             timer: 30, activePlayersCount: 0, cumulativeRotation: 0, playerNames: [],
             gameStarted: true, spinInProgress: false, waitingModalShown: false,
-            potAmount: 0, totalBetsPlaced: 0, winnersModalShown: false
+            potAmount: 0, prizePool: 0, totalBetsPlaced: 0, winnersModalShown: false
         };
         let timerInterval = null; let isTimerRunning = false; let audioPlayedThisRound = false;
         let resultsCountdownInterval = null; let isResultsCountdownRunning = false;
         let spinTimeout = null; let syncInProgress = false;
         let numbersTakenListenerRef = null; let numbersTakenInitialized = false;
         let lastKnownPlayersCache = {}; let watchdogInterval = null; let lastRoomSyncAt = 0;
+        let lastRoomSnapshotRaw = null;
 
-        // Single-writer bookkeeping for the card and spin
+        // Single-writer bookkeeping
         let displayedCardRound = null;
         let executedSpinRound = null;
         let cardFallbackTimer = null;
@@ -735,8 +710,7 @@
             window.addEventListener('online', handleNetworkOnline);
             window.addEventListener('offline', handleNetworkOffline);
             if (database) {
-                const connectedRef = database.ref('.info/connected');
-                connectedRef.on('value', (snap) => {
+                database.ref('.info/connected').on('value', (snap) => {
                     const connected = snap.val() === true;
                     if (!connected) handleNetworkOffline(); else handleNetworkOnline();
                 });
@@ -756,9 +730,7 @@
             networkOverlay.classList.remove('active');
             updateStatus('✅ Network restored. Game will continue.');
             if (gameRef) {
-                gameRef.once('value').then(snapshot => {
-                    if (snapshot.exists()) syncGameState(snapshot.val());
-                }).catch(() => {});
+                gameRef.once('value').then(snapshot => { if (snapshot.exists()) syncGameState(snapshot.val()); }).catch(() => {});
             }
         }
         function handleNetworkOffline() {
@@ -799,7 +771,7 @@
             const sessionRef = database.ref('sessions/' + username);
             if (sessionListener) { sessionRef.off(); sessionListener = null; }
             sessionRef.onDisconnect().remove();
-            sessionRef.set({ sessionId: sessionId, timestamp: Date.now() });
+            sessionRef.set({ sessionId, timestamp: Date.now() });
             sessionListener = sessionRef.on('value', (snap) => {
                 const data = snap.val();
                 if (!data || data.sessionId !== sessionId) {
@@ -870,8 +842,7 @@
         const winningCardAmountValueEl = $('winningCardAmountValue');
 
         // ============================================================
-        //  HIDDEN 5-TAP CLEANUP TRIGGER (mobile-friendly)
-        //  Tap the footer number strip 5× quickly to wipe old round data.
+        //  HIDDEN 5-TAP CLEANUP  (fix #13 — warn if >1 player)
         // ============================================================
         (function attachHiddenCleanup() {
             let tapCount = 0;
@@ -879,47 +850,31 @@
 
             function firebaseCleanup() {
                 if (!database) { alert('Firebase not ready. Wait a moment and try again.'); return; }
+                if (engineState.activePlayersCount > 1) {
+                    if (!confirm('⚠️ There are ' + engineState.activePlayersCount + ' players in this room.\n\nWiping now will disrupt them. Continue anyway?')) return;
+                }
                 if (!confirm('⚠️ Clear ALL old round data from Firebase?\n\nOnly do this when no one is mid-round.')) return;
 
                 const rooms = ['room_15', 'room_30'];
-                const nodes = [
-                    'lastResult', 'singlePlayerHandled', 'finalizedRounds', 'spinLock',
-                    'winningNumber', 'spinStartedRound', 'spinFinishedAt', 'drawnNumbers',
-                    'winners', 'spinCount', 'cumulativeRotation', 'prizePool', 'potAmount',
-                    'totalBets', 'numbersTaken'
-                ];
+                const nodes = ['lastResult', 'singlePlayerHandled', 'singlePlayerRefund', 'finalizedRounds', 'spinLock', 'winningNumber', 'spinStartedRound', 'spinFinishedAt', 'drawnNumbers', 'winners', 'spinCount', 'cumulativeRotation', 'prizePool', 'potAmount', 'totalBets', 'numbersTaken'];
                 const totalOps = (rooms.length * nodes.length) + rooms.length + 1;
-                let doneOps = 0;
-                let errored = false;
+                let doneOps = 0; let errored = false;
 
                 function tick() {
                     doneOps++;
                     if (doneOps >= totalOps) {
                         localStorage.removeItem('winzo_cleanup_version');
-                        alert(errored
-                            ? '⚠️ Cleanup finished with some errors. Reloading…'
-                            : '✅ Cleanup complete! Reloading…');
+                        alert(errored ? '⚠️ Cleanup finished with some errors. Reloading…' : '✅ Cleanup complete! Reloading…');
                         setTimeout(() => location.reload(), 800);
                     }
                 }
-
                 rooms.forEach(room => {
                     nodes.forEach(node => {
-                        database.ref(`rooms/${room}/${node}`).remove()
-                            .then(tick)
-                            .catch(() => { errored = true; tick(); });
+                        database.ref(`rooms/${room}/${node}`).remove().then(tick).catch(() => { errored = true; tick(); });
                     });
-                    database.ref(`rooms/${room}`).update({
-                        gameState: 'selection',
-                        timer: 30,
-                        selectionEndsAt: Date.now() + 30000,
-                        players: {}
-                    }).then(tick).catch(() => { errored = true; tick(); });
+                    database.ref(`rooms/${room}`).update({ gameState: 'selection', timer: 30, selectionEndsAt: Date.now() + 30000, players: {} }).then(tick).catch(() => { errored = true; tick(); });
                 });
-
-                database.ref('refunds').remove()
-                    .then(tick)
-                    .catch(() => { errored = true; tick(); });
+                database.ref('refunds').remove().then(tick).catch(() => { errored = true; tick(); });
             }
 
             function bindFooter() {
@@ -930,27 +885,18 @@
                     tapCount++;
                     clearTimeout(tapTimer);
                     tapTimer = setTimeout(() => { tapCount = 0; }, 900);
-                    if (tapCount >= 5) {
-                        tapCount = 0;
-                        firebaseCleanup();
-                    }
+                    if (tapCount >= 5) { tapCount = 0; firebaseCleanup(); }
                 });
             }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', bindFooter);
-            } else {
-                bindFooter();
-            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindFooter);
+            else bindFooter();
         })();
 
         // ============================================================
-        //  CARD DISPLAY  (winner names + win amount strictly from Firebase)
+        //  CARD DISPLAY
         // ============================================================
         function formatWinnerNames(winners) {
-            const list = Array.isArray(winners)
-                ? winners.filter(Boolean).map(w => String(w).trim()).filter(Boolean)
-                : [];
+            const list = Array.isArray(winners) ? winners.filter(Boolean).map(w => String(w).trim()).filter(Boolean) : [];
             if (!list.length) return '😔 No Winner';
             if (list.length === 1) return '🏆 ' + list[0];
             if (list.length <= 3) return '🏆 ' + list.join(' · ');
@@ -960,13 +906,11 @@
         function displayWinningNumberCard(round, number, winners, winAmount) {
             const r = Number(round); const n = Number(number);
             if (!isFinite(r) || r <= 0 || !isFinite(n) || n <= 0) return;
-
             if (winningCardWinnersEl) {
                 const hasWinner = Array.isArray(winners) && winners.filter(Boolean).length > 0;
                 winningCardWinnersEl.textContent = formatWinnerNames(winners);
                 winningCardWinnersEl.classList.toggle('no-winner', !hasWinner);
             }
-
             const numEl = document.getElementById('winningNumberBig');
             if (numEl) {
                 numEl.textContent = String(n);
@@ -974,7 +918,6 @@
                 void numEl.offsetWidth;
                 numEl.style.animation = 'numberPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
             }
-
             if (winningCardAmountEl && winningCardAmountValueEl) {
                 const amt = Number(winAmount);
                 if (isFinite(amt) && amt > 0) {
@@ -983,9 +926,7 @@
                     winningCardAmountEl.style.animation = 'none';
                     void winningCardAmountEl.offsetWidth;
                     winningCardAmountEl.style.animation = 'amountPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                } else {
-                    winningCardAmountEl.classList.remove('show');
-                }
+                } else winningCardAmountEl.classList.remove('show');
             }
         }
 
@@ -994,10 +935,7 @@
             if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
             const numEl = document.getElementById('winningNumberBig');
             if (numEl) numEl.textContent = '--';
-            if (winningCardWinnersEl) {
-                winningCardWinnersEl.textContent = 'Waiting for result…';
-                winningCardWinnersEl.classList.remove('no-winner');
-            }
+            if (winningCardWinnersEl) { winningCardWinnersEl.textContent = 'Waiting for result…'; winningCardWinnersEl.classList.remove('no-winner'); }
             if (winningCardAmountEl) winningCardAmountEl.classList.remove('show');
             if (winningCardAmountValueEl) winningCardAmountValueEl.textContent = '0 Birr';
         }
@@ -1005,7 +943,6 @@
         function applyCardState() {
             const phase = engineState.gamePhase;
             const round = Number(engineState.roundNumber);
-
             if (phase !== 'results') {
                 if (winnersModal) winnersModal.classList.remove('active');
                 displayedCardRound = null;
@@ -1019,18 +956,12 @@
                 const num = Number(lastResultData.winningNumber);
                 if (isFinite(num) && num > 0) {
                     displayedCardRound = round;
-                    displayWinningNumberCard(
-                        round,
-                        num,
-                        lastResultData.winners,
-                        lastResultData.winAmount
-                    );
+                    displayWinningNumberCard(round, num, lastResultData.winners, lastResultData.winAmount);
                     if (winnersModal) winnersModal.classList.add('active');
                     if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
                     return;
                 }
             }
-
             if (cardFallbackTimer) return;
             cardFallbackTimer = setTimeout(() => {
                 cardFallbackTimer = null;
@@ -1074,8 +1005,7 @@
             if (!totalBetDisplayEl) return;
             const bet = Number(currentBet || 0);
             const takenSet = (engineState && engineState.allTakenNumbers instanceof Set) ? engineState.allTakenNumbers : new Set();
-            const takenCount = takenSet.size;
-            totalBetDisplayEl.textContent = String(Math.floor(takenCount * bet * 0.85));
+            totalBetDisplayEl.textContent = String(Math.floor(takenSet.size * bet * 0.85));
         }
         function setConnectionStatus(online, message) {
             const cls = online ? 'online' : 'offline';
@@ -1240,7 +1170,7 @@
                 }
                 if (ocrSpinner) ocrSpinner.style.display = 'none';
                 if (ocrDoneIcon) ocrDoneIcon.classList.add('show');
-                const resultObj = { reference: refMatch, amount: amount };
+                const resultObj = { reference: refMatch, amount };
                 if (ocrProgressStatus) ocrProgressStatus.textContent = refMatch ? '✅ Reference found!' : '⚠️ Reference not found.';
                 if (ocrProgressSub) ocrProgressSub.textContent = `Ref: ${resultObj.reference || '—'} Amount: ${resultObj.amount || '—'}`;
                 setTimeout(() => { if (ocrProgressModal) ocrProgressModal.classList.remove('active'); }, 1500);
@@ -1415,27 +1345,52 @@
                 keys.forEach(k => localStorage.removeItem(k));
             } catch (e) {}
         }
-        function refundMyActiveBet() {
-            if (!currentUser || !engineState.players[currentUser]) return;
-            const me = engineState.players[currentUser];
-            if (me.pick !== null && me.pick !== undefined && me.betDeducted === true) {
-                const num = Number(me.pick); const amount = Number(me.bet || currentBet);
-                try { releaseNumber(num); } catch (e) {}
-                refundBetIdempotent(currentUser, me.round || engineState.roundNumber, amount, currentRoom);
-                engineState.allTakenNumbers.delete(num);
-            }
-        }
+
+        // ============================================================
+        //  REFUND PRIMITIVES  (fix #2 — credit wallet before marker)
+        // ============================================================
         function refundBetIdempotent(username, round, amount, room) {
-            if (!database || !username || !amount || amount <= 0) return Promise.resolve(false);
-            const r = room || currentRoom; if (!r) return Promise.resolve(false);
+            const r = room || currentRoom;
+            if (!database || !r || !username || !amount || amount <= 0) return Promise.resolve(false);
             const key = `refunds/${r}/${round}/${username}`;
+            // Atomically claim the marker first — only one client can win.
             return database.ref(key).transaction(current => {
-                if (current) return; return { amount: Number(amount), timestamp: Date.now() };
+                if (current) return; // already claimed/done
+                return { amount: Number(amount), timestamp: Date.now() };
             }).then(claim => {
-                if (!claim.committed) return false;
-                return database.ref('users/' + username + '/playWallet').transaction(w => (w || 0) + Number(amount)).then(() => true);
+                if (!claim.committed) return true; // someone else already claimed → done
+                // We own the marker. Credit the wallet.
+                return database.ref('users/' + username + '/playWallet')
+                    .transaction(w => (w || 0) + Number(amount))
+                    .then(res => {
+                        if (!res.committed) {
+                            // Aborted — release marker so retry can succeed later
+                            return database.ref(key).remove().then(() => false).catch(() => false);
+                        }
+                        return true;
+                    })
+                    .catch(() => {
+                        // Network error — release marker so a retry can succeed
+                        return database.ref(key).remove().then(() => false).catch(() => false);
+                    });
             }).catch(() => false);
         }
+
+        function refundMyActiveBet() {
+            // fix #6 — require a valid round
+            if (!currentUser || !engineState.players[currentUser]) return;
+            const me = engineState.players[currentUser];
+            if (me.pick === null || me.pick === undefined || me.betDeducted !== true) return;
+            const num = Number(me.pick);
+            const amount = Number(me.bet || currentBet);
+            const r = Number(me.round);
+            try { releaseNumber(num); } catch (e) {}
+            if (r > 0 && isFinite(amount) && amount > 0) {
+                refundBetIdempotent(currentUser, r, amount, currentRoom).catch(() => {});
+            }
+            engineState.allTakenNumbers.delete(num);
+        }
+
         function performLogout() {
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
@@ -1455,9 +1410,9 @@
                 spinCount: 0, isSpinning: false, gamePhase: 'selection', roundNumber: 1,
                 timer: 30, activePlayersCount: 0, cumulativeRotation: 0, playerNames: [],
                 gameStarted: true, spinInProgress: false, waitingModalShown: false,
-                potAmount: 0, totalBetsPlaced: 0, winnersModalShown: false
+                potAmount: 0, prizePool: 0, totalBetsPlaced: 0, winnersModalShown: false
             };
-            lastKnownPlayersCache = {};
+            lastKnownPlayersCache = {}; lastRoomSnapshotRaw = null;
             displayedCardRound = null; executedSpinRound = null; lastResultData = null;
             closeMoreDropdown(); hideWaitingModal();
             if (welcomeToast) welcomeToast.classList.remove('active');
@@ -1476,15 +1431,9 @@
         }
 
         // ============================================================
-        //  SWITCH ROOM
+        //  SWITCH ROOM / SELECT BET
         // ============================================================
-        function switchRoom() {
-            try { refundMyActiveBet(); } catch (e) {}
-            detachNumbersTakenListener(); detachLastResultListener();
-            if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
-            stopTimer(); stopResultsCountdown();
-            if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
-            isGameInitialized = false; audioPlayedThisRound = false; syncInProgress = false;
+        function resetEngineStateForNewRound() {
             if (currentUser && engineState.players[currentUser]) {
                 engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false;
                 engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
@@ -1492,13 +1441,23 @@
             engineState.allTakenNumbers = new Set();
             engineState.drawnNumbers = []; engineState.winners = []; engineState.spinCount = 0;
             engineState.isSpinning = false; engineState.gamePhase = 'selection'; engineState.spinInProgress = false;
-            engineState.waitingModalShown = false; engineState.potAmount = 0; engineState.totalBetsPlaced = 0;
-            engineState.winnersModalShown = false;
-            lastKnownPlayersCache = {};
+            engineState.waitingModalShown = false; engineState.potAmount = 0; engineState.prizePool = 0;
+            engineState.totalBetsPlaced = 0; engineState.winnersModalShown = false;
+            lastKnownPlayersCache = {}; lastRoomSnapshotRaw = null;
             displayedCardRound = null; executedSpinRound = null; lastResultData = null;
-            DB.setSavedBet(null);
             if (winnersModal) winnersModal.classList.remove('active');
             resetWinningNumberCard(); clearLocalRoundData();
+        }
+
+        function switchRoom() {
+            try { refundMyActiveBet(); } catch (e) {}
+            detachNumbersTakenListener(); detachLastResultListener();
+            if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
+            stopTimer(); stopResultsCountdown();
+            if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
+            isGameInitialized = false; audioPlayedThisRound = false; syncInProgress = false;
+            resetEngineStateForNewRound();
+            DB.setSavedBet(null);
             showWelcomeScreen();
             updateStatus('🔄 Choose your room.');
             closeMoreDropdown(); hideWaitingModal();
@@ -1519,19 +1478,7 @@
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
             isGameInitialized = false; audioPlayedThisRound = false; syncInProgress = false;
-            if (currentUser && engineState.players[currentUser]) {
-                engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false;
-                engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
-            }
-            engineState.allTakenNumbers = new Set();
-            engineState.drawnNumbers = []; engineState.winners = []; engineState.spinCount = 0;
-            engineState.isSpinning = false; engineState.gamePhase = 'selection'; engineState.spinInProgress = false;
-            engineState.waitingModalShown = false; engineState.potAmount = 0; engineState.totalBetsPlaced = 0;
-            engineState.winnersModalShown = false;
-            lastKnownPlayersCache = {};
-            displayedCardRound = null; executedSpinRound = null; lastResultData = null;
-            if (winnersModal) winnersModal.classList.remove('active');
-            resetWinningNumberCard(); clearLocalRoundData();
+            resetEngineStateForNewRound();
             currentBet = amount;
             currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
@@ -1570,8 +1517,7 @@
                 else pendingItem.style.display = 'none';
             }
             if (withdrawModal && withdrawModal.classList.contains('active') && withdrawAvailableBalance) {
-                const available = walletData.main - walletData.pending;
-                withdrawAvailableBalance.textContent = available;
+                withdrawAvailableBalance.textContent = walletData.main - walletData.pending;
             }
         }
 
@@ -1701,7 +1647,7 @@
         }
 
         // ============================================================
-        //  NUMBER PICK CLICK HANDLER
+        //  NUMBER PICK HANDLER  (fixes #3 and #5)
         // ============================================================
         if (numPicker) {
             numPicker.addEventListener('click', function(e) {
@@ -1713,35 +1659,45 @@
                 if (engineState.activePlayersCount <= 1) { showWaitingModal(); return; }
                 if (engineState.gamePhase !== 'selection') { updateStatus('⛔ Cannot pick numbers now.'); return; }
                 const myPick = getMyPick();
+
+                // ----- UN-PICK: refund FIRST, then clear -----
                 if (myPick === num) {
-                    releaseNumber(num);
-                    if (gameRef) {
-                        gameRef.child('players/' + currentUser + '/pick').set(null);
-                        gameRef.child('players/' + currentUser + '/ready').set(false);
-                        gameRef.child('players/' + currentUser + '/betDeducted').set(false);
-                        gameRef.child('players/' + currentUser + '/betSources').set({});
-                        gameRef.child('players/' + currentUser + '/round').set(null);
-                    }
-                    if (engineState.players[currentUser]) {
-                        engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false;
-                        engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
-                    }
-                    engineState.allTakenNumbers.delete(num);
-                    refundPickBetFast(currentUser, currentBet);
-                    renderNumberPicker(); updatePickStatus(); updatePrizeDisplay(); updateTotalBetDisplay();
-                    updateStatus(`↩️ Removed ${num}.`);
+                    const unpickRound = engineState.roundNumber;
+                    refundPickBetFast(currentUser, currentBet).then(ok => {
+                        if (!ok) { updateStatus('⚠️ Could not release pick. Please try again.'); return; }
+                        releaseNumber(num);
+                        if (gameRef) {
+                            gameRef.child('players/' + currentUser + '/pick').set(null);
+                            gameRef.child('players/' + currentUser + '/ready').set(false);
+                            gameRef.child('players/' + currentUser + '/betDeducted').set(false);
+                            gameRef.child('players/' + currentUser + '/betSources').set({});
+                            gameRef.child('players/' + currentUser + '/round').set(null);
+                        }
+                        if (engineState.players[currentUser]) {
+                            engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false;
+                            engineState.players[currentUser].betDeducted = false; engineState.players[currentUser].betSources = {};
+                        }
+                        engineState.allTakenNumbers.delete(num);
+                        renderNumberPicker(); updatePickStatus(); updatePrizeDisplay(); updateTotalBetDisplay();
+                        updateStatus(`↩️ Removed ${num}.`);
+                    });
                     return;
                 }
+
                 if (engineState.allTakenNumbers.has(num)) { updateStatus(`❌ Number ${num} is already taken!`); return; }
                 if (myPick !== null) { updateStatus(`❌ You already picked ${myPick}. Unselect it first.`); return; }
                 if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`); return; }
+
+                const pickRound = engineState.roundNumber; // capture
+
                 if (!engineState.players[currentUser]) {
-                    engineState.players[currentUser] = { name: currentUser, pick: null, bet: currentBet, ready: false, betDeducted: false, betSources: {}, round: engineState.roundNumber };
+                    engineState.players[currentUser] = { name: currentUser, pick: null, bet: currentBet, ready: false, betDeducted: false, betSources: {}, round: pickRound };
                 }
                 engineState.players[currentUser].pick = num;
                 engineState.players[currentUser].ready = true;
                 engineState.allTakenNumbers.add(num);
                 renderNumberPicker(); updatePickStatus(); updatePrizeDisplay(); updateTotalBetDisplay();
+
                 claimNumber(num, function(success) {
                     if (!success) {
                         engineState.allTakenNumbers.delete(num);
@@ -1751,8 +1707,8 @@
                         updateStatus(`❌ Number ${num} was just taken!`);
                         return;
                     }
-                    deductPickBetFast(currentUser, currentBet).then(success => {
-                        if (!success) {
+                    deductPickBetFast(currentUser, currentBet).then(ok => {
+                        if (!ok) {
                             releaseNumber(num);
                             if (engineState.players[currentUser]) {
                                 engineState.players[currentUser].pick = null; engineState.players[currentUser].ready = false; engineState.players[currentUser].betDeducted = false;
@@ -1767,11 +1723,25 @@
                             updateStatus('⚠️ Bet deduction failed. Number released.');
                             return;
                         }
+                        // Round check — if the round advanced while we were deducting, refund.
+                        if (engineState.roundNumber !== pickRound || engineState.gamePhase !== 'selection') {
+                            refundBetIdempotent(currentUser, pickRound, currentBet, currentRoom);
+                            releaseNumber(num);
+                            if (engineState.players[currentUser]) {
+                                engineState.players[currentUser].pick = null;
+                                engineState.players[currentUser].ready = false;
+                                engineState.players[currentUser].betDeducted = false;
+                            }
+                            engineState.allTakenNumbers.delete(num);
+                            renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
+                            updateStatus('⏱ Round ended — your bet was refunded.');
+                            return;
+                        }
                         if (gameRef) {
                             gameRef.child('players/' + currentUser + '/pick').set(num);
                             gameRef.child('players/' + currentUser + '/ready').set(true);
                             gameRef.child('players/' + currentUser + '/betDeducted').set(true);
-                            gameRef.child('players/' + currentUser + '/round').set(engineState.roundNumber);
+                            gameRef.child('players/' + currentUser + '/round').set(pickRound);
                             const sources = getBetSources(engineState.players[currentUser]);
                             sources[num] = 'play';
                             gameRef.child('players/' + currentUser + '/betSources').set(sources);
@@ -1898,7 +1868,7 @@
                         stopTimer(); stopResultsCountdown();
                         if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
                         isGameInitialized = false; audioPlayedThisRound = false; syncInProgress = false;
-                        lastKnownPlayersCache = {};
+                        lastKnownPlayersCache = {}; lastRoomSnapshotRaw = null;
                         if (winnersModal) winnersModal.classList.remove('active');
                         resetWinningNumberCard();
                         showWelcomeScreen();
@@ -1909,22 +1879,32 @@
             currentUser = null;
             if (watchdogInterval) clearInterval(watchdogInterval);
             watchdogInterval = setInterval(runRoomWatchdog, 5000);
+            // fix #12 — periodic server offset refresh
+            setInterval(() => {
+                if (!database) return;
+                database.ref('.info/serverTimeOffset').once('value')
+                    .then(s => { serverTimeOffset = Number(s.val()) || 0; })
+                    .catch(() => {});
+            }, 60000);
+            // fix #11 — periodic node pruning
+            setInterval(pruneOldRefunds, 5 * 60 * 1000);
             showAuthScreen();
         }
 
         // ============================================================
         //  PRODUCTION HARDENING
         // ============================================================
-        const WINZO_PRODUCTION_VERSION = '9.2.0';
+        const WINZO_PRODUCTION_VERSION = '9.3.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
         function safeProductionName(value) { return String(value ?? '').replace(/[<>"'`]/g, '').trim().slice(0, 64); }
+        // fix #15 — no regex needed since we use textContent
         function updateStatus(msg, isWin = false) {
             if (!statusEl) return;
             const text = String(msg ?? '');
-            if (isWin) { statusEl.textContent = `🏆 ${text.replace(/<[^>]*>/g, '')}`; statusEl.classList.add('win-badge'); }
-            else { statusEl.textContent = text.replace(/<[^>]*>/g, ''); statusEl.classList.remove('win-badge'); }
+            if (isWin) { statusEl.textContent = `🏆 ${text}`; statusEl.classList.add('win-badge'); }
+            else { statusEl.textContent = text; statusEl.classList.remove('win-badge'); }
         }
 
         function renderNumberPicker(showLoading = false) {
@@ -1966,8 +1946,25 @@
             });
         }
 
+        // fix #11 — prune old refunds & handled markers
+        function pruneOldRefunds() {
+            if (!database || !currentRoom) return;
+            database.ref('refunds/' + currentRoom).once('value').then(snap => {
+                const data = snap.val() || {};
+                const rounds = Object.keys(data).map(Number).filter(n => isFinite(n)).sort((a, b) => a - b);
+                const stale = rounds.slice(0, Math.max(0, rounds.length - 300));
+                stale.forEach(r => database.ref(`refunds/${currentRoom}/${r}`).remove().catch(() => {}));
+            }).catch(() => {});
+            database.ref('rooms/' + currentRoom + '/finalizedRounds').once('value').then(snap => {
+                const data = snap.val() || {};
+                const rounds = Object.keys(data).map(Number).filter(n => isFinite(n)).sort((a, b) => a - b);
+                const stale = rounds.slice(0, Math.max(0, rounds.length - 300));
+                stale.forEach(r => database.ref(`rooms/${currentRoom}/finalizedRounds/${r}`).remove().catch(() => {}));
+            }).catch(() => {});
+        }
+
         // ============================================================
-        //  initGameConnection
+        //  initGameConnection  (fix #4 — recover stuck spinning)
         // ============================================================
         function initGameConnection() {
             const generation = ++roomConnectionGeneration;
@@ -1977,8 +1974,7 @@
                 gameRef = null; isGameInitialized = false;
             }
             if (!database || !currentRoom || !currentUser) return;
-            const roomPath = currentRoom;
-            const ref = database.ref('rooms/' + roomPath);
+            const ref = database.ref('rooms/' + currentRoom);
             gameRef = ref;
             lastKnownPlayersCache = {};
             database.ref('.info/serverTimeOffset').once('value').then(snap => {
@@ -1997,14 +1993,21 @@
                     });
                 }
                 const data = snapshot.val() || {};
-                if (data.gameState === 'spinning' && !data.winningNumber && !data.spinLock) {
-                    return ref.transaction(room => {
-                        if (!room || room.gameState !== 'spinning' || room.winningNumber || room.spinLock) return room;
-                        room.gameState = 'selection'; room.spinCount = 0;
-                        room.winners = []; room.drawnNumbers = []; room.numbersTaken = {};
-                        room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
-                        return room;
-                    });
+                if (data.gameState === 'spinning') {
+                    const lock = data.spinLock;
+                    const lockAge = lock && lock.timestamp ? Date.now() - lock.timestamp : Infinity;
+                    const stuck = !data.winningNumber || !Array.isArray(data.winners) || lockAge > 15000;
+                    if (stuck) {
+                        return ref.transaction(room => {
+                            if (!room || room.gameState !== 'spinning') return room;
+                            room.gameState = 'selection';
+                            room.spinCount = 0;
+                            room.winners = []; room.drawnNumbers = []; room.numbersTaken = {};
+                            room.winningNumber = null; room.spinLock = null;
+                            room.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                            return room;
+                        });
+                    }
                 }
                 if (!data.selectionEndsAt && data.gameState === 'selection') ensureSelectionDeadline();
             }).catch(() => {});
@@ -2026,17 +2029,17 @@
         }
 
         // ============================================================
-        //  syncGameState
+        //  syncGameState  (fix #1 companion — retry pending singlePlayerRefund)
         // ============================================================
         function syncGameState(data) {
             if (syncInProgress) return;
             syncInProgress = true;
             try {
+                lastRoomSnapshotRaw = data;
                 const players = (data && data.players && typeof data.players === 'object') ? data.players : {};
                 const playerNames = Object.keys(players);
                 const phase = data.gameState || 'selection';
                 const round = Number(data.round) || 1;
-
                 const roundChanged = (round !== engineState.roundNumber);
 
                 engineState.players = players;
@@ -2059,6 +2062,14 @@
                         .map(Number)
                         .filter(n => n >= 1 && n <= 200)
                 );
+
+                // fix #1 — retry any pending single-player refund advertised by the room
+                if (data.singlePlayerRefund && data.singlePlayerRefund.username && data.singlePlayerRefund.round) {
+                    const sr = data.singlePlayerRefund;
+                    if (Number(sr.round) <= round) {
+                        refundBetIdempotent(sr.username, Number(sr.round), Number(sr.amount || 0), currentRoom).catch(() => {});
+                    }
+                }
 
                 if (roundChanged) {
                     displayedCardRound = null;
@@ -2121,7 +2132,7 @@
         }
 
         // ============================================================
-        //  requestSpin — Firebase picks winner, refunds single-player
+        //  requestSpin  (fix #1 — race-safe single-player refund)
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
@@ -2144,32 +2155,44 @@
                     }).then(res => res && res.committed);
                 }
 
+                // ----- SINGLE-PLAYER REFUND PATH (race-safe) -----
                 if (eligible.length === 1) {
                     const only = eligible[0];
                     const amount = Number(ps[only].bet || currentBet);
-                    const markerRef = gameRef.child('singlePlayerHandled/' + round);
-                    return markerRef.transaction(current => current || { username: only, amount, ts: Date.now() })
-                        .then(claim => {
-                            if (!claim.committed) return true;
-                            return refundBetIdempotent(only, round, amount, currentRoom).then(() => {
-                                return gameRef.transaction(r => {
-                                    if (!r || Number(r.round) !== round || r.gameState !== 'selection') return r;
-                                    const players = r.players || {};
-                                    for (const n of Object.keys(players)) {
-                                        if (players[n]) {
-                                            players[n].pick = null; players[n].ready = false;
-                                            players[n].betDeducted = false; players[n].betSources = {}; players[n].round = null;
-                                        }
-                                    }
-                                    r.players = players; r.numbersTaken = {};
-                                    r.timer = SELECTION_SECONDS;
-                                    r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
-                                    return r;
-                                });
-                            });
+                    // One atomic transaction: re-verify still single-player, reset round,
+                    // and stamp `singlePlayerRefund` so any client can retry the refund.
+                    return gameRef.transaction(r => {
+                        if (!r || Number(r.round) !== round || r.gameState !== 'selection') return r;
+                        const rps = r.players || {};
+                        const stillEligible = Object.keys(rps).filter(n => {
+                            const p = rps[n];
+                            return p && p.pick != null && Number(p.round) === round && p.betDeducted === true;
                         });
+                        if (stillEligible.length !== 1 || stillEligible[0] !== only) return r; // race lost
+                        const players = r.players || {};
+                        for (const n of Object.keys(players)) {
+                            if (players[n]) {
+                                players[n].pick = null; players[n].ready = false;
+                                players[n].betDeducted = false; players[n].betSources = {}; players[n].round = null;
+                            }
+                        }
+                        r.players = players;
+                        r.numbersTaken = {};
+                        r.timer = SELECTION_SECONDS;
+                        r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                        r.singlePlayerRefund = { round, username: only, amount, ts: Date.now() };
+                        return r;
+                    }).then(res => {
+                        if (!res || !res.committed) return false;
+                        const val = res.snapshot.val() || {};
+                        const sr = val.singlePlayerRefund;
+                        if (!sr || Number(sr.round) !== round || sr.username !== only) return false;
+                        // Idempotent refund — safe to retry via syncGameState if this fails
+                        return refundBetIdempotent(only, round, amount, currentRoom).then(() => true);
+                    });
                 }
 
+                // ----- MULTIPLAYER SPIN PATH -----
                 return gameRef.transaction(room => {
                     if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
                     if (room.spinLock && Number(room.spinLock.round) === round) return room;
@@ -2201,6 +2224,9 @@
             }).catch(() => false);
         }
 
+        // ============================================================
+        //  WATCHDOG  (fix #4 — force-recover stuck spinning)
+        // ============================================================
         function runRoomWatchdog() {
             if (!gameRef || !currentUser) return;
             if (!navigator.onLine) return;
@@ -2209,9 +2235,19 @@
                 const expiredFor = getServerNow() - (Number(phaseDeadline) || 0);
                 if (phaseDeadline && expiredFor > 12000) requestSpin().catch(() => {});
             } else if (engineState.gamePhase === 'spinning') {
-                const now = Date.now();
-                if (lastRoomSyncAt && (now - lastRoomSyncAt) > 12000) {
-                    gameRef.once('value').then(snap => { if (snap.exists()) syncGameState(snap.val()); }).catch(() => {});
+                const room = lastRoomSnapshotRaw || {};
+                const lock = room.spinLock;
+                const lockAge = lock && lock.timestamp ? Date.now() - lock.timestamp : Infinity;
+                if (lockAge > 30000) {
+                    gameRef.transaction(r => {
+                        if (!r || r.gameState !== 'spinning') return r;
+                        r.gameState = 'selection';
+                        r.spinLock = null; r.winningNumber = null;
+                        r.winners = []; r.drawnNumbers = []; r.numbersTaken = {};
+                        r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                        r.timer = SELECTION_SECONDS;
+                        return r;
+                    }).catch(() => {});
                 }
             }
         }
@@ -2267,6 +2303,7 @@
                             room.numbersTaken = {};
                             room.winningNumber = null; room.spinLock = null; room.spinStartedRound = null;
                             room.spinFinishedAt = null;
+                            room.singlePlayerRefund = null; // clear stale marker
                             return room;
                         });
                     }).then(() => {
@@ -2281,7 +2318,6 @@
                         engineState.winnersModalShown = false;
                         engineState.roundNumber = round + 1;
                         executedSpinRound = null;
-
                         Object.keys(engineState.players || {}).forEach(name => {
                             if (engineState.players[name]) {
                                 engineState.players[name].pick = null;
@@ -2291,19 +2327,15 @@
                                 engineState.players[name].round = null;
                             }
                         });
-
                         if (winnersModal) winnersModal.classList.remove('active');
                         resetWinningNumberCard();
                         clearLocalRoundData();
-
                         if (timerDisplay) timerDisplay.textContent = '30';
                         if (prizeDisplay) prizeDisplay.textContent = '0';
                         if (playerCountEl) playerCountEl.textContent = String(engineState.activePlayersCount || 0);
-
                         stopFireworks();
                         updateTotalBetDisplay(); updatePrizeDisplay(); updatePickStatus();
                         renderNumberPicker(); updatePlayerList();
-
                         if (!isTimerRunning) startTimer();
                         if (engineState.activePlayersCount <= 1) showWaitingModal();
                     }).catch(() => {});
@@ -2315,7 +2347,7 @@
         function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } isTimerRunning = false; }
 
         // ============================================================
-        //  executeSpin — commits result and writes lastResult
+        //  executeSpin
         // ============================================================
         function executeSpin() {
             if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
@@ -2350,23 +2382,17 @@
                     const finalWinners = Array.isArray(finalRoom.winners) ? finalRoom.winners.filter(Boolean) : winners;
                     const pool = Number(finalRoom.prizePool ?? finalRoom.potAmount ?? 0);
                     const winAmount = finalWinners.length ? Math.floor(pool / finalWinners.length) : 0;
-
                     return gameRef.child('lastResult').set({
-                        round: round,
-                        winningNumber: winningNumber,
-                        winners: finalWinners,
-                        winAmount: winAmount,
-                        setAt: Date.now()
+                        round, winningNumber, winners: finalWinners, winAmount, setAt: Date.now()
                     }).catch(() => {}).then(() => {
                         if (finalWinners.length && winAmount > 0) {
-                            Promise.allSettled(finalWinners.map(name => creditWinnerAndReferral(name, winAmount)))
-                                .then(results => {
-                                    const failed = results.some(r => r.status === 'rejected' || r.value !== true);
-                                    if (finalWinners.includes(currentUser)) {
-                                        if (failed) updateStatus('⚠️ Win recorded; wallet credit is being retried.', true);
-                                        else { updateStatus(`🏆 You won ${winAmount} Birr!`, true); syncWalletFromFirebase(); }
-                                    }
-                                });
+                            Promise.allSettled(finalWinners.map(name => creditWinnerAndReferral(name, winAmount))).then(results => {
+                                const failed = results.some(r => r.status === 'rejected' || r.value !== true);
+                                if (finalWinners.includes(currentUser)) {
+                                    if (failed) updateStatus('⚠️ Win recorded; wallet credit is being retried.', true);
+                                    else { updateStatus(`🏆 You won ${winAmount} Birr!`, true); syncWalletFromFirebase(); }
+                                }
+                            });
                         }
                         if (tg && tg.HapticFeedback && finalWinners.includes(currentUser)) tg.HapticFeedback.notificationOccurred('success');
                     });
@@ -2381,9 +2407,9 @@
         }
 
         // ============================================================
-        //  creditWinnerAndReferral
+        //  creditWinnerAndReferral  (fix #10 — retry with backoff)
         // ============================================================
-        function creditWinnerAndReferral(winnerName, winAmount) {
+        function creditWinnerAndReferral(winnerName, winAmount, attempt = 0) {
             if (!database || !winnerName || Number(winAmount) <= 0) return Promise.resolve(false);
             const amount = Number(winAmount);
             const round = Number(engineState.roundNumber);
@@ -2394,10 +2420,20 @@
                 current.gameWinPayouts = current.gameWinPayouts || {};
                 if (current.gameWinPayouts[payoutKey]) return current;
                 current.mainWallet += amount;
-                current.gameWinPayouts[payoutKey] = { room: currentRoom, round: round, amount: amount, timestamp: firebase.database.ServerValue.TIMESTAMP };
+                current.gameWinPayouts[payoutKey] = { room: currentRoom, round, amount, timestamp: firebase.database.ServerValue.TIMESTAMP };
                 return current;
             }).then(result => {
-                if (!result || !result.committed) return false;
+                if (!result || !result.committed) {
+                    if (attempt < 3) {
+                        return new Promise(r => setTimeout(r, 1000 * (attempt + 1)))
+                            .then(() => creditWinnerAndReferral(winnerName, winAmount, attempt + 1));
+                    }
+                    // Park in a retry queue so any future client can pick it up
+                    database.ref(`pendingReferralCredits/${winnerName}/${payoutKey}`).set({
+                        round, amount, room: currentRoom, ts: Date.now()
+                    }).catch(() => {});
+                    return false;
+                }
                 const winnerData = result.snapshot.val() || {};
                 const alreadyPaid = !!winnerData.gameWinPayouts?.[payoutKey];
                 if (!alreadyPaid) return false;
@@ -2413,10 +2449,19 @@
                     if (current.referralWinPayouts[refKey]) return current;
                     current.mainWallet += commission;
                     current.referralEarnings += commission;
-                    current.referralWinPayouts[refKey] = { from: winnerName, room: currentRoom, round: round, amount: commission, timestamp: firebase.database.ServerValue.TIMESTAMP };
+                    current.referralWinPayouts[refKey] = { from: winnerName, room: currentRoom, round, amount: commission, timestamp: firebase.database.ServerValue.TIMESTAMP };
                     return current;
                 }).then(refResult => {
-                    if (!refResult || !refResult.committed) return false;
+                    if (!refResult || !refResult.committed) {
+                        if (attempt < 3) {
+                            return new Promise(r => setTimeout(r, 1500 * (attempt + 1)))
+                                .then(() => creditWinnerAndReferral(winnerName, winAmount, attempt + 1));
+                        }
+                        database.ref(`pendingReferralCredits/${referrer}/${refKey}`).set({
+                            from: winnerName, round, amount: commission, room: currentRoom, ts: Date.now()
+                        }).catch(() => {});
+                        return false;
+                    }
                     if (commission > 0) { try { sendNotification(referrer, `🎉 You earned ${commission} Birr commission from ${winnerName}'s win!`); } catch (_) {} }
                     return true;
                 });
