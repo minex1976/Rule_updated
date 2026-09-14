@@ -389,7 +389,6 @@
         // ============================================================
         //  GLOBAL CONSTANTS
         // ============================================================
-        // FIX #5 — service fee is now 20% (payout 80%)
         const SERVICE_FEE_RATE = 0.20;
         const PAYOUT_RATE = 1 - SERVICE_FEE_RATE;   // 0.80
         const REFERRAL_COMMISSION_RATE = 0.05;
@@ -683,7 +682,6 @@
         let timerInterval = null; let isTimerRunning = false; let audioPlayedThisRound = false;
         let resultsCountdownInterval = null; let isResultsCountdownRunning = false;
         let spinTimeout = null;
-        // FIX #2 — removed syncInProgress throttle (see syncGameState)
         let numbersTakenListenerRef = null; let numbersTakenInitialized = false;
         let lastKnownPlayersCache = {}; let watchdogInterval = null; let lastRoomSyncAt = 0;
         let lastRoomSnapshotRaw = null;
@@ -692,6 +690,9 @@
         let executedSpinRound = null;
         let cardFallbackTimer = null;
         let lastResultData = null;
+        // STRICT card gating — retry polling of Firebase lastResult
+        let cardFetchRetryTimer = null;
+        let cardFetchRetryCount = 0;
 
         // ============================================================
         //  NETWORK LISTENER
@@ -885,7 +886,9 @@
         })();
 
         // ============================================================
-        //  CARD DISPLAY
+        //  CARD DISPLAY — STRICTLY FIREBASE-SOURCED
+        //  The winner card will ONLY render from the `lastResult` node
+        //  in Firebase. No local fallback, no engineState derivation.
         // ============================================================
         function formatWinnerNames(winners) {
             const list = Array.isArray(winners) ? winners.filter(Boolean).map(w => String(w).trim()).filter(Boolean) : [];
@@ -894,11 +897,49 @@
             if (list.length <= 3) return '🏆 ' + list.join(' · ');
             return '🏆 ' + list.slice(0, 3).join(' · ') + `  +${list.length - 3} more`;
         }
+
+        function clearCardFetchRetry() {
+            if (cardFetchRetryTimer) { clearTimeout(cardFetchRetryTimer); cardFetchRetryTimer = null; }
+            cardFetchRetryCount = 0;
+        }
+
+        // Strictly fetch lastResult for a specific round from Firebase.
+        // Returns null unless the node exists AND matches the round AND has a valid winningNumber.
+        function fetchLastResultFromFirebase(round) {
+            if (!gameRef) return Promise.resolve(null);
+            return gameRef.child('lastResult').once('value').then(snap => {
+                if (!snap.exists()) return null;
+                const data = snap.val();
+                if (!data || typeof data !== 'object') return null;
+                const dataRound = Number(data.round);
+                if (!isFinite(dataRound) || dataRound !== Number(round)) return null;
+                const wn = Number(data.winningNumber);
+                if (!isFinite(wn) || wn <= 0 || wn > 200) return null;
+                if (!Array.isArray(data.winners)) data.winners = [];
+                return data;
+            }).catch(() => null);
+        }
+
+        function setCardLoadingState() {
+            if (winningCardWinnersEl) {
+                winningCardWinnersEl.textContent = '⏳ Fetching result…';
+                winningCardWinnersEl.classList.remove('no-winner');
+            }
+            const numEl = document.getElementById('winningNumberBig');
+            if (numEl) numEl.textContent = '--';
+            if (winningCardAmountEl) winningCardAmountEl.classList.remove('show');
+            if (winningCardAmountValueEl) winningCardAmountValueEl.textContent = '0 Birr';
+        }
+
         function displayWinningNumberCard(round, number, winners, winAmount) {
             const r = Number(round); const n = Number(number);
-            if (!isFinite(r) || r <= 0 || !isFinite(n) || n <= 0) return;
+            // STRICT GUARDS — refuse to render anything that isn't well-formed Firebase data.
+            if (!isFinite(r) || r <= 0) return;
+            if (!isFinite(n) || n <= 0 || n > 200) return;
+            if (!Array.isArray(winners)) return;
+
             if (winningCardWinnersEl) {
-                const hasWinner = Array.isArray(winners) && winners.filter(Boolean).length > 0;
+                const hasWinner = winners.filter(Boolean).length > 0;
                 winningCardWinnersEl.textContent = formatWinnerNames(winners);
                 winningCardWinnersEl.classList.toggle('no-winner', !hasWinner);
             }
@@ -917,11 +958,15 @@
                     winningCardAmountEl.style.animation = 'none';
                     void winningCardAmountEl.offsetWidth;
                     winningCardAmountEl.style.animation = 'amountPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                } else winningCardAmountEl.classList.remove('show');
+                } else {
+                    winningCardAmountEl.classList.remove('show');
+                }
             }
         }
+
         function resetWinningNumberCard() {
             displayedCardRound = null;
+            clearCardFetchRetry();
             if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
             const numEl = document.getElementById('winningNumberBig');
             if (numEl) numEl.textContent = '--';
@@ -929,56 +974,113 @@
             if (winningCardAmountEl) winningCardAmountEl.classList.remove('show');
             if (winningCardAmountValueEl) winningCardAmountValueEl.textContent = '0 Birr';
         }
+
+        // Poll Firebase for the lastResult of a given round with capped backoff.
+        function tryFetchAndShowCard(round) {
+            if (engineState.gamePhase !== 'results') { clearCardFetchRetry(); return; }
+            if (Number(engineState.roundNumber) !== Number(round)) { clearCardFetchRetry(); return; }
+
+            fetchLastResultFromFirebase(round).then(data => {
+                // Re-validate after async fetch.
+                if (engineState.gamePhase !== 'results') { clearCardFetchRetry(); return; }
+                if (Number(engineState.roundNumber) !== Number(round)) { clearCardFetchRetry(); return; }
+
+                if (!data) {
+                    if (cardFetchRetryCount < 8) {
+                        cardFetchRetryCount++;
+                        const delay = 300 + cardFetchRetryCount * 250; // ~550ms .. ~2300ms
+                        cardFetchRetryTimer = setTimeout(() => {
+                            cardFetchRetryTimer = null;
+                            tryFetchAndShowCard(round);
+                        }, delay);
+                    } else {
+                        updateStatus('⚠️ Result not received from server. Auto-advancing…');
+                        clearCardFetchRetry();
+                    }
+                    return;
+                }
+
+                // SUCCESS — cache and render strictly from Firebase data.
+                lastResultData = data;
+                displayedCardRound = round;
+                displayWinningNumberCard(
+                    round,
+                    Number(data.winningNumber),
+                    Array.isArray(data.winners) ? data.winners : [],
+                    Number(data.winAmount) || 0
+                );
+                if (winnersModal) winnersModal.classList.add('active');
+                clearCardFetchRetry();
+            });
+        }
+
         function applyCardState() {
             const phase = engineState.gamePhase;
             const round = Number(engineState.roundNumber);
+
             if (phase !== 'results') {
                 if (winnersModal) winnersModal.classList.remove('active');
                 displayedCardRound = null;
+                clearCardFetchRetry();
                 if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
                 return;
             }
             if (!isFinite(round) || round <= 0) return;
-            if (displayedCardRound === round) return;
-            if (lastResultData && Number(lastResultData.round) === round) {
-                const num = Number(lastResultData.winningNumber);
-                if (isFinite(num) && num > 0) {
-                    displayedCardRound = round;
-                    displayWinningNumberCard(round, num, lastResultData.winners, lastResultData.winAmount);
-                    if (winnersModal) winnersModal.classList.add('active');
-                    if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
-                    return;
-                }
+            if (displayedCardRound === round) return; // already rendered for this round
+
+            // FAST PATH: lastResult for this round is already cached from the live listener.
+            if (lastResultData &&
+                Number(lastResultData.round) === round &&
+                isFinite(Number(lastResultData.winningNumber)) &&
+                Number(lastResultData.winningNumber) > 0 &&
+                Number(lastResultData.winningNumber) <= 200) {
+                displayedCardRound = round;
+                displayWinningNumberCard(
+                    round,
+                    Number(lastResultData.winningNumber),
+                    Array.isArray(lastResultData.winners) ? lastResultData.winners : [],
+                    Number(lastResultData.winAmount) || 0
+                );
+                if (winnersModal) winnersModal.classList.add('active');
+                clearCardFetchRetry();
+                return;
             }
-            if (cardFallbackTimer) return;
-            cardFallbackTimer = setTimeout(() => {
-                cardFallbackTimer = null;
-                if (engineState.gamePhase !== 'results') return;
-                if (displayedCardRound === round) return;
-                const nums = engineState.drawnNumbers;
-                if (nums.length > 0) {
-                    const num = Number(nums[0]);
-                    if (isFinite(num) && num > 0) {
-                        displayedCardRound = round;
-                        const roomWinners = Array.isArray(engineState.winners) ? engineState.winners.filter(Boolean) : [];
-                        const pool = Number(engineState.prizePool ?? engineState.potAmount ?? 0);
-                        const derivedWin = roomWinners.length && pool > 0 ? Math.floor(pool / roomWinners.length) : 0;
-                        displayWinningNumberCard(round, num, roomWinners, derivedWin);
-                        if (winnersModal) winnersModal.classList.add('active');
-                    }
-                }
-            }, 1200);
+
+            // SLOW PATH: nothing cached yet — show loading state and poll Firebase.
+            setCardLoadingState();
+            if (winnersModal) winnersModal.classList.add('active');
+            if (!cardFetchRetryTimer) {
+                cardFetchRetryCount = 0;
+                tryFetchAndShowCard(round);
+            }
         }
+
         function handleAuthoritativeResult(r) {
             if (!r || r.round == null || r.winningNumber == null) return;
+            const incoming = Number(r.round);
+            if (!isFinite(incoming) || incoming <= 0) return;
+            const current = Number(engineState.roundNumber);
+            // Reject future rounds outright; ignore rounds we've already moved past.
+            if (incoming > current) return;
+            if (incoming < current - 1) return;
             lastResultData = r;
-            applyCardState();
+            // Only the CURRENT round's result should trigger a card render.
+            if (incoming === current) applyCardState();
         }
+
         function attachLastResultListener(ref) {
             if (lastResultListenerRef) { try { lastResultListenerRef.off(); } catch (e) {} lastResultListenerRef = null; }
             if (!ref) return;
             lastResultListenerRef = ref.child('lastResult');
-            lastResultListenerRef.on('value', snap => { if (snap.exists()) handleAuthoritativeResult(snap.val()); });
+            lastResultListenerRef.on('value', snap => {
+                if (snap.exists()) {
+                    handleAuthoritativeResult(snap.val());
+                } else {
+                    // lastResult was cleared — make sure any pending card state resets.
+                    lastResultData = null;
+                    clearCardFetchRetry();
+                }
+            });
         }
         function detachLastResultListener() {
             if (lastResultListenerRef) { try { lastResultListenerRef.off(); } catch (e) {} lastResultListenerRef = null; }
@@ -996,7 +1098,6 @@
             });
             return count;
         }
-        // FIX #5 — 20% service fee; unified with prize pool calc
         function updateTotalBetDisplay() {
             if (!totalBetDisplayEl) return;
             const bet = Number(currentBet || 0);
@@ -1346,7 +1447,7 @@
 
         // ============================================================
         //  REFUND PRIMITIVES
-        //  FIX #3 — Atomic claim, then credit. Never prune the marker.
+        //  Atomic claim, then credit. Marker kept until refund succeeds.
         // ============================================================
         function refundBetIdempotent(username, round, amount, room) {
             const r = room || currentRoom;
@@ -1369,7 +1470,6 @@
             }).catch(() => false);
         }
 
-        // FIX #6 — require a valid round to refund
         function refundMyActiveBet() {
             if (!currentUser || !engineState.players[currentUser]) return;
             const me = engineState.players[currentUser];
@@ -1387,6 +1487,7 @@
         function performLogout() {
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
+            clearCardFetchRetry();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -1438,12 +1539,14 @@
             engineState.totalBetsPlaced = 0; engineState.winnersModalShown = false;
             lastKnownPlayersCache = {}; lastRoomSnapshotRaw = null;
             displayedCardRound = null; executedSpinRound = null; lastResultData = null;
+            clearCardFetchRetry();
             if (winnersModal) winnersModal.classList.remove('active');
             resetWinningNumberCard(); clearLocalRoundData();
         }
         function switchRoom() {
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
+            clearCardFetchRetry();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -1466,6 +1569,7 @@
             if (walletData.play < amount) { alert('⚠️ Insufficient play balance. Please deposit.'); return; }
             try { refundMyActiveBet(); } catch (e) {}
             detachNumbersTakenListener(); detachLastResultListener();
+            clearCardFetchRetry();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -1566,7 +1670,6 @@
         function getRemainingSeconds(deadline) { return Number(deadline) ? Math.max(0, Math.ceil((Number(deadline) - getServerNow()) / 1000)) : 0; }
 
         let updatePending = false;
-        // FIX #1 — do NOT overwrite timer display with stale state during selection
         function updateUIFromState() {
             if (updatePending) return;
             updatePending = true;
@@ -1638,7 +1741,7 @@
                 if (engineState.gamePhase !== 'selection') { updateStatus('⛔ Cannot pick numbers now.'); return; }
                 const myPick = getMyPick();
 
-                // FIX #3 — refund FIRST, then clear the pick
+                // Un-pick: refund FIRST, then clear the pick
                 if (myPick === num) {
                     refundPickBetFast(currentUser, currentBet).then(ok => {
                         if (!ok) { updateStatus('⚠️ Could not release pick. Please try again.'); return; }
@@ -1665,7 +1768,7 @@
                 if (myPick !== null) { updateStatus(`❌ You already picked ${myPick}. Unselect it first.`); return; }
                 if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`); return; }
 
-                const pickRound = engineState.roundNumber; // FIX #5 capture
+                const pickRound = engineState.roundNumber;
 
                 if (!engineState.players[currentUser]) {
                     engineState.players[currentUser] = { name: currentUser, pick: null, bet: currentBet, ready: false, betDeducted: false, betSources: {}, round: pickRound };
@@ -1700,7 +1803,6 @@
                             updateStatus('⚠️ Bet deduction failed. Number released.');
                             return;
                         }
-                        // FIX #5 — round changed while we were deducting → refund
                         if (engineState.roundNumber !== pickRound || engineState.gamePhase !== 'selection') {
                             refundBetIdempotent(currentUser, pickRound, currentBet, currentRoom);
                             releaseNumber(num);
@@ -1842,6 +1944,7 @@
                         if (currentUser) { if (gameRef) gameRef.child('players/' + currentUser).remove(); }
                         if (gameRef) { gameRef.off(); gameRef = null; }
                         detachNumbersTakenListener(); detachLastResultListener();
+                        clearCardFetchRetry();
                         stopTimer(); stopResultsCountdown();
                         if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
                         isGameInitialized = false; audioPlayedThisRound = false;
@@ -1856,7 +1959,6 @@
             currentUser = null;
             if (watchdogInterval) clearInterval(watchdogInterval);
             watchdogInterval = setInterval(runRoomWatchdog, 5000);
-            // FIX #12 — periodic server offset refresh
             setInterval(() => {
                 if (!database) return;
                 database.ref('.info/serverTimeOffset').once('value')
@@ -1909,7 +2011,6 @@
                 updatePickStatus(); updateTotalBetDisplay();
             });
         }
-        // FIX #1 — only set deadline if truly unset. Never override an existing value.
         function ensureSelectionDeadline() {
             if (!gameRef || engineState.gamePhase !== 'selection') return;
             gameRef.child('selectionEndsAt').transaction(current => {
@@ -1926,6 +2027,7 @@
             if (isGameInitialized) {
                 if (gameRef) gameRef.off();
                 detachNumbersTakenListener(); detachLastResultListener();
+                clearCardFetchRetry();
                 gameRef = null; isGameInitialized = false;
             }
             if (!database || !currentRoom || !currentUser) return;
@@ -1948,7 +2050,6 @@
                     });
                 }
                 const data = snapshot.val() || {};
-                // FIX #4 — recover stuck spinning
                 if (data.gameState === 'spinning') {
                     const lock = data.spinLock;
                     const lockTs = lock && typeof lock.timestamp === 'number' ? lock.timestamp : 0;
@@ -1987,7 +2088,7 @@
         }
 
         // ============================================================
-        //  syncGameState — FIX #2 removed throttle for consistent numbers/timer
+        //  syncGameState
         // ============================================================
         function syncGameState(data) {
             lastRoomSnapshotRaw = data;
@@ -2003,7 +2104,6 @@
             engineState.gamePhase = phase;
             engineState.roundNumber = round;
             phaseDeadline = Number(data.selectionEndsAt) || 0;
-            // FIX #1 — derive timer from deadline, not stale data.timer
             engineState.timer = phaseDeadline ? getRemainingSeconds(phaseDeadline) : (Number(data.timer) || 0);
             engineState.drawnNumbers = Array.isArray(data.drawnNumbers) ? data.drawnNumbers : [];
             engineState.winners = Array.isArray(data.winners) ? data.winners : [];
@@ -2019,7 +2119,7 @@
                     .filter(n => n >= 1 && n <= 200)
             );
 
-            // FIX #3 — retry any pending single-player refund
+            // Retry any pending single-player refund
             if (data.singlePlayerRefund && data.singlePlayerRefund.username && data.singlePlayerRefund.round) {
                 const sr = data.singlePlayerRefund;
                 const srRound = Number(sr.round);
@@ -2039,13 +2139,14 @@
                 displayedCardRound = null;
                 executedSpinRound = null;
                 lastResultData = null;
+                clearCardFetchRetry();
                 if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
             }
 
             if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
             updateTotalBetDisplay();
 
-            // FIX #4 — release orphan numbers + refund orphan bets
+            // Release orphan numbers + refund orphan bets
             try {
                 const currentNamesSet = new Set(playerNames);
                 Object.keys(lastKnownPlayersCache).forEach(name => {
@@ -2097,7 +2198,7 @@
         }
 
         // ============================================================
-        //  requestSpin — single-player refund is race-safe
+        //  requestSpin
         // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
@@ -2120,7 +2221,6 @@
                     }).then(res => res && res.committed);
                 }
 
-                // ----- SINGLE-PLAYER REFUND -----
                 if (eligible.length === 1) {
                     const only = eligible[0];
                     const amount = Number(ps[only].bet || currentBet);
@@ -2163,7 +2263,6 @@
                     });
                 }
 
-                // ----- MULTIPLAYER SPIN -----
                 return gameRef.transaction(room => {
                     if (!room || room.gameState !== 'selection' || Number(room.round) !== round) return room;
                     if (room.spinLock && Number(room.spinLock.round) === round) return room;
@@ -2179,7 +2278,6 @@
                     const winners = eligibleInner.filter(name => Number(psInner[name].pick) === winningNumber);
                     const bet = Number(room.betAmount || currentBet);
                     const pot = eligibleInner.length * bet;
-                    // FIX #5 — payout uses PAYOUT_RATE (80%)
                     const pool = Math.floor(pot * PAYOUT_RATE);
 
                     room.spinLock = { round, timestamp: firebase.database.ServerValue.TIMESTAMP };
@@ -2275,7 +2373,6 @@
                             room.numbersTaken = {};
                             room.winningNumber = null; room.spinLock = null; room.spinStartedRound = null;
                             room.spinFinishedAt = null;
-                            // NOTE: singlePlayerRefund is NOT cleared here — the refund helper clears it only on success
                             return room;
                         });
                     }).then(() => {
