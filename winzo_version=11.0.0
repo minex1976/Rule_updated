@@ -2192,7 +2192,7 @@
                         selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000,
                         drawnNumbers: [], winners: [], spinCount: 0, cumulativeRotation: 0,
                         players: {}, gameStarted: true, betAmount: currentBet,
-                        potAmount: 0, totalBets: 0, numbersTaken: {}
+                        potAmount: 0, totalBets: 0, numbersTaken: {}, spinPendingAt: null
                     });
                 }
                 const data = snapshot.val() || {};
@@ -2367,12 +2367,61 @@
                 });
 
                 if (eligible.length === 0) {
+                    // IMPORTANT: Never restart the selection timer here.
+                    // The old logic reset selectionEndsAt whenever the deadline
+                    // was reached without an eligible player, which caused the
+                    // 30-second timer to loop forever and prevented the round
+                    // from ever reaching the spin phase.
+                    //
+                    // If there are players whose picks are still being finalized
+                    // by rapid-tap async writes, give those writes a short grace
+                    // period. The timer remains at 0 during this grace period.
+                    const pendingPickPlayers = Object.keys(ps).filter(name => {
+                        const p = ps[name];
+                        return p && getPlayerPicks(p).length > 0 && Number(p.round) === round && p.betDeducted !== true;
+                    });
+                    if (pendingPickPlayers.length > 0) {
+                        const pendingSince = Number(roomSnap.spinPendingAt) || 0;
+                        if (!pendingSince) {
+                            return gameRef.child('spinPendingAt').transaction(cur => {
+                                if (Number(cur) > 0) return cur;
+                                return firebase.database.ServerValue.TIMESTAMP;
+                            }).then(() => {
+                                setTimeout(() => {
+                                    if (gameRef && engineState.gamePhase === 'selection' && Number(engineState.roundNumber) === round) requestSpin().catch(() => {});
+                                }, 1500);
+                                return false;
+                            });
+                        }
+                        if (getServerNow() - pendingSince < 5000) {
+                            setTimeout(() => {
+                                if (gameRef && engineState.gamePhase === 'selection' && Number(engineState.roundNumber) === round) requestSpin().catch(() => {});
+                            }, 1000);
+                            return false;
+                        }
+                    }
+
+                    // No completed picks remain. Start a short spin/result cycle
+                    // instead of resetting the selection timer. There is no winner.
                     return gameRef.transaction(r => {
                         if (!r || r.gameState !== 'selection' || Number(r.round) !== round) return r;
-                        r.timer = SELECTION_SECONDS;
-                        r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                        if (r.spinLock && Number(r.spinLock.round) === round) return r;
+                        const taken = Object.keys(r.numbersTaken || {})
+                            .filter(k => r.numbersTaken[k] === true)
+                            .map(Number).filter(n => n >= 1 && n <= 200);
+                        const displayNumber = taken.length ? taken[Math.floor(Math.random() * taken.length)] : (Math.floor(Math.random() * 200) + 1);
+                        r.spinLock = { round, timestamp: firebase.database.ServerValue.TIMESTAMP };
+                        r.winningNumber = displayNumber;
+                        r.winners = [];
+                        r.potAmount = 0; r.prizePool = 0;
+                        r.gameState = 'spinning';
+                        r.spinStartedRound = round;
+                        r.timer = 5;
+                        r.spinCount = Number(r.spinCount || 0) + 1;
+                        r.spinFinishedAt = null;
+                        r.spinPendingAt = null;
                         return r;
-                    }).then(res => res && res.committed);
+                    }).then(result => result && result.committed);
                 }
 
                 // A round still requires at least two players, even if one player selected 2-3 numbers.
@@ -2449,6 +2498,7 @@
                     room.timer = 5;
                     room.spinCount = Number(room.spinCount || 0) + 1;
                     room.spinFinishedAt = null;
+                    room.spinPendingAt = null;
                     return room;
                 }).then(result => result && result.committed);
             }).catch(() => false);
@@ -2533,6 +2583,7 @@
                             room.numbersTaken = {};
                             room.winningNumber = null; room.spinLock = null; room.spinStartedRound = null;
                             room.spinFinishedAt = null;
+                            room.spinPendingAt = null;
                             return room;
                         });
                     }).then(() => {
