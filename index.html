@@ -690,7 +690,6 @@
         let executedSpinRound = null;
         let cardFallbackTimer = null;
         let lastResultData = null;
-        // STRICT card gating — retry polling of Firebase lastResult
         let cardFetchRetryTimer = null;
         let cardFetchRetryCount = 0;
 
@@ -887,8 +886,6 @@
 
         // ============================================================
         //  CARD DISPLAY — STRICTLY FIREBASE-SOURCED
-        //  The winner card will ONLY render from the `lastResult` node
-        //  in Firebase. No local fallback, no engineState derivation.
         // ============================================================
         function formatWinnerNames(winners) {
             const list = Array.isArray(winners) ? winners.filter(Boolean).map(w => String(w).trim()).filter(Boolean) : [];
@@ -903,8 +900,6 @@
             cardFetchRetryCount = 0;
         }
 
-        // Strictly fetch lastResult for a specific round from Firebase.
-        // Returns null unless the node exists AND matches the round AND has a valid winningNumber.
         function fetchLastResultFromFirebase(round) {
             if (!gameRef) return Promise.resolve(null);
             return gameRef.child('lastResult').once('value').then(snap => {
@@ -933,7 +928,6 @@
 
         function displayWinningNumberCard(round, number, winners, winAmount) {
             const r = Number(round); const n = Number(number);
-            // STRICT GUARDS — refuse to render anything that isn't well-formed Firebase data.
             if (!isFinite(r) || r <= 0) return;
             if (!isFinite(n) || n <= 0 || n > 200) return;
             if (!Array.isArray(winners)) return;
@@ -975,20 +969,18 @@
             if (winningCardAmountValueEl) winningCardAmountValueEl.textContent = '0 Birr';
         }
 
-        // Poll Firebase for the lastResult of a given round with capped backoff.
         function tryFetchAndShowCard(round) {
             if (engineState.gamePhase !== 'results') { clearCardFetchRetry(); return; }
             if (Number(engineState.roundNumber) !== Number(round)) { clearCardFetchRetry(); return; }
 
             fetchLastResultFromFirebase(round).then(data => {
-                // Re-validate after async fetch.
                 if (engineState.gamePhase !== 'results') { clearCardFetchRetry(); return; }
                 if (Number(engineState.roundNumber) !== Number(round)) { clearCardFetchRetry(); return; }
 
                 if (!data) {
                     if (cardFetchRetryCount < 8) {
                         cardFetchRetryCount++;
-                        const delay = 300 + cardFetchRetryCount * 250; // ~550ms .. ~2300ms
+                        const delay = 300 + cardFetchRetryCount * 250;
                         cardFetchRetryTimer = setTimeout(() => {
                             cardFetchRetryTimer = null;
                             tryFetchAndShowCard(round);
@@ -1000,7 +992,6 @@
                     return;
                 }
 
-                // SUCCESS — cache and render strictly from Firebase data.
                 lastResultData = data;
                 displayedCardRound = round;
                 displayWinningNumberCard(
@@ -1026,9 +1017,8 @@
                 return;
             }
             if (!isFinite(round) || round <= 0) return;
-            if (displayedCardRound === round) return; // already rendered for this round
+            if (displayedCardRound === round) return;
 
-            // FAST PATH: lastResult for this round is already cached from the live listener.
             if (lastResultData &&
                 Number(lastResultData.round) === round &&
                 isFinite(Number(lastResultData.winningNumber)) &&
@@ -1046,7 +1036,6 @@
                 return;
             }
 
-            // SLOW PATH: nothing cached yet — show loading state and poll Firebase.
             setCardLoadingState();
             if (winnersModal) winnersModal.classList.add('active');
             if (!cardFetchRetryTimer) {
@@ -1060,11 +1049,9 @@
             const incoming = Number(r.round);
             if (!isFinite(incoming) || incoming <= 0) return;
             const current = Number(engineState.roundNumber);
-            // Reject future rounds outright; ignore rounds we've already moved past.
             if (incoming > current) return;
             if (incoming < current - 1) return;
             lastResultData = r;
-            // Only the CURRENT round's result should trigger a card render.
             if (incoming === current) applyCardState();
         }
 
@@ -1076,7 +1063,6 @@
                 if (snap.exists()) {
                     handleAuthoritativeResult(snap.val());
                 } else {
-                    // lastResult was cleared — make sure any pending card state resets.
                     lastResultData = null;
                     clearCardFetchRetry();
                 }
@@ -1087,32 +1073,78 @@
         }
 
         // ============================================================
-        //  UTILITIES
+        //  HELPERS
         // ============================================================
+        function getPlayerPicks(player) {
+            if (!player) return [];
+            if (Array.isArray(player.picks)) {
+                return player.picks.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 200);
+            }
+            if (player.pick !== null && player.pick !== undefined) {
+                const n = Number(player.pick);
+                return Number.isInteger(n) && n >= 1 && n <= 200 ? [n] : [];
+            }
+            return [];
+        }
+        function getPlayerPick(player) {
+            const picks = getPlayerPicks(player);
+            return picks.length ? picks[0] : null;
+        }
+        function getBetSources(player) { const s = player && player.betSources ? player.betSources : {}; return s && typeof s === 'object' ? s : {}; }
+
+        // ---- Effective picks (local optimistic state for current user) ----
+        // Bug fix #2: prefer the local selection state for the current user
+        // during the selection phase so the UI updates instantly per tap.
+        function getEffectivePicksFor(name) {
+            if (name === currentUser
+                && localSelectionRound === engineState.roundNumber
+                && engineState.gamePhase === 'selection') {
+                return [...localSelectionPicks];
+            }
+            return getPlayerPicks(engineState.players[name]);
+        }
+        function getEffectiveRoundFor(name) {
+            const p = engineState.players[name];
+            if (p && p.round != null && isFinite(Number(p.round))) return Number(p.round);
+            if (name === currentUser
+                && localSelectionRound === engineState.roundNumber
+                && localSelectionPicks.length > 0) {
+                return engineState.roundNumber;
+            }
+            return null;
+        }
+
         function getTotalPicks() {
             const players = engineState.players || {};
+            const names = new Set(Object.keys(players));
+            if (currentUser) names.add(currentUser);
             let count = 0;
-            Object.keys(players).forEach(name => {
-                const p = players[name];
-                if (p && Number(p.round) === engineState.roundNumber) count += getPlayerPicks(p).length;
+            names.forEach(name => {
+                const picks = getEffectivePicksFor(name);
+                if (!picks.length) return;
+                if (getEffectiveRoundFor(name) === engineState.roundNumber) count += picks.length;
             });
             return count;
         }
         function getPlayersWithPick() {
             const players = engineState.players || {};
+            const names = new Set(Object.keys(players));
+            if (currentUser) names.add(currentUser);
             let count = 0;
-            Object.keys(players).forEach(name => {
-                const p = players[name];
-                if (p && Number(p.round) === engineState.roundNumber && getPlayerPicks(p).length) count++;
+            names.forEach(name => {
+                const picks = getEffectivePicksFor(name);
+                if (!picks.length) return;
+                if (getEffectiveRoundFor(name) === engineState.roundNumber) count++;
             });
             return count;
         }
+        // Bug fix #2b: show the running prize pool regardless of player count
+        // so the display updates on every local pick.
         function updateTotalBetDisplay() {
             if (!totalBetDisplayEl) return;
             const bet = Number(currentBet || 0);
-            const players = getPlayersWithPick();
             const totalPicks = getTotalPicks();
-            const pool = players >= 2 ? Math.floor(bet * totalPicks * PAYOUT_RATE) : 0;
+            const pool = Math.floor(bet * totalPicks * PAYOUT_RATE);
             totalBetDisplayEl.textContent = String(pool);
         }
         function updatePrizeDisplay() { updateTotalBetDisplay(); }
@@ -1457,17 +1489,16 @@
 
         // ============================================================
         //  REFUND PRIMITIVES
-        //  Atomic claim, then credit. Marker kept until refund succeeds.
         // ============================================================
         function refundBetIdempotent(username, round, amount, room) {
             const r = room || currentRoom;
             if (!database || !r || !username || !amount || amount <= 0) return Promise.resolve(false);
             const key = `refunds/${r}/${round}/${username}`;
             return database.ref(key).transaction(current => {
-                if (current) return;   // already refunded
+                if (current) return;
                 return { amount: Number(amount), timestamp: Date.now() };
             }).then(claim => {
-                if (!claim.committed) return true;   // someone else claimed it
+                if (!claim.committed) return true;
                 return database.ref('users/' + username + '/playWallet')
                     .transaction(w => (w || 0) + Number(amount))
                     .then(res => {
@@ -1634,26 +1665,6 @@
         }
 
         // ============================================================
-        //  HELPERS
-        // ============================================================
-        function getPlayerPicks(player) {
-            if (!player) return [];
-            if (Array.isArray(player.picks)) {
-                return player.picks.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 200);
-            }
-            if (player.pick !== null && player.pick !== undefined) {
-                const n = Number(player.pick);
-                return Number.isInteger(n) && n >= 1 && n <= 200 ? [n] : [];
-            }
-            return [];
-        }
-        function getPlayerPick(player) {
-            const picks = getPlayerPicks(player);
-            return picks.length ? picks[0] : null;
-        }
-        function getBetSources(player) { const s = player && player.betSources ? player.betSources : {}; return s && typeof s === 'object' ? s : {}; }
-
-        // ============================================================
         //  NUMBERS TAKEN LISTENER
         // ============================================================
         function attachNumbersTakenListener() {
@@ -1768,17 +1779,12 @@
             });
         }
 
-        // Hard local selection state for the current round. This prevents a
-        // Firebase snapshot arriving between clicks from temporarily resetting
-        // the player's visible pick count and allowing more than 3 selections.
         const MAX_PICKS_PER_ROUND = 3;
         let localSelectionRound = null;
         let localSelectionPicks = [];
 
         // ============================================================
         //  RAPID-SAFE NUMBER PICK HANDLER
-        //  Uses local optimistic state + Firebase transactions so rapid
-        //  taps cannot overwrite one another with stale player snapshots.
         // ============================================================
         function syncLocalPlayerPicks(picks, round, betDeducted) {
             const clean = [...new Set((picks || []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 200))].slice(0, MAX_PICKS_PER_ROUND);
@@ -1796,18 +1802,25 @@
             }
         }
 
+        // ---- Bug fix #1: `associateClaimedNumber` now resets stale rounds ----
         function associateClaimedNumber(username, number, round) {
             if (!gameRef || !username) return Promise.resolve(false);
             const playerRef = gameRef.child('players/' + username);
             return playerRef.transaction(player => {
-                player = player && typeof player === 'object' ? player : { name: username };
-                const playerRound = Number(player.round);
-                if (player.round != null && isFinite(playerRound) && playerRound !== Number(round)) return player;
+                player = player && typeof player === 'object' ? player : {};
+                // If the existing record is for a different round, start fresh.
+                if (player.round != null && Number(player.round) !== Number(round)) {
+                    player = {};
+                }
                 let picks = getPlayerPicks(player);
                 if (!picks.includes(Number(number))) picks.push(Number(number));
                 picks = [...new Set(picks)].filter(n => n >= 1 && n <= 200).slice(0, MAX_PICKS_PER_ROUND);
-                player.name = username; player.picks = picks; player.pick = picks[0] || null;
-                player.bet = currentBet; player.ready = picks.length > 0; player.round = Number(round);
+                player.name = username;
+                player.picks = picks;
+                player.pick = picks[0] || null;
+                player.bet = currentBet;
+                player.ready = picks.length > 0;
+                player.round = Number(round);
                 player.betDeducted = player.betDeducted === true;
                 player.betSources = (player.betSources && typeof player.betSources === 'object') ? player.betSources : {};
                 return player;
@@ -1862,6 +1875,8 @@
 
                 const round = Number(engineState.roundNumber);
                 const myPicks = getMyPicks();
+
+                // Un-pick
                 if (myPicks.includes(num)) {
                     if (btn.dataset.busy === '1') return;
                     btn.dataset.busy = '1';
@@ -1882,13 +1897,13 @@
                 if (engineState.allTakenNumbers.has(num)) { updateStatus(`❌ Number ${num} is already taken!`); return; }
                 if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`); return; }
 
-                // Reserve locally immediately. A second rapid tap sees this state.
+                // Optimistic local reservation
                 const nextPicks = [...myPicks, num];
                 syncLocalPlayerPicks(nextPicks, round, false);
                 engineState.allTakenNumbers.add(num);
                 renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
 
-                // First atomically claim the number globally.
+                // Step 1: atomic claim of the number slot
                 claimNumber(num, function(claimed) {
                     if (!claimed) {
                         rollbackLocalNumber(num, round);
@@ -1896,11 +1911,10 @@
                         return;
                     }
 
-                    // Deduct exactly one room-bet for this one number.
+                    // Step 2: deduct the bet
                     deductPickBetFast(currentUser, currentBet).then(ok => {
                         if (!ok) {
                             releaseNumber(num);
-                            rollbackNumberAssociation(currentUser, num, round).catch(() => {});
                             rollbackLocalNumber(num, round);
                             updateStatus('⚠️ Bet deduction failed. Number released.');
                             return;
@@ -1909,31 +1923,42 @@
                         if (engineState.roundNumber !== round || engineState.gamePhase !== 'selection') {
                             refundBetIdempotent(currentUser, round, currentBet, currentRoom).catch(() => {});
                             releaseNumber(num);
-                            rollbackNumberAssociation(currentUser, num, round).catch(() => {});
                             rollbackLocalNumber(num, round);
                             updateStatus('⏱ Round ended — your bet was refunded.');
                             return;
                         }
 
-                        finalizeNumberBet(currentUser, num, round).then(saved => {
-                            if (!saved) {
+                        // Step 3: write the pick to the player record
+                        // (Bug fix #1: this call was missing in the rapid handler)
+                        associateClaimedNumber(currentUser, num, round).then(assoc => {
+                            if (!assoc) {
                                 refundPickBetFast(currentUser, currentBet).catch(() => {});
                                 releaseNumber(num);
-                                rollbackNumberAssociation(currentUser, num, round).catch(() => {});
                                 rollbackLocalNumber(num, round);
                                 updateStatus('⚠️ Pick could not be saved. Your bet was refunded.');
                                 return;
                             }
-                            syncLocalPlayerPicks(getMyPicks(), round, true);
-                            renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
-                            updateStatus(`✅ ${currentUser} picked ${num} for ${currentBet} Birr!`);
+
+                            // Step 4: mark betDeducted
+                            finalizeNumberBet(currentUser, num, round).then(saved => {
+                                if (!saved) {
+                                    refundPickBetFast(currentUser, currentBet).catch(() => {});
+                                    releaseNumber(num);
+                                    rollbackNumberAssociation(currentUser, num, round).catch(() => {});
+                                    rollbackLocalNumber(num, round);
+                                    updateStatus('⚠️ Pick could not be saved. Your bet was refunded.');
+                                    return;
+                                }
+                                syncLocalPlayerPicks(getMyPicks(), round, true);
+                                renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
+                                updateStatus(`✅ ${currentUser} picked ${num} for ${currentBet} Birr!`);
+                            });
                         });
                     });
                 });
             };
 
-            // pointerdown captures fast Telegram/mobile taps before a rerender can
-            // replace the button. click is retained only as a keyboard fallback.
+            // pointerdown captures fast Telegram/mobile taps; click fallback for keyboard
             numPicker.addEventListener('pointerdown', function(e) {
                 if (e.pointerType === 'mouse') return;
                 e.preventDefault();
@@ -2332,15 +2357,6 @@
                 });
 
                 if (eligible.length === 0) {
-                    // IMPORTANT: Never restart the selection timer here.
-                    // The old logic reset selectionEndsAt whenever the deadline
-                    // was reached without an eligible player, which caused the
-                    // 30-second timer to loop forever and prevented the round
-                    // from ever reaching the spin phase.
-                    //
-                    // If there are players whose picks are still being finalized
-                    // by rapid-tap async writes, give those writes a short grace
-                    // period. The timer remains at 0 during this grace period.
                     const pendingPickPlayers = Object.keys(ps).filter(name => {
                         const p = ps[name];
                         return p && getPlayerPicks(p).length > 0 && Number(p.round) === round && p.betDeducted !== true;
@@ -2366,8 +2382,6 @@
                         }
                     }
 
-                    // No completed picks remain. Start a short spin/result cycle
-                    // instead of resetting the selection timer. There is no winner.
                     return gameRef.transaction(r => {
                         if (!r || r.gameState !== 'selection' || Number(r.round) !== round) return r;
                         if (r.spinLock && Number(r.spinLock.round) === round) return r;
@@ -2389,7 +2403,6 @@
                     }).then(result => result && result.committed);
                 }
 
-                // A round still requires at least two players, even if one player selected 2-3 numbers.
                 if (eligible.length === 1) {
                     const only = eligible[0];
                     const amount = Number(ps[only].bet || currentBet) * getPlayerPicks(ps[only]).length;
