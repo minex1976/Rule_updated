@@ -809,9 +809,7 @@
         //  ----------------------------------------------------------
         //  10 male-named bots join whichever room the user is in.
         //  Each round, a random subset of MIN_BOTS_PER_ROUND…MAX_BOTS_PER_ROUND
-        //  actually places picks. Bots that don't pick stay visible in the
-        //  online counter but do nothing. All picks flow through the same
-        //  numbersTaken/players pipeline as real players.
+        //  actually places picks.
         // ============================================================
         const BOT_NAMES = [
             'Dawit', 'Abel', 'Yonas', 'Biruk', 'Tesfaye',
@@ -823,11 +821,24 @@
         const MIN_BOTS_PER_ROUND = 5;
         const MAX_BOTS_PER_ROUND = 10;
 
+        // ============================================================
+        //  WANDERING PLAYERS (cosmetic online-count variation)
+        //  ----------------------------------------------------------
+        //  Reserved names that drift in and out of the room each round.
+        //  They never pick numbers and never affect the game engine.
+        //  Their only purpose is to make the online counter fluctuate
+        //  so the room feels alive. Their count per round is 1–6.
+        // ============================================================
+        const WANDERER_NAMES = [
+            'Fikru', 'Samuel', 'Kebede', 'Bereket', 'Natnael', 'Tadesse'
+        ];
+        let wanderersPresent = new Set();
+
         let botScheduledRound = null;
         let botPickTimers = [];
         let botsUsersEnsured = false;
         let botsAddedForGeneration = -1;
-        let botsReadyForGeneration = -1;   // PATCH 1: readiness flag
+        let botsReadyForGeneration = -1;
 
         function clearBotTimers() {
             botPickTimers.forEach(t => { try { clearTimeout(t); } catch (e) {} });
@@ -837,7 +848,8 @@
         async function ensureBotUsers() {
             if (botsUsersEnsured || !database) return;
             botsUsersEnsured = true;
-            for (const botName of BOT_NAMES) {
+            const allReserved = BOT_NAMES.concat(WANDERER_NAMES);
+            for (const botName of allReserved) {
                 try {
                     const ref = database.ref('users/' + botName);
                     const snap = await ref.once('value');
@@ -877,14 +889,56 @@
                     }).catch(() => {});
                 } catch (e) { /* swallow */ }
             }
-            // PATCH 2: signal that all bot records are safely written
             botsReadyForGeneration = roomConnectionGeneration;
+        }
+
+        // ---- Refresh wanderers for the current round ----
+        // Randomly decides which 1–6 wanderers are "present" right now.
+        // Adds new ones and removes ones that have left.
+        async function refreshWanderers() {
+            if (!gameRef || !currentUser) return;
+            const shuffled = shuffleArray(WANDERER_NAMES);
+            const target = 1 + Math.floor(Math.random() * WANDERER_NAMES.length); // 1..6
+            const newPresent = new Set(shuffled.slice(0, target));
+
+            // Remove wanderers that are no longer present
+            for (const name of wanderersPresent) {
+                if (!newPresent.has(name)) {
+                    try { gameRef.child('players/' + name).remove().catch(() => {}); } catch (e) {}
+                }
+            }
+
+            // Add newly-arrived wanderers
+            const round = Number(engineState.roundNumber) || 1;
+            for (const name of newPresent) {
+                if (wanderersPresent.has(name)) continue;
+                try {
+                    const ref = gameRef.child('players/' + name);
+                    ref.onDisconnect().remove().catch(() => {});
+                    await ref.set({
+                        name: name,
+                        pick: null, picks: [], bet: currentBet, ready: false,
+                        betDeducted: false, betSources: {}, round,
+                        isWanderer: true
+                    }).catch(() => {});
+                } catch (e) { /* swallow */ }
+            }
+            wanderersPresent = newPresent;
+        }
+
+        function removeWanderersFromRoom() {
+            if (!gameRef) { wanderersPresent.clear(); return; }
+            wanderersPresent.forEach(name => {
+                try { gameRef.child('players/' + name).remove().catch(() => {}); } catch (e) {}
+            });
+            wanderersPresent.clear();
         }
 
         function removeBotsFromRoom() {
             clearBotTimers();
             botScheduledRound = null;
             botsReadyForGeneration = -1;
+            removeWanderersFromRoom();
             if (!gameRef || !BOTS_ENABLED) return;
             BOT_NAMES.forEach(botName => {
                 try { gameRef.child('players/' + botName).remove().catch(() => {}); } catch (e) {}
@@ -913,7 +967,6 @@
         function scheduleBotPicks() {
             if (!BOTS_ENABLED) return;
             if (!gameRef || !currentUser) return;
-            // PATCH 3: wait until bot records are fully written
             if (botsReadyForGeneration !== roomConnectionGeneration) return;
             const round = Number(engineState.roundNumber);
             if (!isFinite(round) || round <= 0) return;
@@ -937,7 +990,6 @@
             });
         }
 
-        // PATCH 5: compute only the missing picks, never over-deduct
         async function botPickNumbersForRound(botName, round) {
             if (!BOTS_ENABLED) return;
             if (!gameRef || !database) return;
@@ -1773,6 +1825,7 @@
             displayedCardRound = null; executedSpinRound = null; lastResultData = null;
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
+            wanderersPresent.clear();
             closeMoreDropdown(); hideWaitingModal();
             if (welcomeToast) welcomeToast.classList.remove('active');
             stopFireworks();
@@ -1822,6 +1875,7 @@
             resetEngineStateForNewRound();
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
+            wanderersPresent.clear();
             DB.setSavedBet(null);
             showWelcomeScreen();
             updateStatus('🔄 Choose your room.');
@@ -1848,6 +1902,7 @@
             resetEngineStateForNewRound();
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
+            wanderersPresent.clear();
             currentBet = amount;
             currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
@@ -2304,6 +2359,7 @@
                         lastKnownPlayersCache = {}; lastRoomSnapshotRaw = null;
                         botsAddedForGeneration = -1;
                         botsReadyForGeneration = -1;
+                        wanderersPresent.clear();
                         if (winnersModal) winnersModal.classList.remove('active');
                         resetWinningNumberCard();
                         showWelcomeScreen();
@@ -2559,11 +2615,12 @@
             updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
             lastRoomSyncAt = Date.now();
 
-            // PATCH 4: chain bot scheduling after bot records are fully written
             if (currentUser && gameRef && BOTS_ENABLED && botsAddedForGeneration !== roomConnectionGeneration) {
                 botsAddedForGeneration = roomConnectionGeneration;
-                botsReadyForGeneration = -1; // invalidate until setup completes
+                botsReadyForGeneration = -1;
                 addBotsToRoom().then(() => {
+                    // After bots are in, seed the wanderers for this round.
+                    refreshWanderers().catch(() => {});
                     if (engineState.gamePhase === 'selection') {
                         scheduleBotPicks();
                     }
@@ -2835,6 +2892,9 @@
                         stopFireworks();
                         updateTotalBetDisplay(); updatePrizeDisplay(); updatePickStatus();
                         renderNumberPicker(); updatePlayerList();
+                        // Refresh wanderers for the new round so the online
+                        // counter naturally rises and falls between rounds.
+                        refreshWanderers().catch(() => {});
                         if (!isTimerRunning) startTimer();
                         if (engineState.activePlayersCount <= 1) showWaitingModal();
                     }).catch(() => {});
@@ -3012,6 +3072,7 @@
         console.info('WINZO production hardening loaded:', WINZO_PRODUCTION_VERSION);
         console.info('Default bots enabled (' + BOT_NAMES.length + '):', BOT_NAMES.join(', '));
         console.info('Bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
+        console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
         init();
     </script>
 </body>
