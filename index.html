@@ -192,44 +192,9 @@
         @media (max-width:380px) { .winning-number-big { font-size: 4.6rem; } .winning-number-card { padding: 20px 16px 18px; border-radius: 24px; } }
         @media (max-width: 430px) { #usernameWalletItem { display: none !important; } }
         @media (max-height: 700px) { #usernameWalletItem { display: none !important; } }
-
-        /* ============================================================
-           MANDATORY UPDATE GATE
-           ============================================================ */
-        #mandatoryUpdateOverlay {
-            display:none; position:fixed; inset:0; z-index:10000;
-            background:rgba(10,5,20,0.96); backdrop-filter:blur(8px);
-            justify-content:center; align-items:center; padding:22px;
-        }
-        #mandatoryUpdateOverlay.active { display:flex; }
-        #mandatoryUpdateOverlay .update-card {
-            width:100%; max-width:380px; text-align:center;
-            background:linear-gradient(160deg,#2a1a4a,#1a2a4a);
-            border:1px solid rgba(255,204,68,.35); border-radius:28px;
-            padding:30px 22px 24px; box-shadow:0 20px 70px rgba(0,0,0,.75);
-        }
-        #mandatoryUpdateOverlay .update-icon { font-size:3.2rem; margin-bottom:8px; }
-        #mandatoryUpdateOverlay h2 { color:#f0e6ff; font-size:1.35rem; margin-bottom:8px; }
-        #mandatoryUpdateOverlay p { color:#b8a0d0; font-size:.82rem; line-height:1.5; margin-bottom:16px; }
-        #mandatoryUpdateOverlay .update-status { min-height:1.2rem; color:#ffd866; font-size:.72rem; margin-bottom:12px; }
-        #mandatoryUpdateBtn {
-            width:100%; border:0; border-radius:30px; padding:12px 18px;
-            background:linear-gradient(135deg,#ffcc44,#f5a623); color:#1a0a2e;
-            font-weight:800; font-size:1rem; cursor:pointer; box-shadow:0 4px 0 #b87a15;
-        }
-        #mandatoryUpdateBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #b87a15; }
     </style>
 </head>
 <body>
-    <div id="mandatoryUpdateOverlay" aria-live="polite">
-        <div class="update-card">
-            <div class="update-icon">🔄</div>
-            <h2>New Version Required</h2>
-            <p>A newer version of Winzo is required before you can continue. Please update now.</p>
-            <div class="update-status" id="mandatoryUpdateStatus">Checking version…</div>
-            <button id="mandatoryUpdateBtn">Update Now</button>
-        </div>
-    </div>
     <div class="game-wrapper">
         <div class="network-offline-overlay" id="networkOfflineOverlay">
             <div class="icon">📶</div>
@@ -683,7 +648,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '11.0';
+        const APP_VERSION = '10.0';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(u) { if (u) localStorage.setItem('bingo_current_user', u); else localStorage.removeItem('bingo_current_user'); },
@@ -888,7 +853,7 @@
                 }
                 if (!confirm('⚠️ Clear ALL old round data from Firebase?\n\nOnly do this when no one is mid-round.')) return;
                 const rooms = ['room_15', 'room_30'];
-                const nodes = ['lastResult', 'singlePlayerHandled', 'singlePlayerRefund', 'finalizedRounds', 'spinLock', 'winningNumber', 'spinStartedRound', 'spinFinishedAt', 'drawnNumbers', 'winners', 'spinCount', 'cumulativeRotation', 'prizePool', 'potAmount', 'totalBets', 'numbersTaken'];
+                const nodes = ['lastResult', 'singlePlayerHandled', 'singlePlayerRefund', 'finalizedRounds', 'spinLock', 'winningNumber', 'spinStartedRound', 'spinFinishedAt', 'drawnNumbers', 'winners', 'spinCount', 'cumulativeRotation', 'prizePool', 'potAmount', 'totalBets', 'numbersTaken', 'spinPendingAt'];
                 const totalOps = (rooms.length * nodes.length) + rooms.length + 1;
                 let doneOps = 0; let errored = false;
                 function tick() {
@@ -2117,7 +2082,7 @@
         // ============================================================
         //  PRODUCTION HARDENING
         // ============================================================
-        const WINZO_PRODUCTION_VERSION = '11.0.0';
+        const WINZO_PRODUCTION_VERSION = '10.0.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -2791,10 +2756,6 @@
             })).catch(() => false);
         }
 
-        // ============================================================
-        //  START APPLICATION
-        //  Version checking has been removed.
-        // ============================================================
         console.info('WINZO production hardening loaded:', WINZO_PRODUCTION_VERSION);
         init();
     </script>
