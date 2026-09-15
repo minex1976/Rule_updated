@@ -192,9 +192,44 @@
         @media (max-width:380px) { .winning-number-big { font-size: 4.6rem; } .winning-number-card { padding: 20px 16px 18px; border-radius: 24px; } }
         @media (max-width: 430px) { #usernameWalletItem { display: none !important; } }
         @media (max-height: 700px) { #usernameWalletItem { display: none !important; } }
+
+        /* ============================================================
+           MANDATORY UPDATE GATE
+           ============================================================ */
+        #mandatoryUpdateOverlay {
+            display:none; position:fixed; inset:0; z-index:10000;
+            background:rgba(10,5,20,0.96); backdrop-filter:blur(8px);
+            justify-content:center; align-items:center; padding:22px;
+        }
+        #mandatoryUpdateOverlay.active { display:flex; }
+        #mandatoryUpdateOverlay .update-card {
+            width:100%; max-width:380px; text-align:center;
+            background:linear-gradient(160deg,#2a1a4a,#1a2a4a);
+            border:1px solid rgba(255,204,68,.35); border-radius:28px;
+            padding:30px 22px 24px; box-shadow:0 20px 70px rgba(0,0,0,.75);
+        }
+        #mandatoryUpdateOverlay .update-icon { font-size:3.2rem; margin-bottom:8px; }
+        #mandatoryUpdateOverlay h2 { color:#f0e6ff; font-size:1.35rem; margin-bottom:8px; }
+        #mandatoryUpdateOverlay p { color:#b8a0d0; font-size:.82rem; line-height:1.5; margin-bottom:16px; }
+        #mandatoryUpdateOverlay .update-status { min-height:1.2rem; color:#ffd866; font-size:.72rem; margin-bottom:12px; }
+        #mandatoryUpdateBtn {
+            width:100%; border:0; border-radius:30px; padding:12px 18px;
+            background:linear-gradient(135deg,#ffcc44,#f5a623); color:#1a0a2e;
+            font-weight:800; font-size:1rem; cursor:pointer; box-shadow:0 4px 0 #b87a15;
+        }
+        #mandatoryUpdateBtn:active { transform:translateY(3px); box-shadow:0 1px 0 #b87a15; }
     </style>
 </head>
 <body>
+    <div id="mandatoryUpdateOverlay" aria-live="polite">
+        <div class="update-card">
+            <div class="update-icon">🔄</div>
+            <h2>New Version Required</h2>
+            <p>A newer version of Winzo is required before you can continue. Please update now.</p>
+            <div class="update-status" id="mandatoryUpdateStatus">Checking version…</div>
+            <button id="mandatoryUpdateBtn">Update Now</button>
+        </div>
+    </div>
     <div class="game-wrapper">
         <div class="network-offline-overlay" id="networkOfflineOverlay">
             <div class="icon">📶</div>
@@ -648,7 +683,7 @@
         // ============================================================
         //  LOCAL DB
         // ============================================================
-        const APP_VERSION = '10.0';
+        const APP_VERSION = '11.0';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(u) { if (u) localStorage.setItem('bingo_current_user', u); else localStorage.removeItem('bingo_current_user'); },
@@ -1776,173 +1811,171 @@
         let localSelectionPicks = [];
 
         // ============================================================
-        //  NUMBER PICK CLICK HANDLER
+        //  RAPID-SAFE NUMBER PICK HANDLER
+        //  Uses local optimistic state + Firebase transactions so rapid
+        //  taps cannot overwrite one another with stale player snapshots.
         // ============================================================
+        function syncLocalPlayerPicks(picks, round, betDeducted) {
+            const clean = [...new Set((picks || []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 200))].slice(0, MAX_PICKS_PER_ROUND);
+            localSelectionRound = Number(round);
+            localSelectionPicks = clean;
+            if (currentUser) {
+                if (!engineState.players[currentUser]) engineState.players[currentUser] = { name: currentUser };
+                const p = engineState.players[currentUser];
+                p.name = currentUser; p.picks = [...clean]; p.pick = clean.length ? clean[0] : null;
+                p.ready = clean.length > 0; p.bet = currentBet;
+                p.round = clean.length ? Number(round) : null;
+                p.betDeducted = betDeducted != null ? !!betDeducted : clean.length > 0;
+                if (!p.betSources || typeof p.betSources !== 'object') p.betSources = {};
+                if (!clean.length) p.betSources = {};
+            }
+        }
+
+        function associateClaimedNumber(username, number, round) {
+            if (!gameRef || !username) return Promise.resolve(false);
+            const playerRef = gameRef.child('players/' + username);
+            return playerRef.transaction(player => {
+                player = player && typeof player === 'object' ? player : { name: username };
+                const playerRound = Number(player.round);
+                if (player.round != null && isFinite(playerRound) && playerRound !== Number(round)) return player;
+                let picks = getPlayerPicks(player);
+                if (!picks.includes(Number(number))) picks.push(Number(number));
+                picks = [...new Set(picks)].filter(n => n >= 1 && n <= 200).slice(0, MAX_PICKS_PER_ROUND);
+                player.name = username; player.picks = picks; player.pick = picks[0] || null;
+                player.bet = currentBet; player.ready = picks.length > 0; player.round = Number(round);
+                player.betDeducted = player.betDeducted === true;
+                player.betSources = (player.betSources && typeof player.betSources === 'object') ? player.betSources : {};
+                return player;
+            }).then(result => !!(result && result.committed));
+        }
+
+        function finalizeNumberBet(username, number, round) {
+            if (!gameRef || !username) return Promise.resolve(false);
+            return gameRef.child('players/' + username).transaction(player => {
+                if (!player || Number(player.round) !== Number(round)) return player;
+                const picks = getPlayerPicks(player);
+                if (!picks.includes(Number(number))) return player;
+                player.betDeducted = true;
+                player.ready = true;
+                player.bet = currentBet;
+                player.betSources = (player.betSources && typeof player.betSources === 'object') ? player.betSources : {};
+                player.betSources[String(number)] = 'play';
+                return player;
+            }).then(result => !!(result && result.committed));
+        }
+
+        function rollbackNumberAssociation(username, number, round) {
+            if (!gameRef || !username) return Promise.resolve(false);
+            return gameRef.child('players/' + username).transaction(player => {
+                if (!player || Number(player.round) !== Number(round)) return player;
+                let picks = getPlayerPicks(player).filter(n => Number(n) !== Number(number));
+                player.picks = picks; player.pick = picks.length ? picks[0] : null;
+                player.ready = picks.length > 0;
+                player.betDeducted = picks.length > 0;
+                if (player.betSources && typeof player.betSources === 'object') delete player.betSources[String(number)];
+                if (!picks.length) { player.betSources = {}; player.round = null; }
+                return player;
+            }).then(result => !!(result && result.committed));
+        }
+
+        function rollbackLocalNumber(number, round) {
+            const current = (localSelectionRound === Number(round)) ? localSelectionPicks : getMyPicks();
+            const remaining = current.filter(n => Number(n) !== Number(number));
+            syncLocalPlayerPicks(remaining, round, remaining.length > 0);
+            engineState.allTakenNumbers.delete(Number(number));
+            renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
+        }
+
         if (numPicker) {
-            numPicker.addEventListener('click', function(e) {
+            const handleNumberPick = function(e) {
                 const btn = e.target.closest('.num-btn');
-                if (!btn || btn.disabled) return;
-                if (btn.classList.contains('loading')) return;
-                const num = parseInt(btn.dataset.num);
-                if (isNaN(num)) return;
+                if (!btn || btn.disabled || btn.classList.contains('loading')) return;
+                const num = parseInt(btn.dataset.num, 10);
+                if (!Number.isInteger(num) || num < 1 || num > 200) return;
                 if (engineState.activePlayersCount <= 1) { showWaitingModal(); return; }
                 if (engineState.gamePhase !== 'selection') { updateStatus('⛔ Cannot pick numbers now.'); return; }
 
+                const round = Number(engineState.roundNumber);
                 const myPicks = getMyPicks();
-
-                // HARD LIMIT: never allow more than 3 selections in one round,
-                // even if Firebase state has not yet finished syncing.
-                if (!myPicks.includes(num) && myPicks.length >= MAX_PICKS_PER_ROUND) {
-                    updateStatus(`❌ You can pick up to ${MAX_PICKS_PER_ROUND} numbers only.`);
-                    renderNumberPicker();
-                    return;
-                }
-
-                // Un-pick: refund FIRST, then clear only this selected number.
                 if (myPicks.includes(num)) {
+                    if (btn.dataset.busy === '1') return;
+                    btn.dataset.busy = '1';
                     refundPickBetFast(currentUser, currentBet).then(ok => {
                         if (!ok) { updateStatus('⚠️ Could not release pick. Please try again.'); return; }
-
                         releaseNumber(num);
-
-                        const remaining = myPicks.filter(n => n !== num);
-                        localSelectionRound = engineState.roundNumber;
-                        localSelectionPicks = [...remaining];
-                        if (gameRef) {
-                            gameRef.child('players/' + currentUser + '/picks').set(remaining);
-                            gameRef.child('players/' + currentUser + '/pick').set(remaining.length ? remaining[0] : null);
-                            gameRef.child('players/' + currentUser + '/ready').set(remaining.length > 0);
-                            gameRef.child('players/' + currentUser + '/betDeducted').set(remaining.length > 0);
-                            if (remaining.length === 0) {
-                                gameRef.child('players/' + currentUser + '/betSources').set({});
-                                gameRef.child('players/' + currentUser + '/round').set(null);
-                            }
-                        }
-
-                        if (engineState.players[currentUser]) {
-                            engineState.players[currentUser].picks = remaining;
-                            engineState.players[currentUser].pick = remaining.length ? remaining[0] : null;
-                            engineState.players[currentUser].ready = remaining.length > 0;
-                            engineState.players[currentUser].betDeducted = remaining.length > 0;
-                            if (!remaining.length) engineState.players[currentUser].betSources = {};
-                        }
-                        engineState.allTakenNumbers.delete(num);
-                        renderNumberPicker(); updatePickStatus(); updatePrizeDisplay(); updateTotalBetDisplay();
+                        rollbackNumberAssociation(currentUser, num, round).catch(() => {});
+                        rollbackLocalNumber(num, round);
                         updateStatus(`↩️ Removed ${num}.`);
-                    });
+                    }).finally(() => { delete btn.dataset.busy; });
                     return;
                 }
 
-                if (engineState.allTakenNumbers.has(num)) { updateStatus(`❌ Number ${num} is already taken!`); return; }
-                if (myPicks.length >= MAX_PICKS_PER_ROUND) { updateStatus('❌ You can pick up to 3 numbers only.'); return; }
-                if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`); return; }
-
-                const pickRound = engineState.roundNumber;
-                const player = engineState.players[currentUser] || {
-                    name: currentUser, pick: null, picks: [], bet: currentBet, ready: false,
-                    betDeducted: false, betSources: {}, round: pickRound
-                };
-                const currentPicks = getPlayerPicks(player).slice(0, MAX_PICKS_PER_ROUND);
-                if (currentPicks.length >= MAX_PICKS_PER_ROUND) {
+                if (myPicks.length >= MAX_PICKS_PER_ROUND) {
                     updateStatus(`❌ You can pick up to ${MAX_PICKS_PER_ROUND} numbers only.`);
                     return;
                 }
-                const nextPicks = [...currentPicks, num];
+                if (engineState.allTakenNumbers.has(num)) { updateStatus(`❌ Number ${num} is already taken!`); return; }
+                if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`); return; }
 
-                // Lock the new count locally immediately. Firebase may update
-                // asynchronously, but the 3-pick limit must remain absolute.
-                localSelectionRound = pickRound;
-                localSelectionPicks = [...nextPicks];
-
-                player.picks = nextPicks;
-                player.pick = nextPicks[0];
-                player.ready = true;
-                player.bet = currentBet;
-                player.round = pickRound;
-                engineState.players[currentUser] = player;
+                // Reserve locally immediately. A second rapid tap sees this state.
+                const nextPicks = [...myPicks, num];
+                syncLocalPlayerPicks(nextPicks, round, false);
                 engineState.allTakenNumbers.add(num);
-                renderNumberPicker(); updatePickStatus(); updatePrizeDisplay(); updateTotalBetDisplay();
+                renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
 
-                claimNumber(num, function(success) {
-                    if (!success) {
-                        engineState.allTakenNumbers.delete(num);
-                        const rollback = getMyPicks().filter(n => n !== num);
-                        localSelectionRound = pickRound;
-                        localSelectionPicks = [...rollback];
-                        if (engineState.players[currentUser]) {
-                            engineState.players[currentUser].picks = rollback;
-                            engineState.players[currentUser].pick = rollback.length ? rollback[0] : null;
-                            engineState.players[currentUser].ready = rollback.length > 0;
-                        }
-                        if (gameRef) {
-                            gameRef.child('players/' + currentUser + '/picks').set(rollback);
-                            gameRef.child('players/' + currentUser + '/pick').set(rollback.length ? rollback[0] : null);
-                            gameRef.child('players/' + currentUser + '/ready').set(rollback.length > 0);
-                        }
-                        renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
+                // First atomically claim the number globally.
+                claimNumber(num, function(claimed) {
+                    if (!claimed) {
+                        rollbackLocalNumber(num, round);
                         updateStatus(`❌ Number ${num} was just taken!`);
                         return;
                     }
 
+                    // Deduct exactly one room-bet for this one number.
                     deductPickBetFast(currentUser, currentBet).then(ok => {
                         if (!ok) {
                             releaseNumber(num);
-                            const rollback = getMyPicks().filter(n => n !== num);
-                        localSelectionRound = pickRound;
-                        localSelectionPicks = [...rollback];
-                            if (engineState.players[currentUser]) {
-                                engineState.players[currentUser].picks = rollback;
-                                engineState.players[currentUser].pick = rollback.length ? rollback[0] : null;
-                                engineState.players[currentUser].ready = rollback.length > 0;
-                                engineState.players[currentUser].betDeducted = rollback.length > 0;
-                            }
-                            if (gameRef) {
-                                gameRef.child('players/' + currentUser + '/picks').set(rollback);
-                                gameRef.child('players/' + currentUser + '/pick').set(rollback.length ? rollback[0] : null);
-                                gameRef.child('players/' + currentUser + '/ready').set(rollback.length > 0);
-                                gameRef.child('players/' + currentUser + '/betDeducted').set(rollback.length > 0);
-                            }
-                            engineState.allTakenNumbers.delete(num);
-                            renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
+                            rollbackNumberAssociation(currentUser, num, round).catch(() => {});
+                            rollbackLocalNumber(num, round);
                             updateStatus('⚠️ Bet deduction failed. Number released.');
                             return;
                         }
 
-                        if (engineState.roundNumber !== pickRound || engineState.gamePhase !== 'selection') {
-                            refundBetIdempotent(currentUser, pickRound, currentBet, currentRoom);
+                        if (engineState.roundNumber !== round || engineState.gamePhase !== 'selection') {
+                            refundBetIdempotent(currentUser, round, currentBet, currentRoom).catch(() => {});
                             releaseNumber(num);
-                            const rollback = getMyPicks().filter(n => n !== num);
-                        localSelectionRound = pickRound;
-                        localSelectionPicks = [...rollback];
-                            if (engineState.players[currentUser]) {
-                                engineState.players[currentUser].picks = rollback;
-                                engineState.players[currentUser].pick = rollback.length ? rollback[0] : null;
-                                engineState.players[currentUser].ready = rollback.length > 0;
-                                engineState.players[currentUser].betDeducted = rollback.length > 0;
-                            }
-                            engineState.allTakenNumbers.delete(num);
-                            renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
+                            rollbackNumberAssociation(currentUser, num, round).catch(() => {});
+                            rollbackLocalNumber(num, round);
                             updateStatus('⏱ Round ended — your bet was refunded.');
                             return;
                         }
 
-                        const sources = getBetSources(engineState.players[currentUser]);
-                        sources[num] = 'play';
-
-                        if (gameRef) {
-                            gameRef.child('players/' + currentUser + '/picks').set(getMyPicks());
-                            gameRef.child('players/' + currentUser + '/pick').set(getMyPick());
-                            gameRef.child('players/' + currentUser + '/ready').set(true);
-                            gameRef.child('players/' + currentUser + '/betDeducted').set(true);
-                            gameRef.child('players/' + currentUser + '/round').set(pickRound);
-                            gameRef.child('players/' + currentUser + '/betSources').set(sources);
-                        }
-                        if (engineState.players[currentUser]) engineState.players[currentUser].betSources = sources;
-
-                        updatePickStatus(); updateTotalBetDisplay();
-                        updateStatus(`✅ ${currentUser} picked ${num} for ${currentBet} Birr!`);
+                        finalizeNumberBet(currentUser, num, round).then(saved => {
+                            if (!saved) {
+                                refundPickBetFast(currentUser, currentBet).catch(() => {});
+                                releaseNumber(num);
+                                rollbackNumberAssociation(currentUser, num, round).catch(() => {});
+                                rollbackLocalNumber(num, round);
+                                updateStatus('⚠️ Pick could not be saved. Your bet was refunded.');
+                                return;
+                            }
+                            syncLocalPlayerPicks(getMyPicks(), round, true);
+                            renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
+                            updateStatus(`✅ ${currentUser} picked ${num} for ${currentBet} Birr!`);
+                        });
                     });
                 });
+            };
+
+            // pointerdown captures fast Telegram/mobile taps before a rerender can
+            // replace the button. click is retained only as a keyboard fallback.
+            numPicker.addEventListener('pointerdown', function(e) {
+                if (e.pointerType === 'mouse') return;
+                e.preventDefault();
+                handleNumberPick(e);
+            }, { passive: false });
+            numPicker.addEventListener('click', function(e) {
+                if (e.detail === 0) handleNumberPick(e);
             });
         }
 
@@ -2084,7 +2117,7 @@
         // ============================================================
         //  PRODUCTION HARDENING
         // ============================================================
-        const WINZO_PRODUCTION_VERSION = '10.0.0';
+        const WINZO_PRODUCTION_VERSION = '11.0.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -2707,8 +2740,82 @@
             })).catch(() => false);
         }
 
+        // ============================================================
+        //  MANDATORY UPDATE GATE
+        //  Firebase path: /appControl/minVersion
+        // ============================================================
+        const WINZO_APP_VERSION = '11.0.0';
+        const WINZO_MIN_VERSION_PATH = 'appControl/minVersion';
+        let mandatoryUpdateRequired = false;
+
+        function compareAppVersions(a, b) {
+            const pa = String(a || '0').split('.').map(x => parseInt(x, 10) || 0);
+            const pb = String(b || '0').split('.').map(x => parseInt(x, 10) || 0);
+            const len = Math.max(pa.length, pb.length);
+            for (let i = 0; i < len; i++) {
+                const av = pa[i] || 0, bv = pb[i] || 0;
+                if (av > bv) return 1;
+                if (av < bv) return -1;
+            }
+            return 0;
+        }
+
+        function showMandatoryUpdate(message) {
+            mandatoryUpdateRequired = true;
+            const overlay = document.getElementById('mandatoryUpdateOverlay');
+            const status = document.getElementById('mandatoryUpdateStatus');
+            if (status) status.textContent = message || 'A newer version is required.';
+            if (overlay) overlay.classList.add('active');
+        }
+
+        function hideMandatoryUpdate() {
+            mandatoryUpdateRequired = false;
+            const overlay = document.getElementById('mandatoryUpdateOverlay');
+            if (overlay) overlay.classList.remove('active');
+        }
+
+        function forceFreshMiniAppReload() {
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set('winzo_version', WINZO_APP_VERSION);
+                url.searchParams.set('cache_bust', String(Date.now()));
+                window.location.replace(url.toString());
+            } catch (e) {
+                window.location.reload();
+            }
+        }
+
+        function runMandatoryUpdateGate() {
+            const btn = document.getElementById('mandatoryUpdateBtn');
+            if (btn && !btn._bound) {
+                btn._bound = true;
+                btn.addEventListener('click', forceFreshMiniAppReload);
+            }
+            showMandatoryUpdate('Checking version…');
+            if (!database) {
+                showMandatoryUpdate('Unable to verify the new version. Check your connection and try again.');
+                return Promise.resolve(false);
+            }
+            return database.ref(WINZO_MIN_VERSION_PATH).once('value').then(snap => {
+                const required = String(snap.val() || WINZO_APP_VERSION);
+                if (compareAppVersions(WINZO_APP_VERSION, required) < 0) {
+                    showMandatoryUpdate(`Version ${required} or newer is required.`);
+                    return false;
+                }
+                hideMandatoryUpdate();
+                return true;
+            }).catch(() => {
+                showMandatoryUpdate('Unable to verify the required version. Please reconnect and try again.');
+                return false;
+            });
+        }
+
         console.info('WINZO production hardening loaded:', WINZO_PRODUCTION_VERSION);
-        init();
+        runMandatoryUpdateGate().then(ok => {
+            if (ok && !mandatoryUpdateRequired) init();
+        }).catch(() => {
+            showMandatoryUpdate('Version verification failed. Please update and try again.');
+        });
     </script>
 </body>
 </html>
