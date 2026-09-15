@@ -2792,81 +2792,11 @@
         }
 
         // ============================================================
-        //  MANDATORY UPDATE GATE
-        //  Firebase path: /appControl/minVersion
+        //  START APPLICATION
+        //  Version checking has been removed.
         // ============================================================
-        const WINZO_APP_VERSION = '11.0.0';
-        const WINZO_MIN_VERSION_PATH = 'appControl/minVersion';
-        let mandatoryUpdateRequired = false;
-
-        function compareAppVersions(a, b) {
-            const pa = String(a || '0').split('.').map(x => parseInt(x, 10) || 0);
-            const pb = String(b || '0').split('.').map(x => parseInt(x, 10) || 0);
-            const len = Math.max(pa.length, pb.length);
-            for (let i = 0; i < len; i++) {
-                const av = pa[i] || 0, bv = pb[i] || 0;
-                if (av > bv) return 1;
-                if (av < bv) return -1;
-            }
-            return 0;
-        }
-
-        function showMandatoryUpdate(message) {
-            mandatoryUpdateRequired = true;
-            const overlay = document.getElementById('mandatoryUpdateOverlay');
-            const status = document.getElementById('mandatoryUpdateStatus');
-            if (status) status.textContent = message || 'A newer version is required.';
-            if (overlay) overlay.classList.add('active');
-        }
-
-        function hideMandatoryUpdate() {
-            mandatoryUpdateRequired = false;
-            const overlay = document.getElementById('mandatoryUpdateOverlay');
-            if (overlay) overlay.classList.remove('active');
-        }
-
-        function forceFreshMiniAppReload() {
-            try {
-                const url = new URL(window.location.href);
-                url.searchParams.set('winzo_version', WINZO_APP_VERSION);
-                url.searchParams.set('cache_bust', String(Date.now()));
-                window.location.replace(url.toString());
-            } catch (e) {
-                window.location.reload();
-            }
-        }
-
-        function runMandatoryUpdateGate() {
-            const btn = document.getElementById('mandatoryUpdateBtn');
-            if (btn && !btn._bound) {
-                btn._bound = true;
-                btn.addEventListener('click', forceFreshMiniAppReload);
-            }
-            showMandatoryUpdate('Checking version…');
-            if (!database) {
-                showMandatoryUpdate('Unable to verify the new version. Check your connection and try again.');
-                return Promise.resolve(false);
-            }
-            return database.ref(WINZO_MIN_VERSION_PATH).once('value').then(snap => {
-                const required = String(snap.val() || WINZO_APP_VERSION);
-                if (compareAppVersions(WINZO_APP_VERSION, required) < 0) {
-                    showMandatoryUpdate(`Version ${required} or newer is required.`);
-                    return false;
-                }
-                hideMandatoryUpdate();
-                return true;
-            }).catch(() => {
-                showMandatoryUpdate('Unable to verify the required version. Please reconnect and try again.');
-                return false;
-            });
-        }
-
         console.info('WINZO production hardening loaded:', WINZO_PRODUCTION_VERSION);
-        runMandatoryUpdateGate().then(ok => {
-            if (ok && !mandatoryUpdateRequired) init();
-        }).catch(() => {
-            showMandatoryUpdate('Version verification failed. Please update and try again.');
-        });
+        init();
     </script>
 </body>
 </html>
