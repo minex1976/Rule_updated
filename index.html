@@ -726,6 +726,11 @@
             updateStatus('✅ Network restored. Game will continue.');
             if (gameRef) {
                 gameRef.once('value').then(snapshot => { if (snapshot.exists()) syncGameState(snapshot.val()); }).catch(() => {});
+                // Allow bots to reschedule their picks after a network outage.
+                if (engineState.gamePhase === 'selection') {
+                    botScheduledRound = null;
+                    scheduleBotPicks();
+                }
             }
         }
         function handleNetworkOffline() {
@@ -798,6 +803,207 @@
         function releaseNumber(number) {
             if (!gameRef) return;
             gameRef.child('numbersTaken/' + number).set(false).catch(() => {});
+        }
+
+        // ============================================================
+        //  DEFAULT BOT PLAYERS
+        //  ------------------------------------------------------------
+        //  5 simulated players that join whichever room the user is in.
+        //  They wake up on app start, pick 3 numbers each round, and
+        //  win/lose like real players. They are counted in the online
+        //  player counter because they write to the same `players` node.
+        //
+        //  Notes:
+        //   - They are added AFTER the first room sync so we know the
+        //     actual round number.
+        //   - They are removed on logout / room switch.
+        //   - onDisconnect().remove() cleans them up if the host drops.
+        //   - If a real user already owns the name (isBot !== true),
+        //     that bot name is skipped to avoid collisions.
+        // ============================================================
+        const BOT_NAMES = ['Sami L', 'Dawit', 'Hasle', 'Abela', 'Martha'];
+        const BOT_STARTING_WALLET = 1000000;
+        const BOT_PICKS_PER_ROUND = 3;
+        const BOTS_ENABLED = true;
+
+        let botScheduledRound = null;
+        let botPickTimers = [];
+        let botsUsersEnsured = false;
+        let botsAddedForGeneration = -1;
+
+        function clearBotTimers() {
+            botPickTimers.forEach(t => { try { clearTimeout(t); } catch (e) {} });
+            botPickTimers = [];
+        }
+
+        async function ensureBotUsers() {
+            if (botsUsersEnsured || !database) return;
+            botsUsersEnsured = true;
+            for (const botName of BOT_NAMES) {
+                try {
+                    const ref = database.ref('users/' + botName);
+                    const snap = await ref.once('value');
+                    if (!snap.exists()) {
+                        await ref.set({
+                            password: 'bot_' + Math.random().toString(36).slice(2) + '_' + Date.now(),
+                            mainWallet: 0,
+                            playWallet: BOT_STARTING_WALLET,
+                            pendingWithdrawal: 0,
+                            bonusClaimed: true,
+                            isBot: true,
+                            createdAt: firebase.database.ServerValue.TIMESTAMP
+                        });
+                    }
+                } catch (e) { /* swallow */ }
+            }
+        }
+
+        async function addBotsToRoom() {
+            if (!BOTS_ENABLED) return;
+            if (!gameRef || !currentUser || !database) return;
+            await ensureBotUsers();
+            const round = Number(engineState.roundNumber) || 1;
+            for (const botName of BOT_NAMES) {
+                try {
+                    // Skip if a real user already owns this name.
+                    const userSnap = await database.ref('users/' + botName).once('value');
+                    const userData = userSnap.val();
+                    if (userData && userData.isBot !== true) continue;
+
+                    const ref = gameRef.child('players/' + botName);
+                    ref.onDisconnect().remove().catch(() => {});
+                    await ref.set({
+                        name: botName,
+                        pick: null, picks: [], bet: currentBet, ready: false,
+                        betDeducted: false, betSources: {}, round,
+                        isBot: true
+                    }).catch(() => {});
+                } catch (e) { /* swallow */ }
+            }
+        }
+
+        function removeBotsFromRoom() {
+            clearBotTimers();
+            botScheduledRound = null;
+            if (!gameRef || !BOTS_ENABLED) return;
+            BOT_NAMES.forEach(botName => {
+                try { gameRef.child('players/' + botName).remove().catch(() => {}); } catch (e) {}
+            });
+        }
+
+        function scheduleBotPicks() {
+            if (!BOTS_ENABLED) return;
+            if (!gameRef || !currentUser) return;
+            const round = Number(engineState.roundNumber);
+            if (!isFinite(round) || round <= 0) return;
+            if (botScheduledRound === round) return;
+
+            clearBotTimers();
+            botScheduledRound = round;
+
+            // Spread bot activity across the remaining selection window,
+            // finishing at least ~4s before the round ends so picks settle.
+            const remaining = Math.max(3, getRemainingSeconds(phaseDeadline));
+            const windowSec = Math.max(4, Math.min(22, remaining - 4));
+            const perBot = windowSec / BOT_NAMES.length;
+
+            BOT_NAMES.forEach((botName, i) => {
+                const delay = 1000 + i * perBot * 1000 + Math.random() * 1200;
+                const t = setTimeout(() => {
+                    botPickNumbersForRound(botName, round).catch(() => {});
+                }, delay);
+                botPickTimers.push(t);
+            });
+        }
+
+        async function botPickNumbersForRound(botName, round) {
+            if (!BOTS_ENABLED) return;
+            if (!gameRef || !database) return;
+            if (engineState.gamePhase !== 'selection') return;
+            if (Number(engineState.roundNumber) !== Number(round)) return;
+
+            // Skip if this bot already picked enough numbers this round.
+            try {
+                const snap = await gameRef.child('players/' + botName).once('value');
+                const botPlayer = snap.val();
+                if (botPlayer && Number(botPlayer.round) === Number(round)
+                    && getPlayerPicks(botPlayer).length >= BOT_PICKS_PER_ROUND) {
+                    return;
+                }
+            } catch (e) { /* fall through */ }
+
+            for (let i = 0; i < BOT_PICKS_PER_ROUND; i++) {
+                if (engineState.gamePhase !== 'selection') return;
+                if (Number(engineState.roundNumber) !== Number(round)) return;
+
+                // Pick from currently available numbers using our best
+                // local view — the atomic claim will arbitrate races.
+                const available = [];
+                for (let n = 1; n <= 200; n++) {
+                    if (!engineState.allTakenNumbers.has(n)) available.push(n);
+                }
+                if (!available.length) return;
+                const num = available[Math.floor(Math.random() * available.length)];
+
+                const ok = await botClaimNumber(botName, num, round);
+                if (!ok) continue;
+
+                // Small natural-feeling gap between successive picks.
+                await new Promise(r => setTimeout(r, 400 + Math.random() * 900));
+            }
+        }
+
+        async function botClaimNumber(botName, num, round) {
+            if (!gameRef || !database) return false;
+
+            // 1. Atomically claim the number slot.
+            const claimed = await new Promise(resolve => {
+                const takenRef = gameRef.child('numbersTaken/' + num);
+                takenRef.transaction(current => { if (current === true) return; return true; },
+                    (error, committed) => resolve(!error && committed), false);
+            });
+            if (!claimed) return false;
+
+            // 2. Deduct bet from the bot's play wallet (auto top-up if low).
+            const deductOk = await new Promise(resolve => {
+                const wRef = database.ref('users/' + botName + '/playWallet');
+                wRef.transaction(w => {
+                    let cur = Number(w || 0);
+                    if (cur < currentBet) cur = BOT_STARTING_WALLET;
+                    return cur - currentBet;
+                }, (err, committed) => resolve(!err && committed), false);
+            });
+            if (!deductOk) {
+                try { releaseNumber(num); } catch (e) {}
+                return false;
+            }
+
+            // 3. Write the pick to the player's record.
+            const playerRef = gameRef.child('players/' + botName);
+            const saved = await playerRef.transaction(player => {
+                player = player && typeof player === 'object' ? player : {};
+                if (player.round != null && Number(player.round) !== Number(round)) player = {};
+                let picks = getPlayerPicks(player);
+                if (!picks.includes(Number(num))) picks.push(Number(num));
+                picks = [...new Set(picks)].filter(n => n >= 1 && n <= 200).slice(0, BOT_PICKS_PER_ROUND);
+                player.name = botName;
+                player.picks = picks;
+                player.pick = picks[0] || null;
+                player.bet = currentBet;
+                player.ready = picks.length > 0;
+                player.round = Number(round);
+                player.betDeducted = true;
+                player.betSources = (player.betSources && typeof player.betSources === 'object') ? player.betSources : {};
+                player.betSources[String(num)] = 'play';
+                player.isBot = true;
+                return player;
+            }).then(r => !!(r && r.committed)).catch(() => false);
+
+            if (!saved) {
+                try { releaseNumber(num); } catch (e) {}
+                return false;
+            }
+            return true;
         }
 
         // ============================================================
@@ -1092,9 +1298,6 @@
         }
         function getBetSources(player) { const s = player && player.betSources ? player.betSources : {}; return s && typeof s === 'object' ? s : {}; }
 
-        // ---- Effective picks (local optimistic state for current user) ----
-        // Bug fix #2: prefer the local selection state for the current user
-        // during the selection phase so the UI updates instantly per tap.
         function getEffectivePicksFor(name) {
             if (name === currentUser
                 && localSelectionRound === engineState.roundNumber
@@ -1138,8 +1341,6 @@
             });
             return count;
         }
-        // Bug fix #2b: show the running prize pool regardless of player count
-        // so the display updates on every local pick.
         function updateTotalBetDisplay() {
             if (!totalBetDisplayEl) return;
             const bet = Number(currentBet || 0);
@@ -1531,6 +1732,7 @@
             localSelectionRound = null;
             localSelectionPicks = [];
             try { refundMyActiveBet(); } catch (e) {}
+            removeBotsFromRoom();
             detachNumbersTakenListener(); detachLastResultListener();
             clearCardFetchRetry();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
@@ -1553,6 +1755,7 @@
             };
             lastKnownPlayersCache = {}; lastRoomSnapshotRaw = null;
             displayedCardRound = null; executedSpinRound = null; lastResultData = null;
+            botsAddedForGeneration = -1;
             closeMoreDropdown(); hideWaitingModal();
             if (welcomeToast) welcomeToast.classList.remove('active');
             stopFireworks();
@@ -1592,6 +1795,7 @@
         }
         function switchRoom() {
             try { refundMyActiveBet(); } catch (e) {}
+            removeBotsFromRoom();
             detachNumbersTakenListener(); detachLastResultListener();
             clearCardFetchRetry();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
@@ -1599,6 +1803,7 @@
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
             isGameInitialized = false; audioPlayedThisRound = false;
             resetEngineStateForNewRound();
+            botsAddedForGeneration = -1;
             DB.setSavedBet(null);
             showWelcomeScreen();
             updateStatus('🔄 Choose your room.');
@@ -1615,6 +1820,7 @@
             if (!currentUser) return;
             if (walletData.play < amount) { alert('⚠️ Insufficient play balance. Please deposit.'); return; }
             try { refundMyActiveBet(); } catch (e) {}
+            removeBotsFromRoom();
             detachNumbersTakenListener(); detachLastResultListener();
             clearCardFetchRetry();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
@@ -1622,6 +1828,7 @@
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
             isGameInitialized = false; audioPlayedThisRound = false;
             resetEngineStateForNewRound();
+            botsAddedForGeneration = -1;
             currentBet = amount;
             currentRoom = amount === 15 ? 'room_15' : 'room_30';
             DB.setSavedBet(amount);
@@ -1802,13 +2009,11 @@
             }
         }
 
-        // ---- Bug fix #1: `associateClaimedNumber` now resets stale rounds ----
         function associateClaimedNumber(username, number, round) {
             if (!gameRef || !username) return Promise.resolve(false);
             const playerRef = gameRef.child('players/' + username);
             return playerRef.transaction(player => {
                 player = player && typeof player === 'object' ? player : {};
-                // If the existing record is for a different round, start fresh.
                 if (player.round != null && Number(player.round) !== Number(round)) {
                     player = {};
                 }
@@ -1876,7 +2081,6 @@
                 const round = Number(engineState.roundNumber);
                 const myPicks = getMyPicks();
 
-                // Un-pick
                 if (myPicks.includes(num)) {
                     if (btn.dataset.busy === '1') return;
                     btn.dataset.busy = '1';
@@ -1897,13 +2101,11 @@
                 if (engineState.allTakenNumbers.has(num)) { updateStatus(`❌ Number ${num} is already taken!`); return; }
                 if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`); return; }
 
-                // Optimistic local reservation
                 const nextPicks = [...myPicks, num];
                 syncLocalPlayerPicks(nextPicks, round, false);
                 engineState.allTakenNumbers.add(num);
                 renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
 
-                // Step 1: atomic claim of the number slot
                 claimNumber(num, function(claimed) {
                     if (!claimed) {
                         rollbackLocalNumber(num, round);
@@ -1911,7 +2113,6 @@
                         return;
                     }
 
-                    // Step 2: deduct the bet
                     deductPickBetFast(currentUser, currentBet).then(ok => {
                         if (!ok) {
                             releaseNumber(num);
@@ -1928,8 +2129,6 @@
                             return;
                         }
 
-                        // Step 3: write the pick to the player record
-                        // (Bug fix #1: this call was missing in the rapid handler)
                         associateClaimedNumber(currentUser, num, round).then(assoc => {
                             if (!assoc) {
                                 refundPickBetFast(currentUser, currentBet).catch(() => {});
@@ -1939,7 +2138,6 @@
                                 return;
                             }
 
-                            // Step 4: mark betDeducted
                             finalizeNumberBet(currentUser, num, round).then(saved => {
                                 if (!saved) {
                                     refundPickBetFast(currentUser, currentBet).catch(() => {});
@@ -1958,7 +2156,6 @@
                 });
             };
 
-            // pointerdown captures fast Telegram/mobile taps; click fallback for keyboard
             numPicker.addEventListener('pointerdown', function(e) {
                 if (e.pointerType === 'mouse') return;
                 e.preventDefault();
@@ -2077,6 +2274,7 @@
                 tg.BackButton.onClick(() => {
                     if (gameScreen && gameScreen.style.display !== 'none') {
                         try { refundMyActiveBet(); } catch (e) {}
+                        removeBotsFromRoom();
                         if (currentUser) { if (gameRef) gameRef.child('players/' + currentUser).remove(); }
                         if (gameRef) { gameRef.off(); gameRef = null; }
                         detachNumbersTakenListener(); detachLastResultListener();
@@ -2085,6 +2283,7 @@
                         if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
                         isGameInitialized = false; audioPlayedThisRound = false;
                         lastKnownPlayersCache = {}; lastRoomSnapshotRaw = null;
+                        botsAddedForGeneration = -1;
                         if (winnersModal) winnersModal.classList.remove('active');
                         resetWinningNumberCard();
                         showWelcomeScreen();
@@ -2170,6 +2369,7 @@
             const ref = database.ref('rooms/' + currentRoom);
             gameRef = ref;
             lastKnownPlayersCache = {};
+            botsAddedForGeneration = -1; // allow bots to be re-added for this new connection
             database.ref('.info/serverTimeOffset').once('value').then(snap => {
                 if (generation !== roomConnectionGeneration) return;
                 serverTimeOffset = Number(snap.val()) || 0;
@@ -2339,6 +2539,19 @@
 
             updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
             lastRoomSyncAt = Date.now();
+
+            // --------------------------------------------------------
+            // BOT HOOKS
+            // --------------------------------------------------------
+            // 1. Add default bots once per connection generation.
+            if (currentUser && gameRef && BOTS_ENABLED && botsAddedForGeneration !== roomConnectionGeneration) {
+                botsAddedForGeneration = roomConnectionGeneration;
+                addBotsToRoom().catch(() => {});
+            }
+            // 2. Schedule bot picks whenever we're in selection phase.
+            if (phase === 'selection' && currentUser && gameRef && BOTS_ENABLED) {
+                scheduleBotPicks();
+            }
         }
 
         // ============================================================
@@ -2576,6 +2789,8 @@
                         engineState.winnersModalShown = false;
                         engineState.roundNumber = round + 1;
                         executedSpinRound = null;
+                        // Reset bot scheduling so they pick in the new round.
+                        botScheduledRound = null;
                         Object.keys(engineState.players || {}).forEach(name => {
                             if (engineState.players[name]) {
                                 engineState.players[name].pick = null;
@@ -2770,6 +2985,7 @@
         }
 
         console.info('WINZO production hardening loaded:', WINZO_PRODUCTION_VERSION);
+        console.info('Default bots enabled:', BOT_NAMES.join(', '));
         init();
     </script>
 </body>
