@@ -194,11 +194,12 @@
         @media (max-height: 700px) { #usernameWalletItem { display: none !important; } }
 
         /* ============================================================
-           BALL ANIMATION OVERLAY — pure-CSS, dense "basket" layout
+           BALL ANIMATION — individual per-ball BOUNCE, basket-packed
            ------------------------------------------------------------
-           • Balls are packed at the bottom of the glass like a basket.
-           • Each ball wiggles on the GPU compositor — zero JS per frame.
-           • Winner number + winner name(s) drop out through the hole.
+           • Balls sit on the bottom of the glass in a tight pile.
+           • Each ball bounces straight up off the surface and lands
+             back — no floating, no drifting in mid-air.
+           • Per-ball animation on the GPU compositor.
            ============================================================ */
         .ball-anim-overlay {
             position: fixed; inset: 0; z-index: 3500;
@@ -235,6 +236,15 @@
             letter-spacing: 4px; color: #8a9bad; opacity: .35;
             pointer-events: none; z-index: 0;
         }
+        /* faint floor shading so the pile visibly rests on a surface */
+        .ball-anim-glass::after {
+            content: "";
+            position: absolute; left: 4%; right: 4%; bottom: 2px;
+            height: 14px;
+            background: radial-gradient(ellipse at 50% 100%, rgba(70,90,115,.32) 0%, rgba(70,90,115,0) 72%);
+            border-radius: 50%;
+            pointer-events: none; z-index: 1;
+        }
 
         #baBalls {
             position: absolute; inset: 0; z-index: 2;
@@ -250,40 +260,32 @@
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
         }
-        .ba-ball::after {
-            content: "";
-            position: absolute;
-            left: 22%; top: 16%;
-            width: 38%; height: 28%;
-            border-radius: 50%;
-            background: radial-gradient(ellipse at center, rgba(255,255,255,.9) 0%, rgba(255,255,255,0) 75%);
-            pointer-events: none;
-        }
         .ba-ball.ba-white {
-            background: radial-gradient(circle at 34% 30%, #ffffff 0%, #eef1f5 60%, #b8c2cc 100%);
+            background: radial-gradient(circle at 34% 30%, #ffffff 0%, #eef1f5 55%, #b8c2cc 100%);
             color: #101820;
-            box-shadow: inset -3px -4px 6px rgba(0,0,0,.15), inset 2px 2px 4px rgba(255,255,255,.85), 0 2px 4px rgba(0,0,0,.2);
+            box-shadow: inset -2px -3px 4px rgba(0,0,0,.14), 0 2px 3px rgba(0,0,0,.22);
         }
         .ba-ball.ba-yellow {
             background: radial-gradient(circle at 34% 30%, #fffbe0 0%, #ffe868 40%, #d18a00 100%);
             color: #3d2c00;
             word-break: break-word;
-            box-shadow: inset -3px -4px 6px rgba(0,0,0,.18), inset 2px 2px 4px rgba(255,255,255,.7), 0 2px 4px rgba(0,0,0,.2);
+            box-shadow: inset -2px -3px 4px rgba(0,0,0,.16), 0 2px 3px rgba(0,0,0,.22);
         }
 
-        /* Pure-CSS wiggle — energetic shake, all on the GPU. */
-        .ba-ball.ba-wiggle {
-            -webkit-animation: baWiggle var(--dur, 1.7s) ease-in-out var(--delay, 0s) infinite;
-            animation: baWiggle var(--dur, 1.7s) ease-in-out var(--delay, 0s) infinite;
+        /* Per-ball bounce — rests on the surface, hops up, lands back. */
+        .ba-ball.ba-bounce {
+            -webkit-animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite;
+            animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite;
         }
-        @keyframes baWiggle {
-            0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
-            15%  { transform: translate3d(var(--dx1, 5px), var(--dy1, -10px), 0) rotate(70deg); }
-            30%  { transform: translate3d(var(--dx2, -6px), var(--dy2, -18px), 0) rotate(140deg); }
-            45%  { transform: translate3d(var(--dx3, 6px), var(--dy3, -8px), 0) rotate(210deg); }
-            60%  { transform: translate3d(var(--dx4, -5px), var(--dy4, -14px), 0) rotate(280deg); }
-            80%  { transform: translate3d(var(--dx1, 5px), var(--dy3, -6px), 0) rotate(330deg); }
-            100% { transform: translate3d(0, 0, 0) rotate(360deg); }
+        @-webkit-keyframes baBounce {
+            0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); }
+            46%      { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); }
+            55%      { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); }
+        }
+        @keyframes baBounce {
+            0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); }
+            46%      { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); }
+            55%      { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); }
         }
 
         .ba-hole {
@@ -309,7 +311,7 @@
 
         .ba-drop {
             z-index: 60;
-            box-shadow: inset -3px -4px 6px rgba(0,0,0,.15), inset 2px 2px 4px rgba(255,255,255,.85), 0 6px 12px rgba(0,0,0,.55) !important;
+            box-shadow: inset -2px -3px 4px rgba(0,0,0,.15), 0 4px 10px rgba(0,0,0,.55) !important;
             will-change: transform;
         }
 
@@ -1323,15 +1325,19 @@
         }
 
         // ============================================================
-        //  BALL ANIMATION — pure-CSS, dense "basket" layout
+        //  BALL ANIMATION — per-ball BOUNCE, densely basket-packed
         //  ------------------------------------------------------------
-        //  • Balls are packed tightly at the bottom of the glass.
-        //  • Random horizontal/vertical jitter + overlap → organic.
-        //  • Energetic CSS wiggle on the GPU compositor.
-        //  • Winner number + winner name(s) drop out through the hole.
-        //  • Keyed on ROOM + ROUND so rooms never collide.
+        //  • Balls tightly stacked at the bottom of the glass.
+        //  • Every ball bounces straight up off the floor and back.
+        //  • Higher ball cap so the pile looks full.
         // ============================================================
-        const VISUAL_BALL_CAP = 36;
+        const BALL_ANIM_LOW_END = (navigator.hardwareConcurrency || 4) <= 4
+            || (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2)
+            || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+        // Bump the cap: 42 on capable devices, 24 on low-end.
+        const VISUAL_BALL_CAP = BALL_ANIM_LOW_END ? 24 : 42;
+
         const ballAnimationPlayedRounds = new Set();
         let ballAnimationPlaying = false;
 
@@ -1350,12 +1356,12 @@
                 if (!machine || !glass || !ballBox || !hole || !tray || !status) { resolve(); return; }
 
                 const ANIM = {
-                    mixMs: 1800,
-                    holeOpenMs: 540,
-                    dropMs: 680,
-                    gapBeforeWinner: 340,
-                    gapBetweenWinners: 280,
-                    finalHoldMs: 900
+                    mixMs: 2000,
+                    holeOpenMs: 500,
+                    dropMs: 640,
+                    gapBeforeWinner: 320,
+                    gapBetweenWinners: 260,
+                    finalHoldMs: 850
                 };
 
                 let resolved = false;
@@ -1378,7 +1384,7 @@
                 };
                 const safetyTimer = setTimeout(finish, 13000);
 
-                /* 1. collect every pick + every player name */
+                /* 1. collect picks + names */
                 const allPicks = [];
                 const playerNames = [];
                 const players = engineState.players || {};
@@ -1405,7 +1411,7 @@
                 const glassW = glass.clientWidth;
                 const glassH = glass.clientHeight;
 
-                /* 3. build a capped visual pool (sample if too many) */
+                /* 3. build capped visual pool */
                 const fullPool = [];
                 allPicks.forEach(p => fullPool.push({ kind: 'number', text: String(p.number), num: Number(p.number), owner: p.owner }));
                 playerNames.forEach(n => fullPool.push({ kind: 'name', text: n, num: null, owner: n }));
@@ -1423,72 +1429,60 @@
                 const sampled = shuffleArray(remainingPool).slice(0, remainingSlots);
                 const pool = shuffleArray(required.concat(sampled));
 
-                /* 4. size balls based on how many we're showing */
+                /* 4. size based on how many we're showing */
                 const totalBalls = pool.length;
-                const ballSize = totalBalls > 30 ? 30
+                const ballSize = totalBalls > 34 ? 26
+                               : totalBalls > 28 ? 30
                                : totalBalls > 22 ? 34
                                : totalBalls > 16 ? 40
                                : totalBalls > 12 ? 46 : 52;
 
-                /* ============================================================
-                   "BASKET" LAYOUT — balls packed tightly at the bottom
-                   ------------------------------------------------------------
-                   • Fill from the bottom row up.
-                   • Each row is horizontally centred.
-                   • Slight overlap + jitter → looks like a physical pile.
-                   • Random z-index so overlaps layer naturally.
-                   ============================================================ */
-                const spacingX = ballSize * 0.72;       // horizontal step (some overlap)
-                const spacingY = ballSize * 0.78;       // vertical step (some overlap)
-                const cols = Math.max(3, Math.floor((glassW - 10) / spacingX));
-                const bottomY = glassH - 50;            // sit just above the chute hole
+                /* 5. BASKET-PACK: bottom-anchored rows, tightly stacked.
+                      Bottom row rests on the floor of the glass. */
+                const spacingX = ballSize * 0.82;       // tighter horizontally
+                const spacingY = ballSize * 0.80;       // tighter vertically
+                const cols = Math.max(3, Math.floor((glassW - 8) / spacingX));
+                const floorY = glassH - 6;               // bottom edge of the glass
                 const rowWidth = cols * spacingX;
                 const rowStartX = (glassW - rowWidth) / 2 + spacingX / 2;
 
                 const balls = [];
                 pool.forEach((item, i) => {
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+
+                    let x = rowStartX + col * spacingX + (Math.random() - 0.5) * spacingX * 0.32;
+                    // bottom row rests on the floor; each subsequent row sits a ball higher
+                    let y = floorY - ballSize - row * spacingY + (Math.random() - 0.5) * spacingY * 0.20;
+
+                    x = Math.max(2, Math.min(glassW - ballSize - 2, x));
+                    y = Math.max(30, Math.min(glassH - ballSize - 2, y));
+
                     const el = document.createElement('div');
-                    el.className = 'ba-ball ' + (item.kind === 'number' ? 'ba-white' : 'ba-yellow');
+                    el.className = 'ba-ball ' + (item.kind === 'number' ? 'ba-white' : 'ba-yellow') + ' ba-bounce';
                     el.textContent = item.text;
                     el.style.width = ballSize + 'px';
                     el.style.height = ballSize + 'px';
                     const fs = item.kind === 'number'
                         ? ballSize * 0.38
-                        : Math.max(7, Math.min(ballSize * 0.30, (ballSize * 1.9) / Math.max(4, item.text.length)));
+                        : Math.max(6, Math.min(ballSize * 0.30, (ballSize * 1.9) / Math.max(4, item.text.length)));
                     el.style.fontSize = fs + 'px';
-
-                    const col = i % cols;
-                    const row = Math.floor(i / cols);
-
-                    // x = centred row position + jitter
-                    let x = rowStartX + col * spacingX + (Math.random() - 0.5) * spacingX * 0.45;
-                    // y = bottom-anchored row, filling upward, + jitter
-                    let y = bottomY - ballSize - row * spacingY + (Math.random() - 0.5) * spacingY * 0.35;
-
-                    // clamp inside the glass
-                    x = Math.max(2, Math.min(glassW - ballSize - 2, x));
-                    y = Math.max(34, Math.min(glassH - ballSize - 2, y));
-
                     el.style.left = x.toFixed(1) + 'px';
                     el.style.top = y.toFixed(1) + 'px';
                     el.style.zIndex = String(1 + Math.floor(Math.random() * 4));
 
-                    /* energetic wiggle — bigger amplitude, quicker cycle */
-                    el.style.setProperty('--delay', (Math.random() * 1.2).toFixed(2) + 's');
-                    el.style.setProperty('--dur',   (1.3 + Math.random() * 0.9).toFixed(2) + 's');
-                    const j  = () => ((Math.random() - 0.5) * 18).toFixed(1) + 'px';
-                    const jU = () => (-5 - Math.random() * 15).toFixed(1) + 'px';
-                    el.style.setProperty('--dx1', j()); el.style.setProperty('--dy1', jU());
-                    el.style.setProperty('--dx2', j()); el.style.setProperty('--dy2', jU());
-                    el.style.setProperty('--dx3', j()); el.style.setProperty('--dy3', jU());
-                    el.style.setProperty('--dx4', j()); el.style.setProperty('--dy4', jU());
-                    el.classList.add('ba-wiggle');
+                    /* Bounce parameters — vertical only, height scales with size */
+                    el.style.setProperty('--delay', (Math.random() * 1.6).toFixed(2) + 's');
+                    el.style.setProperty('--dur', (1.2 + Math.random() * 0.9).toFixed(2) + 's');
+                    el.style.setProperty('--dx', ((Math.random() - 0.5) * 4).toFixed(1) + 'px');
+                    const jumpPx = -(8 + Math.random() * 14);
+                    el.style.setProperty('--jump', jumpPx.toFixed(0) + 'px');
 
                     ballBox.appendChild(el);
                     balls.push({ el, kind: item.kind, num: item.num, owner: item.owner, text: item.text });
                 });
 
-                /* 5. tray geometry */
+                /* 6. tray geometry */
                 const machineRect = machine.getBoundingClientRect();
                 const trayRect    = tray.getBoundingClientRect();
                 const holeRect    = hole.getBoundingClientRect();
@@ -1508,7 +1502,7 @@
 
                 const traySlotX = i => trayStartX + i * (trayBallSize + trayGap);
 
-                /* 6. drop one ball out through the hole */
+                /* 7. drop one ball out through the hole */
                 async function dropOneOut(ball, slotIndex) {
                     if (ball.el && ball.el.parentNode) ball.el.parentNode.removeChild(ball.el);
 
@@ -1538,7 +1532,7 @@
                     return el;
                 }
 
-                /* 7. the show */
+                /* 8. show */
                 (async () => {
                     status.textContent = '🎲 Mixing the balls…';
                     await wait(ANIM.mixMs);
@@ -1618,7 +1612,6 @@
             if (!isFinite(n) || n <= 0 || n > 200) return;
             if (!Array.isArray(winners)) return;
 
-            // KEY ON ROOM + ROUND — room 15 and room 30 no longer collide.
             const animKey = currentRoom + '_' + r;
 
             if (ballAnimationPlayedRounds.has(animKey) || ballAnimationPlaying) {
@@ -3428,7 +3421,7 @@
         console.info('Bot pool size:', BOT_NAMES.length);
         console.info('Active bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
         console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
-        console.info('Ball animation: basket-packed, cap ' + VISUAL_BALL_CAP + ' balls, keyed on room+round.');
+        console.info('Ball animation: per-ball bounce, cap ' + VISUAL_BALL_CAP + ', lowEnd=' + BALL_ANIM_LOW_END);
         init();
     </script>
 </body>
