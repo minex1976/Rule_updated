@@ -194,14 +194,12 @@
         @media (max-height: 700px) { #usernameWalletItem { display: none !important; } }
 
         /* ============================================================
-           BALL ANIMATION OVERLAY — Android-optimised, realistic mixer
+           BALL ANIMATION OVERLAY — LIGHTWEIGHT pure-CSS version
            ------------------------------------------------------------
-           • GPU-only transforms (translate3d + rotate)
-           • No `backdrop-filter` fallback issue (progressive enhancement)
-           • `touch-action: none` so the overlay never scrolls the page
-           • `contain: layout paint` on heavy containers keeps the
-             compositor quiet on mid-range Android devices
-           • Box-shadow is reduced automatically on narrow screens
+           Telegram Android WebView cannot afford a per-frame JS
+           physics loop. Every ball now animates entirely on the GPU
+           compositor via a single @keyframes wiggle — zero JavaScript
+           work per frame while the overlay is on screen.
            ============================================================ */
         .ball-anim-overlay {
             position: fixed; inset: 0; z-index: 3500;
@@ -211,14 +209,6 @@
             touch-action: none;
             -webkit-user-select: none; user-select: none;
             -webkit-tap-highlight-color: transparent;
-            contain: layout style paint;
-        }
-        @supports ((-webkit-backdrop-filter: blur(6px)) or (backdrop-filter: blur(6px))) {
-            .ball-anim-overlay {
-                -webkit-backdrop-filter: blur(6px);
-                backdrop-filter: blur(6px);
-                background: rgba(2,7,14,.78);
-            }
         }
         .ball-anim-overlay.active { display: flex; }
 
@@ -226,41 +216,33 @@
             position: relative;
             width: min(460px, 100%); height: min(640px, 94vh);
             border-radius: 30px; padding: 14px;
-            background: linear-gradient(145deg, rgba(42,26,74,.96), rgba(26,42,74,.96));
+            background: linear-gradient(145deg, #2a1a4a, #1a2a4a);
             border: 1px solid rgba(180,120,255,.28);
-            box-shadow: 0 30px 80px rgba(0,0,0,.7);
+            box-shadow: 0 20px 60px rgba(0,0,0,.7);
             display: flex; flex-direction: column; gap: 10px;
-            contain: layout paint;
         }
 
         .ball-anim-glass {
             position: relative; flex: 1 1 auto; min-height: 0;
             border-radius: 22px;
-            background:
-                radial-gradient(ellipse at 30% 15%, rgba(255,255,255,.9) 0%, transparent 45%),
-                linear-gradient(180deg, #f6faff 0%, #dbe7f2 60%, #b8c7d5 100%);
-            border: 6px solid #cbd7e2;
-            box-shadow: inset 0 0 0 2px #fff, inset 0 -20px 40px rgba(0,0,0,.06);
+            background: linear-gradient(180deg, #eaf2fb 0%, #cddceb 100%);
+            border: 5px solid #b8c9d8;
             overflow: hidden;
-            contain: layout paint;
-            -webkit-transform: translateZ(0);
-            transform: translateZ(0);
         }
         .ball-anim-glass::before {
             content: "LUCKY DRAW";
             position: absolute; top: 10px; left: 0; right: 0;
             text-align: center; font-size: 13px; font-weight: 900;
-            letter-spacing: 4px; color: #8a9bad; opacity: .38;
+            letter-spacing: 4px; color: #8a9bad; opacity: .35;
             pointer-events: none; z-index: 0;
         }
 
         #baBalls {
             position: absolute; inset: 0; z-index: 2;
-            contain: layout paint;
         }
 
         .ba-ball {
-            position: absolute; left: 0; top: 0;
+            position: absolute;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-weight: 900; line-height: 1; text-align: center;
@@ -268,47 +250,50 @@
             will-change: transform;
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
-            contain: layout paint;
         }
-        /* glossy highlight */
         .ba-ball::after {
             content: "";
             position: absolute;
-            left: 18%; top: 12%;
-            width: 42%; height: 34%;
+            left: 22%; top: 16%;
+            width: 38%; height: 28%;
             border-radius: 50%;
-            background: radial-gradient(ellipse at center, rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 70%);
+            background: radial-gradient(ellipse at center, rgba(255,255,255,.9) 0%, rgba(255,255,255,0) 75%);
             pointer-events: none;
         }
         .ba-ball.ba-white {
-            background: radial-gradient(circle at 32% 28%, #ffffff 0%, #ffffff 22%, #eef1f5 55%, #cfd6dd 82%, #a8b2bd 100%);
+            background: radial-gradient(circle at 34% 30%, #ffffff 0%, #eef1f5 60%, #b8c2cc 100%);
             color: #101820;
-            box-shadow:
-                inset -5px -7px 10px rgba(0,0,0,.18),
-                inset 4px 4px 8px rgba(255,255,255,.85),
-                0 3px 6px rgba(0,0,0,.22),
-                0 1px 2px rgba(0,0,0,.15);
+            box-shadow: inset -3px -4px 6px rgba(0,0,0,.15), inset 2px 2px 4px rgba(255,255,255,.85), 0 2px 4px rgba(0,0,0,.2);
         }
         .ba-ball.ba-yellow {
-            background: radial-gradient(circle at 32% 28%, #fffbe0 0%, #ffe868 26%, #f0b800 70%, #a86e00 100%);
+            background: radial-gradient(circle at 34% 30%, #fffbe0 0%, #ffe868 40%, #d18a00 100%);
             color: #3d2c00;
             word-break: break-word;
-            box-shadow:
-                inset -5px -7px 10px rgba(0,0,0,.2),
-                inset 4px 4px 8px rgba(255,255,255,.7),
-                0 3px 6px rgba(0,0,0,.22),
-                0 1px 2px rgba(0,0,0,.15);
+            box-shadow: inset -3px -4px 6px rgba(0,0,0,.18), inset 2px 2px 4px rgba(255,255,255,.7), 0 2px 4px rgba(0,0,0,.2);
         }
 
-        /* ---- hole cut into the bottom of the glass ---- */
+        /* Pure-CSS wiggle — each ball gets random CSS variables. */
+        .ba-ball.ba-wiggle {
+            -webkit-animation: baWiggle var(--dur, 2.4s) ease-in-out var(--delay, 0s) infinite;
+            animation: baWiggle var(--dur, 2.4s) ease-in-out var(--delay, 0s) infinite;
+        }
+        @keyframes baWiggle {
+            0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+            20%  { transform: translate3d(var(--dx1, 4px), var(--dy1, -6px), 0) rotate(60deg); }
+            40%  { transform: translate3d(var(--dx2, -5px), var(--dy2, -10px), 0) rotate(140deg); }
+            60%  { transform: translate3d(var(--dx3, 5px), var(--dy3, -4px), 0) rotate(230deg); }
+            80%  { transform: translate3d(var(--dx4, -3px), var(--dy4, -8px), 0) rotate(310deg); }
+            100% { transform: translate3d(0, 0, 0) rotate(360deg); }
+        }
+
+        /* hole cut into the bottom of the glass */
         .ba-hole {
             position: absolute; left: 50%; bottom: -3px;
             width: 76px; height: 38px;
-            -webkit-transform: translateX(-50%) translateZ(0);
-            transform: translateX(-50%) translateZ(0);
+            transform: translateX(-50%);
             border-radius: 76px 76px 0 0;
-            background: radial-gradient(ellipse at 50% 100%, #05040a 0%, #0c0a18 65%, #1b1732 100%);
-            box-shadow: 0 -2px 0 2px rgba(130,150,175,.55), inset 0 8px 14px rgba(0,0,0,.95);
+            background: #05040a;
+            box-shadow: 0 -2px 0 2px rgba(130,150,175,.5), inset 0 6px 10px rgba(0,0,0,.9);
             z-index: 5;
             overflow: hidden;
         }
@@ -316,33 +301,27 @@
             position: absolute; left: 0; right: 0; bottom: 0; height: 100%;
             border-radius: 76px 76px 0 0;
             background: linear-gradient(#e6edf4, #a9b7c6);
-            box-shadow: inset 0 2px 3px rgba(255,255,255,.8), inset 0 -3px 6px rgba(0,0,0,.25);
             transition: transform .5s cubic-bezier(.55,0,.75,.35), opacity .45s ease;
-            -webkit-transform: translateZ(0);
-            transform: translateZ(0);
         }
         .ba-hole.open .ba-hole-lid {
-            -webkit-transform: translateY(115%) translateZ(0);
-            transform: translateY(115%) translateZ(0);
+            transform: translateY(115%);
             opacity: 0;
         }
 
-        /* ---- ball that has been ejected ---- */
+        /* ejected ball */
         .ba-drop {
             z-index: 60;
-            box-shadow:
-                inset -5px -7px 10px rgba(0,0,0,.18),
-                inset 4px 4px 8px rgba(255,255,255,.85),
-                0 8px 18px rgba(0,0,0,.55) !important;
+            box-shadow: inset -3px -4px 6px rgba(0,0,0,.15), inset 2px 2px 4px rgba(255,255,255,.85), 0 6px 12px rgba(0,0,0,.55) !important;
+            will-change: transform;
         }
 
-        /* ---- tray that catches the dropped balls ---- */
+        /* catch tray */
         .ba-tray {
             flex: 0 0 auto; height: 70px;
             border-radius: 18px;
             background: linear-gradient(#0d1220, #1a2436);
             border: 1px solid rgba(180,120,255,.22);
-            box-shadow: inset 0 6px 14px rgba(0,0,0,.65), inset 0 -1px 0 rgba(255,255,255,.05);
+            box-shadow: inset 0 4px 10px rgba(0,0,0,.6);
             position: relative; z-index: 3;
         }
 
@@ -353,23 +332,12 @@
         }
 
         .ba-winner-glow {
-            box-shadow: 0 0 0 3px #fff, 0 0 26px 8px #ffcc44, 0 8px 18px rgba(0,0,0,.5) !important;
+            box-shadow: 0 0 0 3px #fff, 0 0 22px 6px #ffcc44 !important;
             animation: baWinnerPulse .9s ease-in-out infinite alternate !important;
         }
         @keyframes baWinnerPulse {
             0%   { filter: brightness(1); }
             100% { filter: brightness(1.35); }
-        }
-
-        /* Reduce shadow cost on narrow screens for smoother rendering. */
-        @media (max-width: 430px) {
-            .ba-ball.ba-white,
-            .ba-ball.ba-yellow {
-                box-shadow:
-                    inset -4px -6px 8px rgba(0,0,0,.15),
-                    inset 3px 3px 6px rgba(255,255,255,.8),
-                    0 2px 4px rgba(0,0,0,.2);
-            }
         }
     </style>
 </head>
@@ -968,9 +936,6 @@
             gameRef.child('numbersTaken/' + number).set(false).catch(() => {});
         }
 
-        // ============================================================
-        //  BOT SYSTEM — 100 BOT POOL, 5–10 ACTIVE PER ROUND
-        // ============================================================
         const BOT_NAMES = [
             'Dawit','Abel','Yonas','Biruk','Tesfaye',
             'Mulugeta','Getachew','Henok','Ermias','Amanuel',
@@ -1361,21 +1326,21 @@
         }
 
         // ============================================================
-        //  BALL ANIMATION — number balls and player-name balls are
-        //  mixed inside ONE glass box. The box has a hole at the
-        //  bottom. The winning number ball and the winner's name ball
-        //  drop out turn by turn, then the winner card appears.
+        //  BALL ANIMATION — LIGHTWEIGHT pure-CSS version
+        //  ------------------------------------------------------------
+        //  Every ball wiggles on the GPU compositor via baWiggle.
+        //  Zero JavaScript work happens per frame. The only JS is the
+        //  sequencing of "drop the number ball, then drop the winner(s)".
         //
-        //  Android-friendly notes:
-        //    • Every ball is positioned with `translate3d` and given
-        //      a `rotate` so it spins like a real lottery ball.
-        //    • Physics runs with sub-stepping so bouncing stays stable
-        //      even when the device temporarily drops to 30 fps.
-        //    • The drop itself is a pure CSS `transform` transition,
-        //      which the Android compositor can run entirely on the GPU.
-        //    • Ball counts are automatically reduced in size when the
-        //      pool is large so that the total render cost stays low.
+        //  Perf decisions:
+        //   • Cap total on-screen balls to VISUAL_BALL_CAP (24). If the
+        //     room has more picks than that, we randomly sample — the
+        //     eye can't tell, and the compositor saves work.
+        //   • Every ball carries one box-shadow (not three).
+        //   • The drop-out is a pure transform transition.
+        //   • No requests for animation frames; no collision tests.
         // ============================================================
+        const VISUAL_BALL_CAP = 24;
         const ballAnimationPlayedRounds = new Set();
         let ballAnimationPlaying = false;
 
@@ -1393,32 +1358,20 @@
 
                 if (!machine || !glass || !ballBox || !hole || !tray || !status) { resolve(); return; }
 
-                /* ============================================================
-                   ⏱  ANIMATION TIMING — tweak these values to taste
-                   ------------------------------------------------------------
-                   FASTER   → drop every number by ~25% (e.g. mixMs 1400,
-                              holeOpenMs 420, dropMs 560, finalHoldMs 700)
-                   SLOWER   → raise mixMs and holeOpenMs only. The pause
-                   / MORE      before the chute opens is what builds
-                   SUSPENSE    suspense — the drops themselves should stay
-                              quick or it feels sluggish.
-                   ============================================================ */
                 const ANIM = {
-                    mixMs: 1800,             // balls churn before the chute opens
-                    holeOpenMs: 540,         // lid slides back + suspense beat
-                    dropMs: 680,             // travel time of ONE ball through the hole
-                    gapBeforeWinner: 340,    // pause after the number ball lands
-                    gapBetweenWinners: 280,  // pause between consecutive winner balls
-                    finalHoldMs: 900         // hold on the tray before the winner card
+                    mixMs: 1800,
+                    holeOpenMs: 540,
+                    dropMs: 680,
+                    gapBeforeWinner: 340,
+                    gapBetweenWinners: 280,
+                    finalHoldMs: 900
                 };
 
                 let resolved = false;
-                let rafId = null;
                 const timers = [];
                 const wait = ms => new Promise(r => { const t = setTimeout(r, ms); timers.push(t); });
 
                 const cleanup = () => {
-                    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                     timers.forEach(t => clearTimeout(t));
                     timers.length = 0;
                 };
@@ -1434,7 +1387,7 @@
                 };
                 const safetyTimer = setTimeout(finish, 13000);
 
-                /* ---------- 1. collect every number + every player name ---------- */
+                /* 1. collect every pick + every player name */
                 const allPicks = [];
                 const playerNames = [];
                 const players = engineState.players || {};
@@ -1451,33 +1404,40 @@
 
                 if (!allPicks.length) { finish(); return; }
 
-                /* ---------- 2. reset the stage ---------- */
+                /* 2. reset stage */
                 machine.querySelectorAll('.ba-drop').forEach(el => el.remove());
                 ballBox.innerHTML = '';
                 hole.classList.remove('open');
                 overlay.classList.add('active');
-                void overlay.offsetWidth;   // force layout
+                void overlay.offsetWidth;
 
                 const glassW = glass.clientWidth;
                 const glassH = glass.clientHeight;
 
-                /* Perf: shrink the balls as the pool grows. */
-                const totalBalls = allPicks.length + playerNames.length;
-                const ballSize = totalBalls > 70 ? 28
-                               : totalBalls > 50 ? 32
-                               : totalBalls > 34 ? 38
-                               : totalBalls > 22 ? 44 : 50;
-                const radius = ballSize / 2;
+                /* 3. build a capped visual pool (sample if too many) */
+                const fullPool = [];
+                allPicks.forEach(p => fullPool.push({ kind: 'number', text: String(p.number), num: Number(p.number), owner: p.owner }));
+                playerNames.forEach(n => fullPool.push({ kind: 'name', text: n, num: null, owner: n }));
 
-                /* ---------- 3. build ONE mixed pool of balls ---------- */
-                const pool = [];
-                allPicks.forEach(p => pool.push({
-                    kind: 'number', text: String(p.number), num: Number(p.number), owner: p.owner
-                }));
-                playerNames.forEach(n => pool.push({
-                    kind: 'name', text: n, num: null, owner: n
-                }));
-                shuffleArray(pool);
+                // Always include winner name(s) and winning number in the pool.
+                const required = [];
+                const winningNumberEntry = fullPool.find(x => x.kind === 'number' && Number(x.num) === Number(winningNumber));
+                if (winningNumberEntry) required.push(winningNumberEntry);
+                (Array.isArray(winners) ? winners : []).forEach(name => {
+                    const e = fullPool.find(x => x.kind === 'name' && x.owner === name);
+                    if (e) required.push(e);
+                });
+
+                const remainingPool = fullPool.filter(x => !required.includes(x));
+                const remainingSlots = Math.max(0, VISUAL_BALL_CAP - required.length);
+                const sampled = shuffleArray(remainingPool).slice(0, remainingSlots);
+                const pool = shuffleArray(required.concat(sampled));
+
+                /* 4. size the balls based on how many we're showing */
+                const totalBalls = pool.length;
+                const ballSize = totalBalls > 20 ? 34
+                               : totalBalls > 16 ? 40
+                               : totalBalls > 12 ? 46 : 52;
 
                 const balls = [];
                 pool.forEach(item => {
@@ -1490,128 +1450,30 @@
                         ? ballSize * 0.38
                         : Math.max(7, Math.min(ballSize * 0.28, (ballSize * 1.7) / Math.max(4, item.text.length)));
                     el.style.fontSize = fs + 'px';
+
+                    /* place at random position — plain left/top so the
+                       transform can be used purely by the animation */
+                    const x = 4 + Math.random() * Math.max(1, glassW - ballSize - 8);
+                    const y = 30 + Math.random() * Math.max(1, glassH - ballSize - 40);
+                    el.style.left = x.toFixed(1) + 'px';
+                    el.style.top = y.toFixed(1) + 'px';
+
+                    /* random wiggle personality */
+                    el.style.setProperty('--delay', (Math.random() * 2.0).toFixed(2) + 's');
+                    el.style.setProperty('--dur',   (1.8 + Math.random() * 1.6).toFixed(2) + 's');
+                    const j = () => ((Math.random() - 0.5) * 12).toFixed(1) + 'px';
+                    const jUp = () => (-3 - Math.random() * 8).toFixed(1) + 'px';
+                    el.style.setProperty('--dx1', j()); el.style.setProperty('--dy1', jUp());
+                    el.style.setProperty('--dx2', j()); el.style.setProperty('--dy2', jUp());
+                    el.style.setProperty('--dx3', j()); el.style.setProperty('--dy3', jUp());
+                    el.style.setProperty('--dx4', j()); el.style.setProperty('--dy4', jUp());
+                    el.classList.add('ba-wiggle');
+
                     ballBox.appendChild(el);
-
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = 1.8 + Math.random() * 2.0;
-
-                    balls.push({
-                        el,
-                        x: radius + Math.random() * Math.max(1, glassW - ballSize),
-                        y: radius + Math.random() * Math.max(1, glassH - ballSize),
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        rot: Math.random() * 360,
-                        vrot: (Math.random() - 0.5) * 4,
-                        r: radius,
-                        kind: item.kind,
-                        num: item.num,
-                        owner: item.owner,
-                        text: item.text,
-                        dead: false
-                    });
+                    balls.push({ el, kind: item.kind, num: item.num, owner: item.owner, text: item.text });
                 });
 
-                /* ---------- 4. physics: lively side-to-side bouncing ---------- */
-                const MIN_SPEED = 1.3;
-                const MAX_SPEED = 6.8;
-                let last = performance.now();
-
-                function physicsStep(now) {
-                    if (resolved) return;
-
-                    let dt = (now - last) / 16.667;
-                    last = now;
-                    if (!isFinite(dt) || dt <= 0) dt = 1;
-                    dt = Math.min(dt, 2.0);
-
-                    const W = glassW;
-                    const H = glassH;
-                    /* Sub-step when the frame was long so the balls never
-                       tunnel through each other on a stuttery device. */
-                    const subSteps = dt > 1.4 ? 2 : 1;
-                    const sdt = dt / subSteps;
-
-                    for (let s = 0; s < subSteps; s++) {
-                        /* integrate + bounce off the four glass walls */
-                        for (let i = 0; i < balls.length; i++) {
-                            const b = balls[i];
-                            if (b.dead) continue;
-
-                            b.x += b.vx * sdt;
-                            b.y += b.vy * sdt;
-                            b.rot += b.vrot * sdt;
-
-                            if (b.x - b.r <= 0)      { b.x = b.r;     b.vx = Math.abs(b.vx); b.vrot = (Math.random() - 0.5) * 4; }
-                            else if (b.x + b.r >= W) { b.x = W - b.r; b.vx = -Math.abs(b.vx); b.vrot = (Math.random() - 0.5) * 4; }
-
-                            if (b.y - b.r <= 0)      { b.y = b.r;     b.vy = Math.abs(b.vy); b.vrot = (Math.random() - 0.5) * 4; }
-                            else if (b.y + b.r >= H) { b.y = H - b.r; b.vy = -Math.abs(b.vy); b.vrot = (Math.random() - 0.5) * 4; }
-
-                            /* air blower keeps them dancing side to side */
-                            b.vx += (Math.random() - 0.5) * 0.30;
-                            b.vy += (Math.random() - 0.5) * 0.30;
-
-                            const sp = Math.hypot(b.vx, b.vy);
-                            if (sp > MAX_SPEED) {
-                                b.vx = (b.vx / sp) * MAX_SPEED;
-                                b.vy = (b.vy / sp) * MAX_SPEED;
-                            } else if (sp < MIN_SPEED && sp > 0.0001) {
-                                b.vx = (b.vx / sp) * MIN_SPEED;
-                                b.vy = (b.vy / sp) * MIN_SPEED;
-                            }
-                        }
-
-                        /* ball-to-ball collisions keep the pool churning */
-                        for (let i = 0; i < balls.length; i++) {
-                            const a = balls[i];
-                            if (a.dead) continue;
-                            for (let j = i + 1; j < balls.length; j++) {
-                                const b = balls[j];
-                                if (b.dead) continue;
-
-                                const dx = b.x - a.x;
-                                const dy = b.y - a.y;
-                                const minD = a.r + b.r;
-                                const d2 = dx * dx + dy * dy;
-                                if (d2 >= minD * minD || d2 < 0.0001) continue;
-
-                                const d = Math.sqrt(d2);
-                                const nx = dx / d;
-                                const ny = dy / d;
-                                const push = (minD - d) / 2 + 0.12;
-
-                                a.x -= nx * push; a.y -= ny * push;
-                                b.x += nx * push; b.y += ny * push;
-
-                                const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-                                if (rel < 0) {
-                                    const imp = -rel * 0.92;
-                                    a.vx -= imp * nx; a.vy -= imp * ny;
-                                    b.vx += imp * nx; b.vy += imp * ny;
-                                    /* spin transfer */
-                                    a.vrot -= imp * 0.5;
-                                    b.vrot += imp * 0.5;
-                                }
-                            }
-                        }
-                    }
-
-                    /* clamp + paint */
-                    for (let i = 0; i < balls.length; i++) {
-                        const b = balls[i];
-                        if (b.dead) continue;
-                        b.x = Math.max(b.r, Math.min(W - b.r, b.x));
-                        b.y = Math.max(b.r, Math.min(H - b.r, b.y));
-                        b.el.style.transform =
-                            `translate3d(${(b.x - b.r).toFixed(1)}px, ${(b.y - b.r).toFixed(1)}px, 0) rotate(${b.rot.toFixed(1)}deg)`;
-                    }
-
-                    rafId = requestAnimationFrame(physicsStep);
-                }
-                rafId = requestAnimationFrame(physicsStep);
-
-                /* ---------- 5. tray geometry (where dropped balls land) ---------- */
+                /* 5. tray geometry */
                 const machineRect = machine.getBoundingClientRect();
                 const trayRect    = tray.getBoundingClientRect();
                 const holeRect    = hole.getBoundingClientRect();
@@ -1631,9 +1493,8 @@
 
                 const traySlotX = i => trayStartX + i * (trayBallSize + trayGap);
 
-                /* ---------- 6. drop one ball out through the hole ---------- */
+                /* 6. drop one ball out through the hole */
                 async function dropOneOut(ball, slotIndex) {
-                    ball.dead = true;
                     if (ball.el && ball.el.parentNode) ball.el.parentNode.removeChild(ball.el);
 
                     const el = document.createElement('div');
@@ -1648,40 +1509,37 @@
                     el.style.left = '0px';
                     el.style.top = '0px';
 
-                    /* start position: centred on the hole, still spinning */
-                    const startRot = ball.rot;
-                    const endRot = startRot + 180 + Math.random() * 180;
+                    /* start centred on the hole */
                     el.style.transform =
-                        `translate3d(${(holeX - trayBallSize / 2).toFixed(1)}px, ${(holeY - trayBallSize / 2).toFixed(1)}px, 0) rotate(${startRot.toFixed(1)}deg)`;
+                        `translate3d(${(holeX - trayBallSize / 2).toFixed(1)}px, ${(holeY - trayBallSize / 2).toFixed(1)}px, 0) rotate(0deg)`;
                     machine.appendChild(el);
                     void el.offsetWidth;
 
-                    /* pure-transform transition → Android compositor handles it */
+                    /* pure-transform transition to tray */
                     el.style.transition = `transform ${(ANIM.dropMs / 1000).toFixed(2)}s cubic-bezier(.42,.03,.84,.46)`;
                     el.style.transform =
-                        `translate3d(${(traySlotX(slotIndex) - trayBallSize / 2).toFixed(1)}px, ${(trayCenterY - trayBallSize / 2).toFixed(1)}px, 0) rotate(${endRot.toFixed(1)}deg)`;
+                        `translate3d(${(traySlotX(slotIndex) - trayBallSize / 2).toFixed(1)}px, ${(trayCenterY - trayBallSize / 2).toFixed(1)}px, 0) rotate(${(180 + Math.random() * 180).toFixed(0)}deg)`;
 
                     await wait(ANIM.dropMs + 60);
                     el.style.transition = '';
                     return el;
                 }
 
-                /* ---------- 7. the show ---------- */
+                /* 7. the show */
                 (async () => {
                     status.textContent = '🎲 Mixing the balls…';
                     await wait(ANIM.mixMs);
                     if (resolved) return;
 
-                    /* open the hole */
                     hole.classList.add('open');
                     status.textContent = '🎯 Opening the chute…';
                     await wait(ANIM.holeOpenMs);
                     if (resolved) return;
 
-                    /* --- winning number ball drops first --- */
+                    /* winning number ball first */
                     const numberBall =
-                        balls.find(b => !b.dead && b.kind === 'number' && Number(b.num) === Number(winningNumber)) ||
-                        balls.find(b => !b.dead && b.kind === 'number');
+                        balls.find(b => b.kind === 'number' && Number(b.num) === Number(winningNumber)) ||
+                        balls.find(b => b.kind === 'number');
 
                     if (numberBall) {
                         status.textContent = '🔢 Number ' + numberBall.text + ' is coming out…';
@@ -1691,11 +1549,11 @@
                     await wait(ANIM.gapBeforeWinner);
                     if (resolved) return;
 
-                    /* --- then the winner name ball(s), one at a time --- */
+                    /* winner name balls */
                     if (winnerList.length) {
                         for (let i = 0; i < winnerList.length; i++) {
                             const name = winnerList[i];
-                            const nameBall = balls.find(b => !b.dead && b.kind === 'name' && b.owner === name);
+                            const nameBall = balls.find(b => b.kind === 'name' && b.owner === name);
                             if (!nameBall) continue;
 
                             status.textContent = '🏆 ' + name + ' wins!';
@@ -3556,6 +3414,7 @@
         console.info('Bot pool size:', BOT_NAMES.length);
         console.info('Active bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
         console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
+        console.info('Ball animation: lightweight CSS-only, cap ' + VISUAL_BALL_CAP + ' balls.');
         init();
     </script>
 </body>
