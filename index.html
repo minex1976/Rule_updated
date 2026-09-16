@@ -194,12 +194,11 @@
         @media (max-height: 700px) { #usernameWalletItem { display: none !important; } }
 
         /* ============================================================
-           BALL ANIMATION OVERLAY — LIGHTWEIGHT pure-CSS version
+           BALL ANIMATION OVERLAY — pure-CSS, dense "basket" layout
            ------------------------------------------------------------
-           Telegram Android WebView cannot afford a per-frame JS
-           physics loop. Every ball now animates entirely on the GPU
-           compositor via a single @keyframes wiggle — zero JavaScript
-           work per frame while the overlay is on screen.
+           • Balls are packed at the bottom of the glass like a basket.
+           • Each ball wiggles on the GPU compositor — zero JS per frame.
+           • Winner number + winner name(s) drop out through the hole.
            ============================================================ */
         .ball-anim-overlay {
             position: fixed; inset: 0; z-index: 3500;
@@ -272,21 +271,21 @@
             box-shadow: inset -3px -4px 6px rgba(0,0,0,.18), inset 2px 2px 4px rgba(255,255,255,.7), 0 2px 4px rgba(0,0,0,.2);
         }
 
-        /* Pure-CSS wiggle — each ball gets random CSS variables. */
+        /* Pure-CSS wiggle — energetic shake, all on the GPU. */
         .ba-ball.ba-wiggle {
-            -webkit-animation: baWiggle var(--dur, 2.4s) ease-in-out var(--delay, 0s) infinite;
-            animation: baWiggle var(--dur, 2.4s) ease-in-out var(--delay, 0s) infinite;
+            -webkit-animation: baWiggle var(--dur, 1.7s) ease-in-out var(--delay, 0s) infinite;
+            animation: baWiggle var(--dur, 1.7s) ease-in-out var(--delay, 0s) infinite;
         }
         @keyframes baWiggle {
             0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
-            20%  { transform: translate3d(var(--dx1, 4px), var(--dy1, -6px), 0) rotate(60deg); }
-            40%  { transform: translate3d(var(--dx2, -5px), var(--dy2, -10px), 0) rotate(140deg); }
-            60%  { transform: translate3d(var(--dx3, 5px), var(--dy3, -4px), 0) rotate(230deg); }
-            80%  { transform: translate3d(var(--dx4, -3px), var(--dy4, -8px), 0) rotate(310deg); }
+            15%  { transform: translate3d(var(--dx1, 5px), var(--dy1, -10px), 0) rotate(70deg); }
+            30%  { transform: translate3d(var(--dx2, -6px), var(--dy2, -18px), 0) rotate(140deg); }
+            45%  { transform: translate3d(var(--dx3, 6px), var(--dy3, -8px), 0) rotate(210deg); }
+            60%  { transform: translate3d(var(--dx4, -5px), var(--dy4, -14px), 0) rotate(280deg); }
+            80%  { transform: translate3d(var(--dx1, 5px), var(--dy3, -6px), 0) rotate(330deg); }
             100% { transform: translate3d(0, 0, 0) rotate(360deg); }
         }
 
-        /* hole cut into the bottom of the glass */
         .ba-hole {
             position: absolute; left: 50%; bottom: -3px;
             width: 76px; height: 38px;
@@ -308,14 +307,12 @@
             opacity: 0;
         }
 
-        /* ejected ball */
         .ba-drop {
             z-index: 60;
             box-shadow: inset -3px -4px 6px rgba(0,0,0,.15), inset 2px 2px 4px rgba(255,255,255,.85), 0 6px 12px rgba(0,0,0,.55) !important;
             will-change: transform;
         }
 
-        /* catch tray */
         .ba-tray {
             flex: 0 0 auto; height: 70px;
             border-radius: 18px;
@@ -1326,21 +1323,15 @@
         }
 
         // ============================================================
-        //  BALL ANIMATION — LIGHTWEIGHT pure-CSS version
+        //  BALL ANIMATION — pure-CSS, dense "basket" layout
         //  ------------------------------------------------------------
-        //  Every ball wiggles on the GPU compositor via baWiggle.
-        //  Zero JavaScript work happens per frame. The only JS is the
-        //  sequencing of "drop the number ball, then drop the winner(s)".
-        //
-        //  Perf decisions:
-        //   • Cap total on-screen balls to VISUAL_BALL_CAP (24). If the
-        //     room has more picks than that, we randomly sample — the
-        //     eye can't tell, and the compositor saves work.
-        //   • Every ball carries one box-shadow (not three).
-        //   • The drop-out is a pure transform transition.
-        //   • No requests for animation frames; no collision tests.
+        //  • Balls are packed tightly at the bottom of the glass.
+        //  • Random horizontal/vertical jitter + overlap → organic.
+        //  • Energetic CSS wiggle on the GPU compositor.
+        //  • Winner number + winner name(s) drop out through the hole.
+        //  • Keyed on ROOM + ROUND so rooms never collide.
         // ============================================================
-        const VISUAL_BALL_CAP = 24;
+        const VISUAL_BALL_CAP = 36;
         const ballAnimationPlayedRounds = new Set();
         let ballAnimationPlaying = false;
 
@@ -1419,7 +1410,6 @@
                 allPicks.forEach(p => fullPool.push({ kind: 'number', text: String(p.number), num: Number(p.number), owner: p.owner }));
                 playerNames.forEach(n => fullPool.push({ kind: 'name', text: n, num: null, owner: n }));
 
-                // Always include winner name(s) and winning number in the pool.
                 const required = [];
                 const winningNumberEntry = fullPool.find(x => x.kind === 'number' && Number(x.num) === Number(winningNumber));
                 if (winningNumberEntry) required.push(winningNumberEntry);
@@ -1433,14 +1423,30 @@
                 const sampled = shuffleArray(remainingPool).slice(0, remainingSlots);
                 const pool = shuffleArray(required.concat(sampled));
 
-                /* 4. size the balls based on how many we're showing */
+                /* 4. size balls based on how many we're showing */
                 const totalBalls = pool.length;
-                const ballSize = totalBalls > 20 ? 34
+                const ballSize = totalBalls > 30 ? 30
+                               : totalBalls > 22 ? 34
                                : totalBalls > 16 ? 40
                                : totalBalls > 12 ? 46 : 52;
 
+                /* ============================================================
+                   "BASKET" LAYOUT — balls packed tightly at the bottom
+                   ------------------------------------------------------------
+                   • Fill from the bottom row up.
+                   • Each row is horizontally centred.
+                   • Slight overlap + jitter → looks like a physical pile.
+                   • Random z-index so overlaps layer naturally.
+                   ============================================================ */
+                const spacingX = ballSize * 0.72;       // horizontal step (some overlap)
+                const spacingY = ballSize * 0.78;       // vertical step (some overlap)
+                const cols = Math.max(3, Math.floor((glassW - 10) / spacingX));
+                const bottomY = glassH - 50;            // sit just above the chute hole
+                const rowWidth = cols * spacingX;
+                const rowStartX = (glassW - rowWidth) / 2 + spacingX / 2;
+
                 const balls = [];
-                pool.forEach(item => {
+                pool.forEach((item, i) => {
                     const el = document.createElement('div');
                     el.className = 'ba-ball ' + (item.kind === 'number' ? 'ba-white' : 'ba-yellow');
                     el.textContent = item.text;
@@ -1448,25 +1454,34 @@
                     el.style.height = ballSize + 'px';
                     const fs = item.kind === 'number'
                         ? ballSize * 0.38
-                        : Math.max(7, Math.min(ballSize * 0.28, (ballSize * 1.7) / Math.max(4, item.text.length)));
+                        : Math.max(7, Math.min(ballSize * 0.30, (ballSize * 1.9) / Math.max(4, item.text.length)));
                     el.style.fontSize = fs + 'px';
 
-                    /* place at random position — plain left/top so the
-                       transform can be used purely by the animation */
-                    const x = 4 + Math.random() * Math.max(1, glassW - ballSize - 8);
-                    const y = 30 + Math.random() * Math.max(1, glassH - ballSize - 40);
+                    const col = i % cols;
+                    const row = Math.floor(i / cols);
+
+                    // x = centred row position + jitter
+                    let x = rowStartX + col * spacingX + (Math.random() - 0.5) * spacingX * 0.45;
+                    // y = bottom-anchored row, filling upward, + jitter
+                    let y = bottomY - ballSize - row * spacingY + (Math.random() - 0.5) * spacingY * 0.35;
+
+                    // clamp inside the glass
+                    x = Math.max(2, Math.min(glassW - ballSize - 2, x));
+                    y = Math.max(34, Math.min(glassH - ballSize - 2, y));
+
                     el.style.left = x.toFixed(1) + 'px';
                     el.style.top = y.toFixed(1) + 'px';
+                    el.style.zIndex = String(1 + Math.floor(Math.random() * 4));
 
-                    /* random wiggle personality */
-                    el.style.setProperty('--delay', (Math.random() * 2.0).toFixed(2) + 's');
-                    el.style.setProperty('--dur',   (1.8 + Math.random() * 1.6).toFixed(2) + 's');
-                    const j = () => ((Math.random() - 0.5) * 12).toFixed(1) + 'px';
-                    const jUp = () => (-3 - Math.random() * 8).toFixed(1) + 'px';
-                    el.style.setProperty('--dx1', j()); el.style.setProperty('--dy1', jUp());
-                    el.style.setProperty('--dx2', j()); el.style.setProperty('--dy2', jUp());
-                    el.style.setProperty('--dx3', j()); el.style.setProperty('--dy3', jUp());
-                    el.style.setProperty('--dx4', j()); el.style.setProperty('--dy4', jUp());
+                    /* energetic wiggle — bigger amplitude, quicker cycle */
+                    el.style.setProperty('--delay', (Math.random() * 1.2).toFixed(2) + 's');
+                    el.style.setProperty('--dur',   (1.3 + Math.random() * 0.9).toFixed(2) + 's');
+                    const j  = () => ((Math.random() - 0.5) * 18).toFixed(1) + 'px';
+                    const jU = () => (-5 - Math.random() * 15).toFixed(1) + 'px';
+                    el.style.setProperty('--dx1', j()); el.style.setProperty('--dy1', jU());
+                    el.style.setProperty('--dx2', j()); el.style.setProperty('--dy2', jU());
+                    el.style.setProperty('--dx3', j()); el.style.setProperty('--dy3', jU());
+                    el.style.setProperty('--dx4', j()); el.style.setProperty('--dy4', jU());
                     el.classList.add('ba-wiggle');
 
                     ballBox.appendChild(el);
@@ -1504,18 +1519,16 @@
                     el.style.height = trayBallSize + 'px';
                     el.style.fontSize = (ball.kind === 'number'
                         ? trayBallSize * 0.38
-                        : Math.max(7, Math.min(trayBallSize * 0.28,
-                            (trayBallSize * 1.7) / Math.max(4, ball.text.length)))) + 'px';
+                        : Math.max(7, Math.min(trayBallSize * 0.30,
+                            (trayBallSize * 1.9) / Math.max(4, ball.text.length)))) + 'px';
                     el.style.left = '0px';
                     el.style.top = '0px';
 
-                    /* start centred on the hole */
                     el.style.transform =
                         `translate3d(${(holeX - trayBallSize / 2).toFixed(1)}px, ${(holeY - trayBallSize / 2).toFixed(1)}px, 0) rotate(0deg)`;
                     machine.appendChild(el);
                     void el.offsetWidth;
 
-                    /* pure-transform transition to tray */
                     el.style.transition = `transform ${(ANIM.dropMs / 1000).toFixed(2)}s cubic-bezier(.42,.03,.84,.46)`;
                     el.style.transform =
                         `translate3d(${(traySlotX(slotIndex) - trayBallSize / 2).toFixed(1)}px, ${(trayCenterY - trayBallSize / 2).toFixed(1)}px, 0) rotate(${(180 + Math.random() * 180).toFixed(0)}deg)`;
@@ -1536,7 +1549,6 @@
                     await wait(ANIM.holeOpenMs);
                     if (resolved) return;
 
-                    /* winning number ball first */
                     const numberBall =
                         balls.find(b => b.kind === 'number' && Number(b.num) === Number(winningNumber)) ||
                         balls.find(b => b.kind === 'number');
@@ -1549,7 +1561,6 @@
                     await wait(ANIM.gapBeforeWinner);
                     if (resolved) return;
 
-                    /* winner name balls */
                     if (winnerList.length) {
                         for (let i = 0; i < winnerList.length; i++) {
                             const name = winnerList[i];
@@ -1607,14 +1618,17 @@
             if (!isFinite(n) || n <= 0 || n > 200) return;
             if (!Array.isArray(winners)) return;
 
-            if (ballAnimationPlayedRounds.has(r) || ballAnimationPlaying) {
+            // KEY ON ROOM + ROUND — room 15 and room 30 no longer collide.
+            const animKey = currentRoom + '_' + r;
+
+            if (ballAnimationPlayedRounds.has(animKey) || ballAnimationPlaying) {
                 renderWinningCardBody(n, winners, winAmount);
                 if (winnersModal) winnersModal.classList.add('active');
                 if (!isResultsCountdownRunning) startResultsCountdown();
                 return;
             }
 
-            ballAnimationPlayedRounds.add(r);
+            ballAnimationPlayedRounds.add(animKey);
             ballAnimationPlaying = true;
             if (timerDisplay) timerDisplay.textContent = '5';
 
@@ -1626,7 +1640,7 @@
                 if (winnersModal) winnersModal.classList.add('active');
                 if (winners.filter(Boolean).length) startFireworks();
                 if (!isResultsCountdownRunning) startResultsCountdown();
-            });
+            }).catch(() => { ballAnimationPlaying = false; });
         }
 
         function resetWinningNumberCard() {
@@ -3414,7 +3428,7 @@
         console.info('Bot pool size:', BOT_NAMES.length);
         console.info('Active bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
         console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
-        console.info('Ball animation: lightweight CSS-only, cap ' + VISUAL_BALL_CAP + ' balls.');
+        console.info('Ball animation: basket-packed, cap ' + VISUAL_BALL_CAP + ' balls, keyed on room+round.');
         init();
     </script>
 </body>
