@@ -390,7 +390,7 @@
         //  GLOBAL CONSTANTS
         // ============================================================
         const SERVICE_FEE_RATE = 0.20;
-        const PAYOUT_RATE = 1 - SERVICE_FEE_RATE;   // 0.80
+        const PAYOUT_RATE = 1 - SERVICE_FEE_RATE;
         const REFERRAL_COMMISSION_RATE = 0.05;
         const TELEGRAM_BOT_LINK = 'http://t.me/WinzoBettingBot';
 
@@ -413,9 +413,6 @@
             } catch (e) {}
         }
 
-        // ============================================================
-        //  AUDIO
-        // ============================================================
         let audioCtx = null; let audioInitialized = false;
         function initAudio() { if (!audioInitialized) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); audioInitialized = true; } catch (e) {} } return audioCtx; }
         ['touchstart', 'pointerdown', 'click', 'keydown'].forEach(ev => {
@@ -455,9 +452,6 @@
             playTone(392.00, 0.25, 'sine', 0.08, 0.50);
         }
 
-        // ============================================================
-        //  FIREWORKS
-        // ============================================================
         const canvas = document.getElementById('fireworksCanvas');
         const ctx2 = canvas.getContext('2d');
         let fireworks = []; let particles = []; let fireworksRunning = false;
@@ -568,9 +562,6 @@
             fireworks = []; particles = [];
         }
 
-        // ============================================================
-        //  TELEGRAM
-        // ============================================================
         let tg = null; let telegramUser = null; let isTelegram = false;
         let telegramDetectionAttempts = 0; const maxTelegramAttempts = 5;
         function detectTelegramUser() {
@@ -621,9 +612,6 @@
             usernameInput.addEventListener('keydown', function(e) { e.preventDefault(); return false; });
         }
 
-        // ============================================================
-        //  FIREBASE
-        // ============================================================
         const firebaseConfig = {
             apiKey: "AIzaSyA2VCeCTCx_NAcsxK-es1DCTmRjOD43dt4",
             authDomain: "renewed-8fe38.firebaseapp.com",
@@ -645,9 +633,6 @@
             firebaseAvailable = true; isMultiplayer = true;
         } catch (e) { firebaseAvailable = false; isMultiplayer = false; }
 
-        // ============================================================
-        //  LOCAL DB
-        // ============================================================
         const APP_VERSION = '10.0';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
@@ -666,9 +651,6 @@
         };
         if (DB.getVersion() !== APP_VERSION) { DB.clearAll(); DB.setVersion(); }
 
-        // ============================================================
-        //  GLOBAL STATE
-        // ============================================================
         let currentUser = null; let gameRef = null; let isGameInitialized = false;
         let currentBet = 15; let currentRoom = 'room_15';
         let walletData = { main: 0, play: 0, pending: 0, refEarn: 0 };
@@ -693,9 +675,6 @@
         let cardFetchRetryTimer = null;
         let cardFetchRetryCount = 0;
 
-        // ============================================================
-        //  NETWORK LISTENER
-        // ============================================================
         let isNetworkConnected = true; let networkListenerActive = false;
         const networkOverlay = document.getElementById('networkOfflineOverlay');
         const networkRetryBtn = document.getElementById('networkRetryBtn');
@@ -760,9 +739,6 @@
             if (engineState.gamePhase === 'selection' && !isTimerRunning && phaseDeadline) startTimer();
         });
 
-        // ============================================================
-        //  SESSION
-        // ============================================================
         function generateSessionId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 8); }
         function startSessionListener(username) {
             if (!database) return;
@@ -788,9 +764,6 @@
             sessionId = null;
         }
 
-        // ============================================================
-        //  NUMBER CLAIM
-        // ============================================================
         function claimNumber(number, callback) {
             if (!gameRef) return callback(false);
             const takenRef = gameRef.child('numbersTaken/' + number);
@@ -805,15 +778,35 @@
         }
 
         // ============================================================
-        //  DEFAULT BOT PLAYERS
+        //  BOT SYSTEM — 100 BOT POOL, 5–10 ACTIVE PER ROUND
         //  ----------------------------------------------------------
-        //  10 male-named bots join whichever room the user is in.
-        //  Each round, a random subset of MIN_BOTS_PER_ROUND…MAX_BOTS_PER_ROUND
-        //  actually places picks.
+        //  A pool of 100 male-named bot accounts. Each round a random
+        //  subset of 5–10 is selected to "enter the room." They pick
+        //  3 numbers each, then at round transition they leave and a
+        //  fresh random subset enters. This makes names rotate so no
+        //  single bot keeps winning.
         // ============================================================
         const BOT_NAMES = [
-            'Dawit', 'Abel', 'Yonas', 'Biruk', 'Tesfaye',
-            'Mulugeta', 'Getachew', 'Henok', 'Ermias', 'Amanuel'
+            'Dawit','Abel','Yonas','Biruk','Tesfaye',
+            'Mulugeta','Getachew','Henok','Ermias','Amanuel',
+            'Solomon','Fikru','Samuel','Kebede','Bereket',
+            'Natnael','Tadesse','Mekonnen','Tewodros','Gebre',
+            'Hailu','Abebe','Adane','Alemu','Amare',
+            'Andualem','Ayele','Bekele','Binyam','Daniel',
+            'Demeke','Dereje','Desalegn','Desta','Endale',
+            'Esubalew','Fikadu','Gebremedhin','Girmay','Girma',
+            'Habtamu','Hussen','Ibrahim','Kifle','Lemma',
+            'Melaku','Mengistu','Mesfin','Negash','Nega',
+            'Tsegaye','Wondimu','Worku','Yohannes','Yosef',
+            'Zerihun','Zewdu','Abdi','Adugna','Afework',
+            'Agumas','Alemayehu','Alula','Assefa','Ayalew',
+            'Balcha','Belete','Bogale','Chalachew','Dagne',
+            'Damtew','Dires','Ewnetu','Fantahun','Fisseha',
+            'Gashaw','Gedamu','Getu','Gizaw','Goitom',
+            'Goshu','Gudeta','Haile','Hiruy','Isayas',
+            'Kassa','Kefelegn','Kiflom','Lema','Melese',
+            'Mihret','Million','Molla','Mulatu','Negasi',
+            'Nigussie','Petros','Robel','Sisay','Tekle'
         ];
         const BOT_STARTING_WALLET = 1000000;
         const BOT_PICKS_PER_ROUND = 3;
@@ -821,19 +814,12 @@
         const MIN_BOTS_PER_ROUND = 5;
         const MAX_BOTS_PER_ROUND = 10;
 
-        // ============================================================
-        //  WANDERING PLAYERS (cosmetic online-count variation)
-        //  ----------------------------------------------------------
-        //  Reserved names that drift in and out of the room each round.
-        //  They never pick numbers and never affect the game engine.
-        //  Their only purpose is to make the online counter fluctuate
-        //  so the room feels alive. Their count per round is 1–6.
-        // ============================================================
         const WANDERER_NAMES = [
-            'Fikru', 'Samuel', 'Kebede', 'Bereket', 'Natnael', 'Tadesse'
+            'Fikru','Samuel','Kebede','Bereket','Natnael','Tadesse'
         ];
         let wanderersPresent = new Set();
 
+        let activeBotNamesThisRound = new Set();
         let botScheduledRound = null;
         let botPickTimers = [];
         let botsUsersEnsured = false;
@@ -868,12 +854,26 @@
             }
         }
 
+        // Adds a fresh random 5–10 bots from the pool. Removes any
+        // bots left over from the previous round first.
         async function addBotsToRoom() {
             if (!BOTS_ENABLED) return;
             if (!gameRef || !currentUser || !database) return;
             await ensureBotUsers();
+
+            // Remove the previous round's bots.
+            for (const botName of activeBotNamesThisRound) {
+                try { gameRef.child('players/' + botName).remove().catch(() => {}); } catch (e) {}
+            }
+            activeBotNamesThisRound.clear();
+
             const round = Number(engineState.roundNumber) || 1;
-            for (const botName of BOT_NAMES) {
+            const minBots = Math.min(MIN_BOTS_PER_ROUND, BOT_NAMES.length);
+            const maxBots = Math.min(MAX_BOTS_PER_ROUND, BOT_NAMES.length);
+            const count = minBots + Math.floor(Math.random() * (maxBots - minBots + 1));
+            const selection = shuffleArray(BOT_NAMES).slice(0, count);
+
+            for (const botName of selection) {
                 try {
                     const userSnap = await database.ref('users/' + botName).once('value');
                     const userData = userSnap.val();
@@ -887,28 +887,23 @@
                         betDeducted: false, betSources: {}, round,
                         isBot: true
                     }).catch(() => {});
+                    activeBotNamesThisRound.add(botName);
                 } catch (e) { /* swallow */ }
             }
             botsReadyForGeneration = roomConnectionGeneration;
         }
 
-        // ---- Refresh wanderers for the current round ----
-        // Randomly decides which 1–6 wanderers are "present" right now.
-        // Adds new ones and removes ones that have left.
         async function refreshWanderers() {
             if (!gameRef || !currentUser) return;
             const shuffled = shuffleArray(WANDERER_NAMES);
-            const target = 1 + Math.floor(Math.random() * WANDERER_NAMES.length); // 1..6
+            const target = 1 + Math.floor(Math.random() * WANDERER_NAMES.length);
             const newPresent = new Set(shuffled.slice(0, target));
 
-            // Remove wanderers that are no longer present
             for (const name of wanderersPresent) {
                 if (!newPresent.has(name)) {
                     try { gameRef.child('players/' + name).remove().catch(() => {}); } catch (e) {}
                 }
             }
-
-            // Add newly-arrived wanderers
             const round = Number(engineState.roundNumber) || 1;
             for (const name of newPresent) {
                 if (wanderersPresent.has(name)) continue;
@@ -939,13 +934,13 @@
             botScheduledRound = null;
             botsReadyForGeneration = -1;
             removeWanderersFromRoom();
-            if (!gameRef || !BOTS_ENABLED) return;
-            BOT_NAMES.forEach(botName => {
+            if (!gameRef) { activeBotNamesThisRound.clear(); return; }
+            activeBotNamesThisRound.forEach(botName => {
                 try { gameRef.child('players/' + botName).remove().catch(() => {}); } catch (e) {}
             });
+            activeBotNamesThisRound.clear();
         }
 
-        // ---- Fisher–Yates shuffle ----
         function shuffleArray(arr) {
             const a = [...arr];
             for (let i = a.length - 1; i > 0; i--) {
@@ -953,15 +948,6 @@
                 [a[i], a[j]] = [a[j], a[i]];
             }
             return a;
-        }
-
-        // ---- Pick a random subset of bots for this round ----
-        function chooseActiveBotsForRound() {
-            const total = BOT_NAMES.length;
-            const minBots = Math.min(MIN_BOTS_PER_ROUND, total);
-            const maxBots = Math.min(MAX_BOTS_PER_ROUND, total);
-            const count = minBots + Math.floor(Math.random() * (maxBots - minBots + 1));
-            return shuffleArray(BOT_NAMES).slice(0, count);
         }
 
         function scheduleBotPicks() {
@@ -975,13 +961,14 @@
             clearBotTimers();
             botScheduledRound = round;
 
-            const activeBots = chooseActiveBotsForRound();
+            const botsToSchedule = [...activeBotNamesThisRound];
+            if (!botsToSchedule.length) return;
 
             const remaining = Math.max(3, getRemainingSeconds(phaseDeadline));
             const windowSec = Math.max(4, Math.min(22, remaining - 4));
-            const perBot = windowSec / Math.max(1, activeBots.length);
+            const perBot = windowSec / Math.max(1, botsToSchedule.length);
 
-            activeBots.forEach((botName, i) => {
+            botsToSchedule.forEach((botName, i) => {
                 const delay = 1000 + i * perBot * 1000 + Math.random() * 1200;
                 const t = setTimeout(() => {
                     botPickNumbersForRound(botName, round).catch(() => {});
@@ -1074,9 +1061,6 @@
             return true;
         }
 
-        // ============================================================
-        //  DOM REFS
-        // ============================================================
         const $ = (id) => document.getElementById(id);
         const authScreen = $('authScreen'); const welcomeScreen = $('welcomeScreen'); const gameScreen = $('gameScreen');
         const authError = $('authError'); const authUsername = $('authUsername'); const authPassword = $('authPassword');
@@ -1113,9 +1097,6 @@
         const winningCardAmountEl = $('winningCardAmount');
         const winningCardAmountValueEl = $('winningCardAmountValue');
 
-        // ============================================================
-        //  HIDDEN 5-TAP CLEANUP
-        // ============================================================
         (function attachHiddenCleanup() {
             let tapCount = 0;
             let tapTimer = null;
@@ -1158,9 +1139,6 @@
             else bindFooter();
         })();
 
-        // ============================================================
-        //  CARD DISPLAY — STRICTLY FIREBASE-SOURCED
-        // ============================================================
         function formatWinnerNames(winners) {
             const list = Array.isArray(winners) ? winners.filter(Boolean).map(w => String(w).trim()).filter(Boolean) : [];
             if (!list.length) return '😔 No Winner';
@@ -1346,9 +1324,6 @@
             if (lastResultListenerRef) { try { lastResultListenerRef.off(); } catch (e) {} lastResultListenerRef = null; }
         }
 
-        // ============================================================
-        //  HELPERS
-        // ============================================================
         function getPlayerPicks(player) {
             if (!player) return [];
             if (Array.isArray(player.picks)) {
@@ -1424,9 +1399,6 @@
             if (message) updateStatus(message);
         }
 
-        // ============================================================
-        //  WALLET SYNC
-        // ============================================================
         function syncWalletFromFirebase() {
             if (!currentUser || !database) return;
             if (userWalletRef) { userWalletRef.off(); userWalletRef = null; }
@@ -1489,9 +1461,6 @@
             welcomeToast._hideTimer = setTimeout(() => welcomeToast.classList.remove('active'), 5000);
         }
 
-        // ============================================================
-        //  DEPOSIT / TRANSFER / OCR
-        // ============================================================
         function openDepositModal() {
             if (depositPlayBalance) depositPlayBalance.textContent = walletData.play;
             if (depositError) depositError.textContent = '';
@@ -1622,9 +1591,6 @@
             };
         }
 
-        // ============================================================
-        //  SCREEN SWITCHERS
-        // ============================================================
         function showAuthScreen() {
             if (authScreen) authScreen.style.display = 'flex';
             if (welcomeScreen) welcomeScreen.style.display = 'none';
@@ -1670,9 +1636,6 @@
             requestAnimationFrame(() => renderNumberPicker(true));
         }
 
-        // ============================================================
-        //  LOGIN / SIGNUP
-        // ============================================================
         function handleLogin() {
             const username = authUsername ? authUsername.value.trim() : '';
             const password = authPassword ? authPassword.value.trim() : '';
@@ -1738,9 +1701,6 @@
             });
         }
 
-        // ============================================================
-        //  LOGOUT / CLEANUP
-        // ============================================================
         function clearAllLocalData() {
             localStorage.removeItem('bingo_current_user'); localStorage.removeItem('bingo_saved_bet');
             localStorage.removeItem('bingo_toast_shown'); localStorage.removeItem('bingo_app_version');
@@ -1756,9 +1716,6 @@
             } catch (e) {}
         }
 
-        // ============================================================
-        //  REFUND PRIMITIVES
-        // ============================================================
         function refundBetIdempotent(username, round, amount, room) {
             const r = room || currentRoom;
             if (!database || !r || !username || !amount || amount <= 0) return Promise.resolve(false);
@@ -1825,6 +1782,7 @@
             displayedCardRound = null; executedSpinRound = null; lastResultData = null;
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
+            activeBotNamesThisRound.clear();
             wanderersPresent.clear();
             closeMoreDropdown(); hideWaitingModal();
             if (welcomeToast) welcomeToast.classList.remove('active');
@@ -1842,9 +1800,6 @@
             };
         }
 
-        // ============================================================
-        //  ROOM SWITCH / BET SELECT
-        // ============================================================
         function resetEngineStateForNewRound() {
             localSelectionRound = null;
             localSelectionPicks = [];
@@ -1875,6 +1830,7 @@
             resetEngineStateForNewRound();
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
+            activeBotNamesThisRound.clear();
             wanderersPresent.clear();
             DB.setSavedBet(null);
             showWelcomeScreen();
@@ -1902,6 +1858,7 @@
             resetEngineStateForNewRound();
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
+            activeBotNamesThisRound.clear();
             wanderersPresent.clear();
             currentBet = amount;
             currentRoom = amount === 15 ? 'room_15' : 'room_30';
@@ -1913,9 +1870,6 @@
             updateStatus(`🔄 Joined ${amount} Birr room. Pick numbers!`);
         }
 
-        // ============================================================
-        //  MORE MENU
-        // ============================================================
         function toggleMoreDropdown(e) { e.stopPropagation(); if (moreDropdown) moreDropdown.classList.toggle('open'); }
         function openReferralModal() {
             if (!currentUser) return;
@@ -1927,9 +1881,6 @@
         function closeMoreDropdown() { if (moreDropdown) moreDropdown.classList.remove('open'); }
         document.addEventListener('click', (e) => { if (!e.target.closest('.more-wrapper')) closeMoreDropdown(); });
 
-        // ============================================================
-        //  WALLET UI
-        // ============================================================
         function updateWalletUI() {
             if (!currentUser) return;
             if (mainWalletEl) mainWalletEl.textContent = walletData.main;
@@ -1945,9 +1896,6 @@
             }
         }
 
-        // ============================================================
-        //  NUMBERS TAKEN LISTENER
-        // ============================================================
         function attachNumbersTakenListener() {
             if (!gameRef) return;
             detachNumbersTakenListener();
@@ -1983,9 +1931,6 @@
             }
         }
 
-        // ============================================================
-        //  GAME CONNECTION
-        // ============================================================
         let serverTimeOffset = 0; let phaseDeadline = 0;
         const SELECTION_SECONDS = 30;
         function getServerNow() { return Date.now() + serverTimeOffset; }
@@ -2064,9 +2009,6 @@
         let localSelectionRound = null;
         let localSelectionPicks = [];
 
-        // ============================================================
-        //  RAPID-SAFE NUMBER PICK HANDLER
-        // ============================================================
         function syncLocalPlayerPicks(picks, round, betDeducted) {
             const clean = [...new Set((picks || []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 200))].slice(0, MAX_PICKS_PER_ROUND);
             localSelectionRound = Number(round);
@@ -2240,9 +2182,6 @@
             });
         }
 
-        // ============================================================
-        //  WAITING MODAL & MISC
-        // ============================================================
         function showWaitingModal() { if (waitingModal) waitingModal.classList.add('active'); engineState.waitingModalShown = true; }
         function hideWaitingModal() { if (waitingModal) waitingModal.classList.remove('active'); engineState.waitingModalShown = false; }
         if (closeWaitingBtn) closeWaitingBtn.onclick = () => hideWaitingModal();
@@ -2264,9 +2203,6 @@
             if (gamePhaseLabel) gamePhaseLabel.textContent = labels[phase] || '⏳';
         }
 
-        // ============================================================
-        //  EVENT BINDINGS
-        // ============================================================
         function init() {
             if (authLoginBtn) authLoginBtn.onclick = handleLogin;
             if (authSignupBtn) authSignupBtn.onclick = handleSignup;
@@ -2359,6 +2295,7 @@
                         lastKnownPlayersCache = {}; lastRoomSnapshotRaw = null;
                         botsAddedForGeneration = -1;
                         botsReadyForGeneration = -1;
+                        activeBotNamesThisRound.clear();
                         wanderersPresent.clear();
                         if (winnersModal) winnersModal.classList.remove('active');
                         resetWinningNumberCard();
@@ -2379,9 +2316,6 @@
             showAuthScreen();
         }
 
-        // ============================================================
-        //  PRODUCTION HARDENING
-        // ============================================================
         const WINZO_PRODUCTION_VERSION = '10.0.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
@@ -2430,9 +2364,6 @@
             });
         }
 
-        // ============================================================
-        //  initGameConnection
-        // ============================================================
         function initGameConnection() {
             const generation = ++roomConnectionGeneration;
             if (isGameInitialized) {
@@ -2447,6 +2378,7 @@
             lastKnownPlayersCache = {};
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
+            activeBotNamesThisRound.clear();
             database.ref('.info/serverTimeOffset').once('value').then(snap => {
                 if (generation !== roomConnectionGeneration) return;
                 serverTimeOffset = Number(snap.val()) || 0;
@@ -2500,9 +2432,6 @@
             setTimeout(() => { if (generation === roomConnectionGeneration) renderNumberPicker(); }, 300);
         }
 
-        // ============================================================
-        //  syncGameState
-        // ============================================================
         function syncGameState(data) {
             lastRoomSnapshotRaw = data;
             const players = (data && data.players && typeof data.players === 'object') ? data.players : {};
@@ -2578,6 +2507,7 @@
                         if (gameRef) prevPicks.forEach(n => gameRef.child('numbersTaken/' + Number(n)).set(false).catch(() => {}));
                     } catch (e) {}
                     if (name === currentUser) return;
+                    if (prev.isBot === true) return; // don't refund rotating bots
                     refundBetIdempotent(name, prevRound, Number(prev.bet || currentBet) * prevPicks.length, currentRoom).catch(() => {});
                 });
             } catch (e) {}
@@ -2619,7 +2549,6 @@
                 botsAddedForGeneration = roomConnectionGeneration;
                 botsReadyForGeneration = -1;
                 addBotsToRoom().then(() => {
-                    // After bots are in, seed the wanderers for this round.
                     refreshWanderers().catch(() => {});
                     if (engineState.gamePhase === 'selection') {
                         scheduleBotPicks();
@@ -2631,13 +2560,6 @@
             }
         }
 
-        // ============================================================
-        //  requestSpin
-        //  ----------------------------------------------------------
-        //  Winning number is chosen ONLY from numbers held by eligible
-        //  players, guaranteeing at least one winner whenever a real
-        //  spin occurs. Everything else is unchanged.
-        // ============================================================
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
             const round = Number(engineState.roundNumber);
@@ -2778,9 +2700,6 @@
             }).catch(() => false);
         }
 
-        // ============================================================
-        //  WATCHDOG
-        // ============================================================
         function runRoomWatchdog() {
             if (!gameRef || !currentUser) return;
             if (!navigator.onLine) return;
@@ -2892,11 +2811,15 @@
                         stopFireworks();
                         updateTotalBetDisplay(); updatePrizeDisplay(); updatePickStatus();
                         renderNumberPicker(); updatePlayerList();
-                        // Refresh wanderers for the new round so the online
-                        // counter naturally rises and falls between rounds.
-                        refreshWanderers().catch(() => {});
-                        if (!isTimerRunning) startTimer();
-                        if (engineState.activePlayersCount <= 1) showWaitingModal();
+                        // Swap bots and refresh wanderers for the new round.
+                        botsReadyForGeneration = -1; // invalidate until add completes
+                        addBotsToRoom().then(() => {
+                            refreshWanderers().catch(() => {});
+                            if (!isTimerRunning) startTimer();
+                            if (engineState.activePlayersCount <= 1) showWaitingModal();
+                        }).catch(() => {
+                            if (!isTimerRunning) startTimer();
+                        });
                     }).catch(() => {});
                 }
             }, 1000);
@@ -2905,9 +2828,6 @@
         function stopResultsCountdown() { if (resultsCountdownInterval) { clearInterval(resultsCountdownInterval); resultsCountdownInterval = null; } isResultsCountdownRunning = false; }
         function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } isTimerRunning = false; }
 
-        // ============================================================
-        //  executeSpin
-        // ============================================================
         function executeSpin() {
             if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
             engineState.isSpinning = true;
@@ -2965,9 +2885,6 @@
             });
         }
 
-        // ============================================================
-        //  WINNER PAYOUT
-        // ============================================================
         function creditWinnerAndReferral(winnerName, winAmount, attempt = 0) {
             if (!database || !winnerName || Number(winAmount) <= 0) return Promise.resolve(false);
             const amount = Number(winAmount);
@@ -3018,9 +2935,6 @@
             }).catch(() => false);
         }
 
-        // ============================================================
-        //  WITHDRAW / TRANSACTION
-        // ============================================================
         function withdrawFromMain(amount, name, phone) {
             if (!currentUser || !database) return false;
             amount = Number(amount); name = safeProductionName(name); phone = safeProductionName(phone);
@@ -3070,8 +2984,8 @@
         }
 
         console.info('WINZO production hardening loaded:', WINZO_PRODUCTION_VERSION);
-        console.info('Default bots enabled (' + BOT_NAMES.length + '):', BOT_NAMES.join(', '));
-        console.info('Bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
+        console.info('Bot pool size:', BOT_NAMES.length);
+        console.info('Active bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
         console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
         init();
     </script>
