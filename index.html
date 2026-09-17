@@ -1342,14 +1342,6 @@
 
         // ============================================================
         //  BALL ANIMATION — per-ball BOUNCE, densely basket-packed
-        //  ------------------------------------------------------------
-        //  • Balls sit on the bottom of the glass in a tight pile.
-        //  • Each ball bounces straight up off the surface and lands
-        //    back — no floating, no drifting in mid-air.
-        //  • ONE ball per taken number, ONE ball per player who picked.
-        //    NO CAP — the layout auto-sizes so everything always fits.
-        //  • 100% client-side rendering (never waits on the network),
-        //    so it behaves identically in room_15 and room_30.
         // ============================================================
         const BALL_ANIM_LOW_END = (navigator.hardwareConcurrency || 4) <= 4
             || (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2)
@@ -1860,28 +1852,36 @@
         /* ============================================================
            NOTIFICATIONS + TRANSACTION RESULT POPUP
            ============================================================ */
-        let notificationListener = null;
+        let notificationRef = null;
         let txPopupQueue = [];
         let txPopupActive = false;
 
         function listenNotifications(username) {
             if (!database || !username) return;
-            if (notificationListener) { notificationListener.off(); notificationListener = null; }
-            // Fires for every unread notification. If the player was offline, all queued
-            // notifications fire as soon as they reconnect / log back in.
-            notificationListener = database.ref('notifications/' + username)
-                .orderByChild('read').equalTo(false)
-                .on('child_added', (snapshot) => {
-                    const data = snapshot.val();
-                    if (!data) return;
-                    // Mark as read so it never shows again (even across devices/logins)
-                    snapshot.ref.update({ read: true }).catch(() => {});
-                    if (data.type === 'transaction_result') {
-                        enqueueTransactionPopup(data);
-                    } else {
-                        showToast(data.message, 'info');
-                    }
-                });
+            // Detach any previous listener on the proper ref object
+            if (notificationRef) {
+                try { notificationRef.off(); } catch (e) {}
+                notificationRef = null;
+            }
+            // Listen on the base notifications node and filter client-side.
+            // This avoids the orderByChild().equalTo() index requirement and
+            // avoids the .on() return-value bug (it returns the callback, not a ref).
+            notificationRef = database.ref('notifications/' + username);
+            notificationRef.on('child_added', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+                if (data.read === true) return; // already handled in a previous session
+                console.log('[NOTIF] new notification:', snapshot.key, data);
+                // Mark as read immediately so a re-attach or another device won't repeat it.
+                try { snapshot.ref.update({ read: true }); } catch (e) {}
+                if (data.type === 'transaction_result') {
+                    enqueueTransactionPopup(data);
+                } else if (data.message) {
+                    showToast(data.message, 'info');
+                }
+            }, (error) => {
+                console.error('[NOTIF] listener error:', error);
+            });
         }
 
         function enqueueTransactionPopup(data) {
@@ -1939,7 +1939,10 @@
         }
 
         function stopNotificationListener() {
-            if (notificationListener && database && currentUser) { database.ref('notifications/' + currentUser).off(); notificationListener = null; }
+            if (notificationRef) {
+                try { notificationRef.off(); } catch (e) {}
+                notificationRef = null;
+            }
         }
 
         function showToast(message, type = 'info') {
