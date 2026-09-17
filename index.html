@@ -256,7 +256,6 @@
             display: flex; align-items: center; justify-content: center;
             font-weight: 900; line-height: 1; text-align: center;
             padding: 2px; overflow: hidden;
-            will-change: transform;
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
         }
@@ -1327,16 +1326,17 @@
         // ============================================================
         //  BALL ANIMATION — per-ball BOUNCE, densely basket-packed
         //  ------------------------------------------------------------
-        //  • Balls tightly stacked at the bottom of the glass.
-        //  • Every ball bounces straight up off the floor and back.
-        //  • Higher ball cap so the pile looks full.
+        //  • Balls sit on the bottom of the glass in a tight pile.
+        //  • Each ball bounces straight up off the surface and lands
+        //    back — no floating, no drifting in mid-air.
+        //  • ONE ball per taken number, ONE ball per player who picked.
+        //    NO CAP — the layout auto-sizes so everything always fits.
+        //  • 100% client-side rendering (never waits on the network),
+        //    so it behaves identically in room_15 and room_30.
         // ============================================================
         const BALL_ANIM_LOW_END = (navigator.hardwareConcurrency || 4) <= 4
             || (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2)
             || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-
-        // Bump the cap: 42 on capable devices, 24 on low-end.
-        const VISUAL_BALL_CAP = BALL_ANIM_LOW_END ? 24 : 42;
 
         const ballAnimationPlayedRounds = new Set();
         let ballAnimationPlaying = false;
@@ -1356,12 +1356,12 @@
                 if (!machine || !glass || !ballBox || !hole || !tray || !status) { resolve(); return; }
 
                 const ANIM = {
-                    mixMs: 2000,
-                    holeOpenMs: 500,
-                    dropMs: 640,
-                    gapBeforeWinner: 320,
-                    gapBetweenWinners: 260,
-                    finalHoldMs: 850
+                    mixMs:             BALL_ANIM_LOW_END ? 900 : 1300,
+                    holeOpenMs:        BALL_ANIM_LOW_END ? 300 : 420,
+                    dropMs:            BALL_ANIM_LOW_END ? 440 : 560,
+                    gapBeforeWinner:   240,
+                    gapBetweenWinners: 200,
+                    finalHoldMs:       700
                 };
 
                 let resolved = false;
@@ -1382,68 +1382,61 @@
                     ballBox.innerHTML = '';
                     resolve();
                 };
-                const safetyTimer = setTimeout(finish, 13000);
+                const safetyTimer = setTimeout(finish, 15000);
 
-                /* 1. collect picks + names */
+                /* ---------- 1. collect EVERY pick + EVERY picker ---------- */
+                const players = engineState.players || {};
                 const allPicks = [];
                 const playerNames = [];
-                const players = engineState.players || {};
 
                 Object.keys(players).forEach(name => {
                     const p = players[name];
                     if (!p || !p.name) return;
-                    if (Number(p.round) !== Number(round)) return;
+                    if (p.round != null && Number(p.round) !== Number(round)) return;
                     const picks = getPlayerPicks(p);
                     if (!picks.length) return;
-                    picks.forEach(n => allPicks.push({ number: n, owner: name }));
+                    picks.forEach(n => allPicks.push({ number: Number(n), owner: name }));
                     playerNames.push(name);
                 });
 
-                if (!allPicks.length) { finish(); return; }
+                // Safety net: if player attribution is missing for some reason,
+                // still show every taken number so nothing is ever lost.
+                if (!allPicks.length && engineState.allTakenNumbers && engineState.allTakenNumbers.size) {
+                    engineState.allTakenNumbers.forEach(n => allPicks.push({ number: Number(n), owner: null }));
+                }
 
-                /* 2. reset stage */
+                if (!allPicks.length && !playerNames.length) { finish(); return; }
+
+                /* ---------- 2. reset stage ---------- */
                 machine.querySelectorAll('.ba-drop').forEach(el => el.remove());
                 ballBox.innerHTML = '';
                 hole.classList.remove('open');
                 overlay.classList.add('active');
                 void overlay.offsetWidth;
 
-                const glassW = glass.clientWidth;
-                const glassH = glass.clientHeight;
+                const glassW = glass.clientWidth  || 360;
+                const glassH = glass.clientHeight || 460;
 
-                /* 3. build capped visual pool */
-                const fullPool = [];
-                allPicks.forEach(p => fullPool.push({ kind: 'number', text: String(p.number), num: Number(p.number), owner: p.owner }));
-                playerNames.forEach(n => fullPool.push({ kind: 'name', text: n, num: null, owner: n }));
+                /* ---------- 3. full pool: numbers + picker names ---------- */
+                const pool = [];
+                allPicks.forEach(p => pool.push({
+                    kind: 'number', text: String(p.number), num: p.number, owner: p.owner
+                }));
+                playerNames.forEach(n => pool.push({
+                    kind: 'name', text: n, num: null, owner: n
+                }));
 
-                const required = [];
-                const winningNumberEntry = fullPool.find(x => x.kind === 'number' && Number(x.num) === Number(winningNumber));
-                if (winningNumberEntry) required.push(winningNumberEntry);
-                (Array.isArray(winners) ? winners : []).forEach(name => {
-                    const e = fullPool.find(x => x.kind === 'name' && x.owner === name);
-                    if (e) required.push(e);
-                });
-
-                const remainingPool = fullPool.filter(x => !required.includes(x));
-                const remainingSlots = Math.max(0, VISUAL_BALL_CAP - required.length);
-                const sampled = shuffleArray(remainingPool).slice(0, remainingSlots);
-                const pool = shuffleArray(required.concat(sampled));
-
-                /* 4. size based on how many we're showing */
+                /* ---------- 4. adaptive size — every ball fits ---------- */
                 const totalBalls = pool.length;
-                const ballSize = totalBalls > 34 ? 26
-                               : totalBalls > 28 ? 30
-                               : totalBalls > 22 ? 34
-                               : totalBalls > 16 ? 40
-                               : totalBalls > 12 ? 46 : 52;
+                let ballSize = Math.sqrt((glassW * glassH * 0.70) / Math.max(1, totalBalls));
+                ballSize = Math.max(16, Math.min(56, ballSize));
 
-                /* 5. BASKET-PACK: bottom-anchored rows, tightly stacked.
-                      Bottom row rests on the floor of the glass. */
-                const spacingX = ballSize * 0.82;       // tighter horizontally
-                const spacingY = ballSize * 0.80;       // tighter vertically
-                const cols = Math.max(3, Math.floor((glassW - 8) / spacingX));
-                const floorY = glassH - 6;               // bottom edge of the glass
-                const rowWidth = cols * spacingX;
+                /* ---------- 5. basket-pack from the floor upward ---------- */
+                const spacingX  = ballSize * 0.86;
+                const spacingY  = ballSize * 0.84;
+                const cols      = Math.max(3, Math.floor((glassW - 8) / spacingX));
+                const floorY    = glassH - 6;
+                const rowWidth  = cols * spacingX;
                 const rowStartX = (glassW - rowWidth) / 2 + spacingX / 2;
 
                 const balls = [];
@@ -1451,72 +1444,71 @@
                     const col = i % cols;
                     const row = Math.floor(i / cols);
 
-                    let x = rowStartX + col * spacingX + (Math.random() - 0.5) * spacingX * 0.32;
-                    // bottom row rests on the floor; each subsequent row sits a ball higher
-                    let y = floorY - ballSize - row * spacingY + (Math.random() - 0.5) * spacingY * 0.20;
+                    let x = rowStartX + col * spacingX + (Math.random() - 0.5) * spacingX * 0.30;
+                    let y = floorY - ballSize - row * spacingY + (Math.random() - 0.5) * spacingY * 0.18;
 
                     x = Math.max(2, Math.min(glassW - ballSize - 2, x));
-                    y = Math.max(30, Math.min(glassH - ballSize - 2, y));
+                    y = Math.max(26, Math.min(glassH - ballSize - 2, y));
 
                     const el = document.createElement('div');
                     el.className = 'ba-ball ' + (item.kind === 'number' ? 'ba-white' : 'ba-yellow') + ' ba-bounce';
                     el.textContent = item.text;
-                    el.style.width = ballSize + 'px';
+                    el.style.width  = ballSize + 'px';
                     el.style.height = ballSize + 'px';
                     const fs = item.kind === 'number'
                         ? ballSize * 0.38
                         : Math.max(6, Math.min(ballSize * 0.30, (ballSize * 1.9) / Math.max(4, item.text.length)));
                     el.style.fontSize = fs + 'px';
                     el.style.left = x.toFixed(1) + 'px';
-                    el.style.top = y.toFixed(1) + 'px';
+                    el.style.top  = y.toFixed(1) + 'px';
                     el.style.zIndex = String(1 + Math.floor(Math.random() * 4));
 
-                    /* Bounce parameters — vertical only, height scales with size */
-                    el.style.setProperty('--delay', (Math.random() * 1.6).toFixed(2) + 's');
-                    el.style.setProperty('--dur', (1.2 + Math.random() * 0.9).toFixed(2) + 's');
-                    el.style.setProperty('--dx', ((Math.random() - 0.5) * 4).toFixed(1) + 'px');
-                    const jumpPx = -(8 + Math.random() * 14);
+                    /* Bounce params — vertical only, height scales with size */
+                    el.style.setProperty('--delay', (Math.random() * 1.5).toFixed(2) + 's');
+                    el.style.setProperty('--dur',   (1.1 + Math.random() * 0.9).toFixed(2) + 's');
+                    el.style.setProperty('--dx',    ((Math.random() - 0.5) * 4).toFixed(1) + 'px');
+                    const jumpPx = -(7 + Math.random() * 12);
                     el.style.setProperty('--jump', jumpPx.toFixed(0) + 'px');
 
                     ballBox.appendChild(el);
                     balls.push({ el, kind: item.kind, num: item.num, owner: item.owner, text: item.text });
                 });
 
-                /* 6. tray geometry */
+                /* ---------- 6. tray geometry ---------- */
                 const machineRect = machine.getBoundingClientRect();
                 const trayRect    = tray.getBoundingClientRect();
                 const holeRect    = hole.getBoundingClientRect();
 
                 const holeX = holeRect.left - machineRect.left + holeRect.width / 2;
-                const holeY = holeRect.top - machineRect.top + holeRect.height / 2;
+                const holeY = holeRect.top  - machineRect.top  + holeRect.height / 2;
 
                 const winnerList = Array.isArray(winners) ? winners.filter(Boolean) : [];
-                const trayCount = 1 + winnerList.length;
-                const trayGap = 12;
+                const trayCount  = 1 + winnerList.length;
+                const trayGap    = 12;
                 const trayBallSize = Math.min(ballSize, Math.max(24,
                     (trayRect.width - 24 - (trayCount - 1) * trayGap) / trayCount));
-                const trayTotalW = trayCount * trayBallSize + (trayCount - 1) * trayGap;
-                const trayStartX = (trayRect.left - machineRect.left)
+                const trayTotalW  = trayCount * trayBallSize + (trayCount - 1) * trayGap;
+                const trayStartX  = (trayRect.left - machineRect.left)
                     + (trayRect.width - trayTotalW) / 2 + trayBallSize / 2;
                 const trayCenterY = trayRect.top - machineRect.top + trayRect.height / 2;
 
                 const traySlotX = i => trayStartX + i * (trayBallSize + trayGap);
 
-                /* 7. drop one ball out through the hole */
+                /* ---------- 7. drop one ball out through the hole ---------- */
                 async function dropOneOut(ball, slotIndex) {
                     if (ball.el && ball.el.parentNode) ball.el.parentNode.removeChild(ball.el);
 
                     const el = document.createElement('div');
                     el.className = 'ba-ball ba-drop ' + (ball.kind === 'number' ? 'ba-white' : 'ba-yellow');
                     el.textContent = ball.text;
-                    el.style.width = trayBallSize + 'px';
+                    el.style.width  = trayBallSize + 'px';
                     el.style.height = trayBallSize + 'px';
                     el.style.fontSize = (ball.kind === 'number'
                         ? trayBallSize * 0.38
                         : Math.max(7, Math.min(trayBallSize * 0.30,
                             (trayBallSize * 1.9) / Math.max(4, ball.text.length)))) + 'px';
                     el.style.left = '0px';
-                    el.style.top = '0px';
+                    el.style.top  = '0px';
 
                     el.style.transform =
                         `translate3d(${(holeX - trayBallSize / 2).toFixed(1)}px, ${(holeY - trayBallSize / 2).toFixed(1)}px, 0) rotate(0deg)`;
@@ -1532,7 +1524,7 @@
                     return el;
                 }
 
-                /* 8. show */
+                /* ---------- 8. show ---------- */
                 (async () => {
                     status.textContent = '🎲 Mixing the balls…';
                     await wait(ANIM.mixMs);
@@ -3421,7 +3413,7 @@
         console.info('Bot pool size:', BOT_NAMES.length);
         console.info('Active bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
         console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
-        console.info('Ball animation: per-ball bounce, cap ' + VISUAL_BALL_CAP + ', lowEnd=' + BALL_ANIM_LOW_END);
+        console.info('Ball animation: per-ball bounce, UNCAPPED (all picks + all pickers), lowEnd=' + BALL_ANIM_LOW_END);
         init();
     </script>
 </body>
