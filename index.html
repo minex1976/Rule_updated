@@ -65,6 +65,7 @@
         .dropdown-item.deposit { color: #8affb0; }
         .dropdown-item.withdraw { color: #ffd866; }
         .dropdown-item.transfer { color: #74b9ff; }
+        .dropdown-item.reconnect { color: #ffcc44; }
         .dropdown-item.logout { color: #ff8a8a; }
         #gameScreen { display: none; flex-direction: column; height: 100%; min-height: 0; flex: 1 1 auto; overflow: hidden; }
         .title { text-align: center; font-weight: 800; font-size: 1.1rem; letter-spacing: 3px; color: #f0e6ff; line-height: 1.2; flex-shrink: 0; margin-bottom: 2px; }
@@ -109,78 +110,15 @@
         .modal-input:focus { border-color: #ffcc44; }
 
         /* ---- Deposit paste box ---- */
-        .paste-box {
-            background: rgba(80, 255, 160, 0.06);
-            border: 1px solid rgba(80, 255, 160, 0.22);
-            border-radius: 18px;
-            padding: 10px;
-            margin-bottom: 8px;
-        }
-        .paste-label {
-            color: #8affb0;
-            font-size: 0.75rem;
-            font-weight: 700;
-            display: block;
-            margin-bottom: 6px;
-            line-height: 1.35;
-        }
-        .paste-textarea {
-            min-height: 78px;
-            resize: vertical;
-            font-size: 0.78rem;
-            line-height: 1.35;
-            font-family: inherit;
-            background: rgba(0, 0, 0, 0.35);
-        }
-        .paste-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            margin-top: 6px;
-            flex-wrap: wrap;
-        }
-        .paste-extract-btn {
-            background: linear-gradient(135deg, #8affb0, #3fbf74);
-            border: none;
-            border-radius: 30px;
-            padding: 8px 20px;
-            color: #052e1a;
-            font-size: 0.78rem;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 3px 0 #1f7a45;
-            letter-spacing: 0.3px;
-        }
-        .paste-extract-btn:active {
-            transform: translateY(3px);
-            box-shadow: 0 0 0 #1f7a45;
-        }
-        .paste-status {
-            font-size: 0.7rem;
-            color: #ffd866;
-            font-weight: 600;
-            flex: 1;
-            min-width: 0;
-            word-break: break-word;
-        }
-        .paste-divider {
-            text-align: center;
-            color: #7a6a9a;
-            font-size: 0.68rem;
-            font-weight: 800;
-            letter-spacing: 2px;
-            margin: 8px 0 8px;
-            position: relative;
-        }
-        .paste-divider::before,
-        .paste-divider::after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            width: 40%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(120, 80, 200, 0.35), transparent);
-        }
+        .paste-box { background: rgba(80, 255, 160, 0.06); border: 1px solid rgba(80, 255, 160, 0.22); border-radius: 18px; padding: 10px; margin-bottom: 8px; }
+        .paste-label { color: #8affb0; font-size: 0.75rem; font-weight: 700; display: block; margin-bottom: 6px; line-height: 1.35; }
+        .paste-textarea { min-height: 78px; resize: vertical; font-size: 0.78rem; line-height: 1.35; font-family: inherit; background: rgba(0, 0, 0, 0.35); }
+        .paste-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+        .paste-extract-btn { background: linear-gradient(135deg, #8affb0, #3fbf74); border: none; border-radius: 30px; padding: 8px 20px; color: #052e1a; font-size: 0.78rem; font-weight: 800; cursor: pointer; box-shadow: 0 3px 0 #1f7a45; letter-spacing: 0.3px; }
+        .paste-extract-btn:active { transform: translateY(3px); box-shadow: 0 0 0 #1f7a45; }
+        .paste-status { font-size: 0.7rem; color: #ffd866; font-weight: 600; flex: 1; min-width: 0; word-break: break-word; }
+        .paste-divider { text-align: center; color: #7a6a9a; font-size: 0.68rem; font-weight: 800; letter-spacing: 2px; margin: 8px 0 8px; position: relative; }
+        .paste-divider::before, .paste-divider::after { content: ""; position: absolute; top: 50%; width: 40%; height: 1px; background: linear-gradient(90deg, transparent, rgba(120, 80, 200, 0.35), transparent); }
         .paste-divider::before { left: 0; }
         .paste-divider::after  { right: 0; }
 
@@ -289,138 +227,27 @@
         /* ============================================================
            BALL ANIMATION — individual per-ball BOUNCE, basket-packed
            ============================================================ */
-        .ball-anim-overlay {
-            position: fixed; inset: 0; z-index: 3500;
-            display: none; align-items: center; justify-content: center;
-            background: rgba(2,7,14,.88);
-            padding: 16px;
-            touch-action: none;
-            -webkit-user-select: none; user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
+        .ball-anim-overlay { position: fixed; inset: 0; z-index: 3500; display: none; align-items: center; justify-content: center; background: rgba(2,7,14,.88); padding: 16px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
         .ball-anim-overlay.active { display: flex; }
-
-        .ball-anim-machine {
-            position: relative;
-            width: min(460px, 100%); height: min(640px, 94vh);
-            border-radius: 30px; padding: 14px;
-            background: linear-gradient(145deg, #2a1a4a, #1a2a4a);
-            border: 1px solid rgba(180,120,255,.28);
-            box-shadow: 0 20px 60px rgba(0,0,0,.7);
-            display: flex; flex-direction: column; gap: 10px;
-        }
-
-        .ball-anim-glass {
-            position: relative; flex: 1 1 auto; min-height: 0;
-            border-radius: 22px;
-            background: linear-gradient(180deg, #eaf2fb 0%, #cddceb 100%);
-            border: 5px solid #b8c9d8;
-            overflow: hidden;
-        }
-        .ball-anim-glass::before {
-            content: "LUCKY DRAW";
-            position: absolute; top: 10px; left: 0; right: 0;
-            text-align: center; font-size: 13px; font-weight: 900;
-            letter-spacing: 4px; color: #8a9bad; opacity: .35;
-            pointer-events: none; z-index: 0;
-        }
-        .ball-anim-glass::after {
-            content: "";
-            position: absolute; left: 4%; right: 4%; bottom: 2px;
-            height: 14px;
-            background: radial-gradient(ellipse at 50% 100%, rgba(70,90,115,.32) 0%, rgba(70,90,115,0) 72%);
-            border-radius: 50%;
-            pointer-events: none; z-index: 1;
-        }
-
+        .ball-anim-machine { position: relative; width: min(460px, 100%); height: min(640px, 94vh); border-radius: 30px; padding: 14px; background: linear-gradient(145deg, #2a1a4a, #1a2a4a); border: 1px solid rgba(180,120,255,.28); box-shadow: 0 20px 60px rgba(0,0,0,.7); display: flex; flex-direction: column; gap: 10px; }
+        .ball-anim-glass { position: relative; flex: 1 1 auto; min-height: 0; border-radius: 22px; background: linear-gradient(180deg, #eaf2fb 0%, #cddceb 100%); border: 5px solid #b8c9d8; overflow: hidden; }
+        .ball-anim-glass::before { content: "LUCKY DRAW"; position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: 900; letter-spacing: 4px; color: #8a9bad; opacity: .35; pointer-events: none; z-index: 0; }
+        .ball-anim-glass::after { content: ""; position: absolute; left: 4%; right: 4%; bottom: 2px; height: 14px; background: radial-gradient(ellipse at 50% 100%, rgba(70,90,115,.32) 0%, rgba(70,90,115,0) 72%); border-radius: 50%; pointer-events: none; z-index: 1; }
         #baBalls { position: absolute; inset: 0; z-index: 2; }
-
-        .ba-ball {
-            position: absolute;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 900; line-height: 1; text-align: center;
-            padding: 2px; overflow: hidden;
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
-        }
-        .ba-ball.ba-white {
-            background: radial-gradient(circle at 34% 30%, #ffffff 0%, #eef1f5 55%, #b8c2cc 100%);
-            color: #101820;
-            box-shadow: inset -2px -3px 4px rgba(0,0,0,.14), 0 2px 3px rgba(0,0,0,.22);
-        }
-        .ba-ball.ba-yellow {
-            background: radial-gradient(circle at 34% 30%, #fffbe0 0%, #ffe868 40%, #d18a00 100%);
-            color: #3d2c00;
-            word-break: break-word;
-            box-shadow: inset -2px -3px 4px rgba(0,0,0,.16), 0 2px 3px rgba(0,0,0,.22);
-        }
-
-        .ba-ball.ba-bounce {
-            -webkit-animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite;
-            animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite;
-        }
-        @-webkit-keyframes baBounce {
-            0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); }
-            46%      { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); }
-            55%      { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); }
-        }
-        @keyframes baBounce {
-            0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); }
-            46%      { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); }
-            55%      { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); }
-        }
-
-        .ba-hole {
-            position: absolute; left: 50%; bottom: -3px;
-            width: 76px; height: 38px;
-            transform: translateX(-50%);
-            border-radius: 76px 76px 0 0;
-            background: #05040a;
-            box-shadow: 0 -2px 0 2px rgba(130,150,175,.5), inset 0 6px 10px rgba(0,0,0,.9);
-            z-index: 5;
-            overflow: hidden;
-        }
-        .ba-hole-lid {
-            position: absolute; left: 0; right: 0; bottom: 0; height: 100%;
-            border-radius: 76px 76px 0 0;
-            background: linear-gradient(#e6edf4, #a9b7c6);
-            transition: transform .5s cubic-bezier(.55,0,.75,.35), opacity .45s ease;
-        }
-        .ba-hole.open .ba-hole-lid {
-            transform: translateY(115%);
-            opacity: 0;
-        }
-
-        .ba-drop {
-            z-index: 60;
-            box-shadow: inset -2px -3px 4px rgba(0,0,0,.15), 0 4px 10px rgba(0,0,0,.55) !important;
-            will-change: transform;
-        }
-
-        .ba-tray {
-            flex: 0 0 auto; height: 70px;
-            border-radius: 18px;
-            background: linear-gradient(#0d1220, #1a2436);
-            border: 1px solid rgba(180,120,255,.22);
-            box-shadow: inset 0 4px 10px rgba(0,0,0,.6);
-            position: relative; z-index: 3;
-        }
-
-        .ball-anim-status {
-            text-align: center; color: #c6d4e3;
-            font-size: 14px; font-weight: 600; min-height: 22px;
-            padding: 2px 0;
-        }
-
-        .ba-winner-glow {
-            box-shadow: 0 0 0 3px #fff, 0 0 22px 6px #ffcc44 !important;
-            animation: baWinnerPulse .9s ease-in-out infinite alternate !important;
-        }
-        @keyframes baWinnerPulse {
-            0%   { filter: brightness(1); }
-            100% { filter: brightness(1.35); }
-        }
+        .ba-ball { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; line-height: 1; text-align: center; padding: 2px; overflow: hidden; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+        .ba-ball.ba-white { background: radial-gradient(circle at 34% 30%, #ffffff 0%, #eef1f5 55%, #b8c2cc 100%); color: #101820; box-shadow: inset -2px -3px 4px rgba(0,0,0,.14), 0 2px 3px rgba(0,0,0,.22); }
+        .ba-ball.ba-yellow { background: radial-gradient(circle at 34% 30%, #fffbe0 0%, #ffe868 40%, #d18a00 100%); color: #3d2c00; word-break: break-word; box-shadow: inset -2px -3px 4px rgba(0,0,0,.16), 0 2px 3px rgba(0,0,0,.22); }
+        .ba-ball.ba-bounce { -webkit-animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite; animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite; }
+        @-webkit-keyframes baBounce { 0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); } 46% { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); } 55% { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); } }
+        @keyframes baBounce { 0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); } 46% { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); } 55% { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); } }
+        .ba-hole { position: absolute; left: 50%; bottom: -3px; width: 76px; height: 38px; transform: translateX(-50%); border-radius: 76px 76px 0 0; background: #05040a; box-shadow: 0 -2px 0 2px rgba(130,150,175,.5), inset 0 6px 10px rgba(0,0,0,.9); z-index: 5; overflow: hidden; }
+        .ba-hole-lid { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; border-radius: 76px 76px 0 0; background: linear-gradient(#e6edf4, #a9b7c6); transition: transform .5s cubic-bezier(.55,0,.75,.35), opacity .45s ease; }
+        .ba-hole.open .ba-hole-lid { transform: translateY(115%); opacity: 0; }
+        .ba-drop { z-index: 60; box-shadow: inset -2px -3px 4px rgba(0,0,0,.15), 0 4px 10px rgba(0,0,0,.55) !important; will-change: transform; }
+        .ba-tray { flex: 0 0 auto; height: 70px; border-radius: 18px; background: linear-gradient(#0d1220, #1a2436); border: 1px solid rgba(180,120,255,.22); box-shadow: inset 0 4px 10px rgba(0,0,0,.6); position: relative; z-index: 3; }
+        .ball-anim-status { text-align: center; color: #c6d4e3; font-size: 14px; font-weight: 600; min-height: 22px; padding: 2px 0; }
+        .ba-winner-glow { box-shadow: 0 0 0 3px #fff, 0 0 22px 6px #ffcc44 !important; animation: baWinnerPulse .9s ease-in-out infinite alternate !important; }
+        @keyframes baWinnerPulse { 0% { filter: brightness(1); } 100% { filter: brightness(1.35); } }
     </style>
 </head>
 <body>
@@ -492,6 +319,7 @@
                                 <button class="dropdown-item transfer" id="transferBtn"><span class="icon">↗️</span> Transfer to Play</button>
                                 <button class="dropdown-item" id="referralBtn"><span class="icon">🎁</span> Referral</button>
                                 <button class="dropdown-item" id="customerServiceBtn"><span class="icon">💬</span> Customer Service</button>
+                                <button class="dropdown-item reconnect" id="reconnectBtn"><span class="icon">🔌</span> Reconnect</button>
                                 <button class="dropdown-item logout" id="gameLogoutBtn"><span class="icon">🚪</span> Logout</button>
                             </div>
                         </div>
@@ -965,17 +793,16 @@
             networkOverlay.classList.remove('active');
         }
         function handleNetworkOnline() {
-            if (isNetworkConnected) return;
+            if (isNetworkConnected) {
+                // Already online but Firebase may still be reconnecting — trigger burst
+                triggerReconnectBurst('online-event-dup');
+                return;
+            }
             isNetworkConnected = true;
             networkOverlay.classList.remove('active');
-            updateStatus('✅ Network restored. Game will continue.');
-            if (gameRef) {
-                gameRef.once('value').then(snapshot => { if (snapshot.exists()) syncGameState(snapshot.val()); }).catch(() => {});
-                if (engineState.gamePhase === 'selection') {
-                    botScheduledRound = null;
-                    scheduleBotPicks();
-                }
-            }
+            updateStatus('✅ Network restored. Reconnecting…');
+            // Force reattach + burst fetch
+            triggerReconnectBurst('online-event');
         }
         function handleNetworkOffline() {
             if (!isNetworkConnected) return;
@@ -988,10 +815,14 @@
         }
         function enableNetworkListener() { if (firebaseAvailable && currentUser) startNetworkListener(); }
         networkRetryBtn.onclick = function() {
-            if (navigator.onLine) handleNetworkOnline();
-            else if (database) {
+            // Manual retry: always attempt a full burst
+            triggerReconnectBurst('manual-retry-button');
+            if (navigator.onLine) {
+                if (!isNetworkConnected) handleNetworkOnline();
+                else triggerReconnectBurst('manual-retry-online');
+            } else if (database) {
                 database.ref('.info/connected').once('value', (snap) => {
-                    if (snap.val() === true) handleNetworkOnline();
+                    if (snap.val() === true) { isNetworkConnected = true; handleNetworkOnline(); }
                     else { networkOverlay.classList.remove('active'); setTimeout(() => networkOverlay.classList.add('active'), 100); }
                 });
             }
@@ -999,11 +830,158 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) return;
             if (!currentUser) return;
-            if (gameRef) {
-                gameRef.once('value').then(snap => { if (snap.exists()) syncGameState(snap.val()); }).catch(() => {});
-            }
-            if (engineState.gamePhase === 'selection' && !isTimerRunning && phaseDeadline) startTimer();
+            // Becoming visible → always force a full resync
+            triggerReconnectBurst('visibility-return');
         });
+
+        // ============================================================
+        //  RESILIENCE ENGINE — multi-mechanism connection recovery
+        //  ------------------------------------------------------------
+        //  Layer 1 — Silence detector (heartbeat loop)
+        //  Layer 2 — Critical-field listeners (winningNumber, round,
+        //            gameState, selectionEndsAt, winners)
+        //  Layer 3 — Reconnect burst (goOffline/goOnline + staggered
+        //            .once('value') fetches)
+        //  Layer 4 — Fast poll during spin/results
+        //  Layer 5 — Manual "Reconnect" button in the more menu
+        // ============================================================
+        let lastSuccessfulSyncAt = 0;
+        let criticalFieldListeners = [];
+        let resilienceIntervalId = null;
+        let criticalPhasePollId = null;
+        let resilienceBurstTimers = [];
+
+        function markSyncReceived() {
+            lastSuccessfulSyncAt = Date.now();
+            lastRoomSyncAt = lastSuccessfulSyncAt;
+        }
+
+        function forceFirebaseReconnect() {
+            try {
+                if (database) {
+                    database.goOffline();
+                    setTimeout(() => { try { database.goOnline(); } catch (e) {} }, 120);
+                }
+            } catch (e) {}
+        }
+
+        function detachCriticalFieldListeners() {
+            criticalFieldListeners.forEach(({ ref, handler }) => {
+                try { ref.off('value', handler); } catch (e) {}
+            });
+            criticalFieldListeners = [];
+        }
+
+        function attachCriticalFieldListeners(ref) {
+            detachCriticalFieldListeners();
+            if (!ref) return;
+            const fields = ['winningNumber', 'round', 'gameState', 'selectionEndsAt', 'winners'];
+            fields.forEach(field => {
+                try {
+                    const fref = ref.child(field);
+                    const handler = () => {
+                        markSyncReceived();
+                        // Immediate full snapshot fetch on any critical change
+                        if (gameRef && currentUser) {
+                            ref.once('value').then(snap => {
+                                if (snap.exists()) syncGameState(snap.val());
+                            }).catch(() => {});
+                        }
+                    };
+                    fref.on('value', handler);
+                    criticalFieldListeners.push({ ref: fref, handler });
+                } catch (e) {}
+            });
+        }
+
+        function clearResilienceBurstTimers() {
+            resilienceBurstTimers.forEach(t => { try { clearTimeout(t); } catch (e) {} });
+            resilienceBurstTimers = [];
+        }
+
+        function burstFetchState(count, spacingMs, label) {
+            count = count || 4;
+            spacingMs = spacingMs || 1200;
+            console.log('[RESILIENCE] burst:', label, 'x' + count);
+            for (let i = 0; i < count; i++) {
+                const t = setTimeout(() => {
+                    if (!gameRef || !currentUser) return;
+                    gameRef.once('value').then(snap => {
+                        if (snap.exists()) {
+                            syncGameState(snap.val());
+                            markSyncReceived();
+                        }
+                    }).catch(() => {});
+                }, i * spacingMs);
+                resilienceBurstTimers.push(t);
+            }
+        }
+
+        function forceRoomResync(why) {
+            if (!gameRef || !currentUser) return;
+            console.log('[RESILIENCE] forceRoomResync:', why);
+            forceFirebaseReconnect();
+            // Re-attach critical listeners in case they were dropped
+            attachCriticalFieldListeners(gameRef);
+            // Staggered burst
+            burstFetchState(5, 900, why);
+        }
+
+        function triggerReconnectBurst(why) {
+            if (!currentUser) return;
+            console.log('[RESILIENCE] reconnect burst trigger:', why);
+            if (!isGameInitialized || !gameRef) return;
+            forceFirebaseReconnect();
+            attachCriticalFieldListeners(gameRef);
+            burstFetchState(5, 800, why);
+            // Also re-fetch wallet
+            try { syncWalletFromFirebase(); } catch (e) {}
+        }
+
+        function startResilienceEngine() {
+            if (resilienceIntervalId) return;
+            console.log('[RESILIENCE] engine started');
+
+            // Slow loop (every 6 s): detect silence and force resync if needed
+            resilienceIntervalId = setInterval(() => {
+                if (!currentUser || !isGameInitialized || !gameRef) return;
+                if (!navigator.onLine) return;
+                const silent = Date.now() - (lastSuccessfulSyncAt || 0);
+
+                if (silent > 18000) {
+                    console.warn('[RESILIENCE] hard silence:', Math.round(silent / 1000) + 's');
+                    forceRoomResync('silence-' + Math.round(silent / 1000) + 's');
+                    markSyncReceived(); // reset so we don't spam
+                } else if (silent > 8000) {
+                    // Soft resync: single fetch
+                    gameRef.once('value').then(snap => {
+                        if (snap.exists()) { syncGameState(snap.val()); markSyncReceived(); }
+                    }).catch(() => {});
+                }
+            }, 6000);
+
+            // Fast loop (every 2.5 s): aggressive poll during spin / results
+            criticalPhasePollId = setInterval(() => {
+                if (!currentUser || !isGameInitialized || !gameRef) return;
+                const phase = engineState.gamePhase;
+                if (phase !== 'spinning' && phase !== 'results') return;
+                const silent = Date.now() - (lastSuccessfulSyncAt || 0);
+                if (silent > 3500) {
+                    gameRef.once('value').then(snap => {
+                        if (snap.exists()) { syncGameState(snap.val()); markSyncReceived(); }
+                    }).catch(() => {});
+                }
+            }, 2500);
+        }
+
+        function stopResilienceEngine() {
+            console.log('[RESILIENCE] engine stopped');
+            if (resilienceIntervalId) { clearInterval(resilienceIntervalId); resilienceIntervalId = null; }
+            if (criticalPhasePollId) { clearInterval(criticalPhasePollId); criticalPhasePollId = null; }
+            detachCriticalFieldListeners();
+            clearResilienceBurstTimers();
+            lastSuccessfulSyncAt = 0;
+        }
 
         function generateSessionId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 8); }
         function startSessionListener(username) {
@@ -1322,6 +1300,7 @@
         const telegramInfo = $('telegramInfo'); const bet15Btn = $('bet15Btn'); const bet30Btn = $('bet30Btn');
         const welcomeBalance = $('welcomeBalance'); const welcomeLogoutBtn = $('welcomeLogoutBtn'); const welcomeDepositBtn = $('welcomeDepositBtn');
         const switchRoomBtn = $('switchRoomBtn'); const referralBtn = $('referralBtn'); const customerServiceBtn = $('customerServiceBtn');
+        const reconnectBtn = $('reconnectBtn');
         const referralModal = $('referralModal'); const referralLink = $('referralLink'); const referralShareBtn = $('referralShareBtn');
         const referralCopyBtn = $('referralCopyBtn'); const referralCloseBtn = $('referralCloseBtn');
         const walletUsername = $('walletUsername'); const mainWalletEl = $('mainWallet'); const playWalletEl = $('playWallet');
@@ -2258,11 +2237,6 @@
 
         // ============================================================
         //  DEPOSIT: extract Amount + Reference from pasted Telebirr SMS
-        //  ------------------------------------------------------------
-        //  • Works with both Amharic ("ብር") and English ("Birr", "ETB") SMS
-        //  • Reference: prefers the receipt URL, falls back to any
-        //    8–24 char alphanumeric token containing letters + digits
-        //  • Amount: first "<number> ብር / Birr / ETB / Br" match wins
         // ============================================================
         const depositPasteText = $('depositPasteText');
         const extractFromTextBtn = $('extractFromTextBtn');
@@ -2272,19 +2246,16 @@
             const result = { reference: null, amount: null };
             if (!text || typeof text !== 'string') return result;
 
-            // Normalise: NBSP → space, strip zero-width chars, collapse dash runs
             const raw = text
                 .replace(/\u00A0/g, ' ')
                 .replace(/[\u200B-\u200D\uFEFF]/g, '')
                 .replace(/[\u2010-\u2015]/g, '-');
 
-            /* ---------- 1. Reference: prefer the receipt URL ---------- */
             const urlMatch = raw.match(/receipt\/([A-Za-z0-9]{6,24})/i);
             if (urlMatch && urlMatch[1]) {
                 result.reference = urlMatch[1].toUpperCase();
             }
 
-            /* ---------- 2. Reference fallback: standalone token ---------- */
             if (!result.reference) {
                 const tokens = raw.match(/[A-Z0-9]{8,24}/gi) || [];
                 for (const t of tokens) {
@@ -2299,7 +2270,6 @@
                 }
             }
 
-            /* ---------- 3. Amount: NUMBER (ብር | Birr | ETB | Br) ---------- */
             const amountRe = /(\d+(?:[,\s]\d{3})*(?:\.\d{1,2})?)\s*(?:ብር|Birr|ETB|Br\b)/i;
             const am = raw.match(amountRe);
             if (am && am[1]) {
@@ -2307,7 +2277,6 @@
                 if (!isNaN(n) && n > 0) result.amount = n;
             }
 
-            /* ---------- 4. Amount fallback: (ብር | Birr | ETB) NUMBER ---------- */
             if (result.amount == null) {
                 const amountRevRe = /(?:ብር|Birr|ETB|Br)\s*(\d+(?:[,\s]\d{3})*(?:\.\d{1,2})?)/i;
                 const am2 = raw.match(amountRevRe);
@@ -2393,6 +2362,7 @@
                 pendingTxListenerHandler = null;
             }
             stopNotificationListener();
+            stopResilienceEngine();
             attemptTelegramDetection();
         }
         function showWelcomeScreen() {
@@ -2402,6 +2372,7 @@
             updateWelcomeUI();
             stopTimer(); stopResultsCountdown();
             audioPlayedThisRound = false;
+            stopResilienceEngine();
             syncWalletFromFirebase();
             checkPendingTransactionStatus();
             enableNetworkListener();
@@ -2549,6 +2520,7 @@
             removeBotsFromRoom();
             detachNumbersTakenListener(); detachLastResultListener();
             clearCardFetchRetry();
+            stopResilienceEngine();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -2622,6 +2594,7 @@
             removeBotsFromRoom();
             detachNumbersTakenListener(); detachLastResultListener();
             clearCardFetchRetry();
+            stopResilienceEngine();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -2648,11 +2621,11 @@
         function selectBet(amount) {
             if (!currentUser) return;
             // Play-balance check intentionally removed: players may enter any room.
-            // They simply won't be able to pick numbers without enough balance.
             try { refundMyActiveBet(); } catch (e) {}
             removeBotsFromRoom();
             detachNumbersTakenListener(); detachLastResultListener();
             clearCardFetchRetry();
+            stopResilienceEngine();
             if (gameRef) { if (currentUser) gameRef.child('players/' + currentUser).remove(); gameRef.off(); gameRef = null; }
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
@@ -3016,6 +2989,12 @@
             if (gameLogoutBtn) gameLogoutBtn.onclick = function() { if (confirm('Are you sure you want to logout? All your local data will be cleared.')) performLogout(); };
             if (welcomeDepositBtn) welcomeDepositBtn.onclick = openDepositModal;
             if (depositBtn) depositBtn.onclick = openDepositModal;
+            if (reconnectBtn) reconnectBtn.onclick = function() {
+                closeMoreDropdown();
+                updateStatus('🔌 Reconnecting…');
+                triggerReconnectBurst('manual-menu-button');
+                setTimeout(() => { updateStatus('✅ Reconnect requested. Waiting for server…'); }, 500);
+            };
             if (withdrawBtn) withdrawBtn.onclick = () => {
                 const available = walletData.main - walletData.pending;
                 if (withdrawAvailableBalance) withdrawAvailableBalance.textContent = available;
@@ -3093,6 +3072,7 @@
                         if (gameRef) { gameRef.off(); gameRef = null; }
                         detachNumbersTakenListener(); detachLastResultListener();
                         clearCardFetchRetry();
+                        stopResilienceEngine();
                         stopTimer(); stopResultsCountdown();
                         if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
                         isGameInitialized = false; audioPlayedThisRound = false;
@@ -3219,14 +3199,23 @@
                     }
                 }
                 if (!data.selectionEndsAt && data.gameState === 'selection') ensureSelectionDeadline();
+                // Initial state
+                syncGameState(data);
+                markSyncReceived();
             }).catch(() => {});
             ref.on('value', snapshot => {
                 if (generation !== roomConnectionGeneration) return;
                 const data = snapshot.val();
-                if (data) syncGameState(data);
+                if (data) {
+                    syncGameState(data);
+                    markSyncReceived();
+                }
             });
             attachNumbersTakenListener();
             attachLastResultListener(ref);
+            // Attach critical-field listeners + start resilience engine
+            attachCriticalFieldListeners(ref);
+            startResilienceEngine();
             const playerRef = ref.child('players/' + currentUser);
             playerRef.onDisconnect().remove();
             playerRef.set({
@@ -3794,6 +3783,7 @@
         console.info('Active bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
         console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
         console.info('Ball animation: per-ball bounce, UNCAPPED (all picks + all pickers), lowEnd=' + BALL_ANIM_LOW_END);
+        console.info('Resilience engine: silence-detect + critical-field listeners + burst + fast-poll + manual reconnect');
         init();
     </script>
 </body>
