@@ -176,13 +176,6 @@
         .network-offline-overlay h3 { color: #f0e6ff; font-size: 1.2rem; font-weight: 700; }
         .network-offline-overlay p { color: #b8a0d0; font-size: 0.85rem; max-width: 280px; }
         .network-offline-overlay .retry-btn { background: linear-gradient(135deg, #ffcc44, #f5a623); border: none; border-radius: 30px; padding: 10px 32px; font-weight: 700; color: #1a0a2e; cursor: pointer; }
-        .session-conflict-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.7); justify-content: center; align-items: center; z-index: 4000; padding: 20px; }
-        .session-conflict-modal.active { display: flex; }
-        .session-conflict-modal .modal-content { max-width: 340px; text-align: center; padding: 30px 20px; border: 2px solid #ff6b6b; }
-        .session-conflict-modal .icon { font-size: 3rem; display: block; margin-bottom: 8px; }
-        .session-conflict-modal h3 { color: #ff6b6b; font-size: 1.2rem; margin-bottom: 8px; }
-        .session-conflict-modal p { color: #b8a0d0; font-size: 0.9rem; line-height: 1.4; margin-bottom: 12px; }
-        .session-conflict-modal button { background: linear-gradient(135deg, #ff6b6b, #e05555); border: none; border-radius: 30px; padding: 10px 32px; font-weight: 700; color: #fff; cursor: pointer; }
         .referral-box { background: rgba(20, 10, 40, 0.5); border: 1px solid rgba(120, 80, 200, 0.15); border-radius: 18px; padding: 12px; margin-bottom: 10px; }
         .referral-box .referral-stat { text-align: center; color: #b8a0d0; font-size: 0.75rem; margin-bottom: 10px; }
         .referral-box .referral-stat strong { color: #ffcc44; font-size: 1.1rem; }
@@ -257,14 +250,6 @@
             <h3>No Internet Connection</h3>
             <p>Your connection was lost. Please check your network and try again.</p>
             <button class="retry-btn" id="networkRetryBtn">🔄 Retry</button>
-        </div>
-        <div class="session-conflict-modal" id="sessionConflictModal">
-            <div class="modal-content">
-                <span class="icon">⚠️</span>
-                <h3>Another Device Connected</h3>
-                <p>You have been logged out because your account was used on another device.</p>
-                <button id="sessionConflictOkBtn">OK</button>
-            </div>
         </div>
         <div id="authScreen" class="auth-screen">
             <div class="logo"><h2>🏆 <span>WINZO</span> 🏆</h2></div>
@@ -718,8 +703,6 @@
         let userWalletRef = null;
         let pendingTxListenerRef = null;
         let pendingTxListenerHandler = null;
-        let sessionId = null; let sessionListener = null;
-        let sessionConflictModal = document.getElementById('sessionConflictModal');
         let lastResultListenerRef = null;
         try {
             firebase.initializeApp(firebaseConfig);
@@ -794,14 +777,12 @@
         }
         function handleNetworkOnline() {
             if (isNetworkConnected) {
-                // Already online but Firebase may still be reconnecting — trigger burst
                 triggerReconnectBurst('online-event-dup');
                 return;
             }
             isNetworkConnected = true;
             networkOverlay.classList.remove('active');
             updateStatus('✅ Network restored. Reconnecting…');
-            // Force reattach + burst fetch
             triggerReconnectBurst('online-event');
         }
         function handleNetworkOffline() {
@@ -815,7 +796,6 @@
         }
         function enableNetworkListener() { if (firebaseAvailable && currentUser) startNetworkListener(); }
         networkRetryBtn.onclick = function() {
-            // Manual retry: always attempt a full burst
             triggerReconnectBurst('manual-retry-button');
             if (navigator.onLine) {
                 if (!isNetworkConnected) handleNetworkOnline();
@@ -830,20 +810,11 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) return;
             if (!currentUser) return;
-            // Becoming visible → always force a full resync
             triggerReconnectBurst('visibility-return');
         });
 
         // ============================================================
         //  RESILIENCE ENGINE — multi-mechanism connection recovery
-        //  ------------------------------------------------------------
-        //  Layer 1 — Silence detector (heartbeat loop)
-        //  Layer 2 — Critical-field listeners (winningNumber, round,
-        //            gameState, selectionEndsAt, winners)
-        //  Layer 3 — Reconnect burst (goOffline/goOnline + staggered
-        //            .once('value') fetches)
-        //  Layer 4 — Fast poll during spin/results
-        //  Layer 5 — Manual "Reconnect" button in the more menu
         // ============================================================
         let lastSuccessfulSyncAt = 0;
         let criticalFieldListeners = [];
@@ -881,7 +852,6 @@
                     const fref = ref.child(field);
                     const handler = () => {
                         markSyncReceived();
-                        // Immediate full snapshot fetch on any critical change
                         if (gameRef && currentUser) {
                             ref.once('value').then(snap => {
                                 if (snap.exists()) syncGameState(snap.val());
@@ -921,9 +891,7 @@
             if (!gameRef || !currentUser) return;
             console.log('[RESILIENCE] forceRoomResync:', why);
             forceFirebaseReconnect();
-            // Re-attach critical listeners in case they were dropped
             attachCriticalFieldListeners(gameRef);
-            // Staggered burst
             burstFetchState(5, 900, why);
         }
 
@@ -934,7 +902,6 @@
             forceFirebaseReconnect();
             attachCriticalFieldListeners(gameRef);
             burstFetchState(5, 800, why);
-            // Also re-fetch wallet
             try { syncWalletFromFirebase(); } catch (e) {}
         }
 
@@ -942,7 +909,6 @@
             if (resilienceIntervalId) return;
             console.log('[RESILIENCE] engine started');
 
-            // Slow loop (every 6 s): detect silence and force resync if needed
             resilienceIntervalId = setInterval(() => {
                 if (!currentUser || !isGameInitialized || !gameRef) return;
                 if (!navigator.onLine) return;
@@ -951,16 +917,14 @@
                 if (silent > 18000) {
                     console.warn('[RESILIENCE] hard silence:', Math.round(silent / 1000) + 's');
                     forceRoomResync('silence-' + Math.round(silent / 1000) + 's');
-                    markSyncReceived(); // reset so we don't spam
+                    markSyncReceived();
                 } else if (silent > 8000) {
-                    // Soft resync: single fetch
                     gameRef.once('value').then(snap => {
                         if (snap.exists()) { syncGameState(snap.val()); markSyncReceived(); }
                     }).catch(() => {});
                 }
             }, 6000);
 
-            // Fast loop (every 2.5 s): aggressive poll during spin / results
             criticalPhasePollId = setInterval(() => {
                 if (!currentUser || !isGameInitialized || !gameRef) return;
                 const phase = engineState.gamePhase;
@@ -981,31 +945,6 @@
             detachCriticalFieldListeners();
             clearResilienceBurstTimers();
             lastSuccessfulSyncAt = 0;
-        }
-
-        function generateSessionId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 8); }
-        function startSessionListener(username) {
-            if (!database) return;
-            sessionId = generateSessionId();
-            const sessionRef = database.ref('sessions/' + username);
-            if (sessionListener) { sessionRef.off(); sessionListener = null; }
-            sessionRef.onDisconnect().remove();
-            sessionRef.set({ sessionId, timestamp: Date.now() });
-            sessionListener = sessionRef.on('value', (snap) => {
-                const data = snap.val();
-                if (!data || data.sessionId !== sessionId) {
-                    sessionConflictModal.classList.add('active');
-                    stopTimer(); stopResultsCountdown();
-                    if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
-                    document.querySelectorAll('.num-btn').forEach(btn => btn.disabled = true);
-                    if (gameRef && currentUser) gameRef.child('players/' + currentUser).remove();
-                }
-            });
-        }
-        function stopSessionListener() {
-            if (sessionListener && database && currentUser) { database.ref('sessions/' + currentUser).off(); sessionListener = null; }
-            if (database && currentUser) database.ref('sessions/' + currentUser).remove();
-            sessionId = null;
         }
 
         function claimNumber(number, callback) {
@@ -1412,7 +1351,7 @@
         }
 
         // ============================================================
-        //  BALL ANIMATION — per-ball BOUNCE, densely basket-packed
+        //  BALL ANIMATION
         // ============================================================
         const BALL_ANIM_LOW_END = (navigator.hardwareConcurrency || 4) <= 4
             || (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2)
@@ -2376,7 +2315,7 @@
             syncWalletFromFirebase();
             checkPendingTransactionStatus();
             enableNetworkListener();
-            if (currentUser) { startSessionListener(currentUser); listenNotifications(currentUser); }
+            if (currentUser) { listenNotifications(currentUser); }
             if (!DB.getToastShown()) {
                 if (welcomeToast) welcomeToast.classList.add('active');
                 DB.setToastShown();
@@ -2531,7 +2470,7 @@
                 pendingTxListenerHandler = null;
             }
             Object.keys(transactionListeners).forEach(key => { try { database.ref('transactions/' + key).off(); } catch (e) {} delete transactionListeners[key]; });
-            stopNetworkListener(); stopSessionListener(); stopNotificationListener();
+            stopNetworkListener(); stopNotificationListener();
             clearTransactionPopups();
             clearAllLocalData(); clearLocalRoundData();
             currentUser = null; currentBet = 15; currentRoom = 'room_15';
@@ -2557,15 +2496,8 @@
             stopFireworks();
             if (transactionModal) transactionModal.classList.remove('active');
             if (winnersModal) winnersModal.classList.remove('active');
-            if (sessionConflictModal) sessionConflictModal.classList.remove('active');
             resetWinningNumberCard();
             updateWalletUI(); updateAllUI(); showAuthScreen();
-        }
-        if (document.getElementById('sessionConflictOkBtn')) {
-            document.getElementById('sessionConflictOkBtn').onclick = function() {
-                if (sessionConflictModal) sessionConflictModal.classList.remove('active');
-                performLogout();
-            };
         }
 
         function resetEngineStateForNewRound() {
@@ -2620,7 +2552,6 @@
 
         function selectBet(amount) {
             if (!currentUser) return;
-            // Play-balance check intentionally removed: players may enter any room.
             try { refundMyActiveBet(); } catch (e) {}
             removeBotsFromRoom();
             detachNumbersTakenListener(); detachLastResultListener();
@@ -3199,7 +3130,6 @@
                     }
                 }
                 if (!data.selectionEndsAt && data.gameState === 'selection') ensureSelectionDeadline();
-                // Initial state
                 syncGameState(data);
                 markSyncReceived();
             }).catch(() => {});
@@ -3213,7 +3143,6 @@
             });
             attachNumbersTakenListener();
             attachLastResultListener(ref);
-            // Attach critical-field listeners + start resilience engine
             attachCriticalFieldListeners(ref);
             startResilienceEngine();
             const playerRef = ref.child('players/' + currentUser);
@@ -3784,6 +3713,7 @@
         console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
         console.info('Ball animation: per-ball bounce, UNCAPPED (all picks + all pickers), lowEnd=' + BALL_ANIM_LOW_END);
         console.info('Resilience engine: silence-detect + critical-field listeners + burst + fast-poll + manual reconnect');
+        console.info('Session conflict restriction: DISABLED — multiple devices per account allowed');
         init();
     </script>
 </body>
