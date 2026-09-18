@@ -107,6 +107,83 @@
         .balance-info .amount { color: #ffcc44; font-weight: 800; }
         .modal-input { width: 100%; padding: 10px 16px; border-radius: 30px; border: 2px solid rgba(120, 80, 200, 0.25); background: rgba(0, 0, 0, 0.3); color: #f0e6ff; font-size: 0.95rem; margin-bottom: 8px; outline: none; }
         .modal-input:focus { border-color: #ffcc44; }
+
+        /* ---- Deposit paste box ---- */
+        .paste-box {
+            background: rgba(80, 255, 160, 0.06);
+            border: 1px solid rgba(80, 255, 160, 0.22);
+            border-radius: 18px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        .paste-label {
+            color: #8affb0;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 6px;
+            line-height: 1.35;
+        }
+        .paste-textarea {
+            min-height: 78px;
+            resize: vertical;
+            font-size: 0.78rem;
+            line-height: 1.35;
+            font-family: inherit;
+            background: rgba(0, 0, 0, 0.35);
+        }
+        .paste-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        .paste-extract-btn {
+            background: linear-gradient(135deg, #8affb0, #3fbf74);
+            border: none;
+            border-radius: 30px;
+            padding: 8px 20px;
+            color: #052e1a;
+            font-size: 0.78rem;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #1f7a45;
+            letter-spacing: 0.3px;
+        }
+        .paste-extract-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 0 0 #1f7a45;
+        }
+        .paste-status {
+            font-size: 0.7rem;
+            color: #ffd866;
+            font-weight: 600;
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
+        }
+        .paste-divider {
+            text-align: center;
+            color: #7a6a9a;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin: 8px 0 8px;
+            position: relative;
+        }
+        .paste-divider::before,
+        .paste-divider::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(120, 80, 200, 0.35), transparent);
+        }
+        .paste-divider::before { left: 0; }
+        .paste-divider::after  { right: 0; }
+
         .modal-btns { display: flex; gap: 8px; }
         .modal-btns button { flex: 1; padding: 10px; border-radius: 30px; border: none; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
         .modal-btns .confirm { background: linear-gradient(135deg, #ffcc44, #f5a623); color: #1a0a2e; }
@@ -480,6 +557,18 @@
         <div class="modal-content">
             <h3> በቴሌብር ወደ 0998487148 ገቢ ያድርጉ </h3>
             <div class="balance-info">አሁን ያሎት ብር: <span class="amount" id="depositPlayBalance">0</span></div>
+
+            <div class="paste-box">
+                <label class="paste-label" for="depositPasteText">📋 የቴሌብር መልእክት እዚህ ይለጥፉ / Paste Telebirr SMS here</label>
+                <textarea id="depositPasteText" class="modal-input paste-textarea" placeholder="Copy the Telebirr SMS you received and paste it here. The Amount and Reference will be filled automatically."></textarea>
+                <div class="paste-actions">
+                    <button type="button" id="extractFromTextBtn" class="paste-extract-btn">🔍 Extract</button>
+                    <span id="textExtractStatus" class="paste-status"></span>
+                </div>
+            </div>
+
+            <div class="paste-divider"><span>OR / ወይም</span></div>
+
             <input type="number" class="modal-input" id="depositAmount" placeholder="Amount" min="1" step="1">
             <input type="text" class="modal-input" id="depositReference" placeholder="Reference number" maxlength="20">
             <div style="margin: 8px 0;">
@@ -1842,8 +1931,6 @@
         function checkPendingTransactionStatus() {
             if (!currentUser || !database) return;
 
-            // Detach previous listener correctly (compat .on() returns the callback,
-            // not a ref — so we must store the ref + handler pair and pass both to .off()).
             if (pendingTxListenerRef && pendingTxListenerHandler) {
                 try { pendingTxListenerRef.off('child_changed', pendingTxListenerHandler); } catch (e) {}
             }
@@ -1869,15 +1956,6 @@
 
         /* ============================================================
            NOTIFICATIONS + TRANSACTION RESULT POPUP
-           ------------------------------------------------------------
-           Robust version:
-           • Fetches existing unread notifications once at login
-             (so nothing is missed when the listener attaches late)
-           • Also listens for new ones in real time
-           • Dedupes by notification key so nothing shows twice
-           • Marks each notification as read ONLY after the player
-             taps OK on the popup
-           • Console-logs every step for diagnosis
            ============================================================ */
         let notificationRef = null;
         let notificationSeenKeys = new Set();
@@ -1899,14 +1977,12 @@
 
             notificationRef = database.ref('notifications/' + username);
 
-            // (1) Real-time listener for anything arriving from now on.
             notificationRef.on('child_added', (snapshot) => {
                 handleIncomingNotification(snapshot);
             }, (error) => {
                 console.error('[NOTIF] real-time listener error (permission?):', error);
             });
 
-            // (2) One-shot read so anything already queued is picked up immediately.
             notificationRef.once('value').then((snap) => {
                 const all = snap.val() || {};
                 console.log('[NOTIF] initial read: total nodes =', Object.keys(all).length);
@@ -1938,8 +2014,6 @@
 
             console.log('[NOTIF] new notification:', key, data);
 
-            // Lenient detection: accept the modern `type` field, or fall back
-            // to `status` / message text so an older admin panel still works.
             let status = data.status;
             let isTxResult = false;
             if (data.type === 'transaction_result') isTxResult = true;
@@ -1950,13 +2024,11 @@
             }
 
             if (isTxResult) {
-                // Do NOT mark as read here — wait until OK is tapped.
                 enqueueTransactionPopup(
                     Object.assign({}, data, { status: status || 'approved' }),
                     key
                 );
             } else {
-                // Generic toast — mark read immediately (safe).
                 try { snapshot.ref.update({ read: true }); } catch (e) {}
                 if (data.message) showToast(data.message, 'info');
             }
@@ -2059,6 +2131,8 @@
             if (depositReference) depositReference.value = '';
             if (depositImage) depositImage.value = '';
             if (ocrStatus) ocrStatus.textContent = '';
+            if (depositPasteText) depositPasteText.value = '';
+            if (textExtractStatus) { textExtractStatus.textContent = ''; textExtractStatus.style.color = '#ffd866'; }
             if (depositModal) depositModal.classList.add('active');
             closeMoreDropdown();
         }
@@ -2179,6 +2253,126 @@
                     if (result.amount && depositAmount) depositAmount.value = result.amount;
                     if (ocrStatus) ocrStatus.textContent = '✅ Extracted data.';
                 } else if (ocrStatus) ocrStatus.textContent = '⚠️ No data extracted. You can type manually.';
+            };
+        }
+
+        // ============================================================
+        //  DEPOSIT: extract Amount + Reference from pasted Telebirr SMS
+        //  ------------------------------------------------------------
+        //  • Works with both Amharic ("ብር") and English ("Birr", "ETB") SMS
+        //  • Reference: prefers the receipt URL, falls back to any
+        //    8–24 char alphanumeric token containing letters + digits
+        //  • Amount: first "<number> ብር / Birr / ETB / Br" match wins
+        // ============================================================
+        const depositPasteText = $('depositPasteText');
+        const extractFromTextBtn = $('extractFromTextBtn');
+        const textExtractStatus = $('textExtractStatus');
+
+        function extractDataFromText(text) {
+            const result = { reference: null, amount: null };
+            if (!text || typeof text !== 'string') return result;
+
+            // Normalise: NBSP → space, strip zero-width chars, collapse dash runs
+            const raw = text
+                .replace(/\u00A0/g, ' ')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/[\u2010-\u2015]/g, '-');
+
+            /* ---------- 1. Reference: prefer the receipt URL ---------- */
+            const urlMatch = raw.match(/receipt\/([A-Za-z0-9]{6,24})/i);
+            if (urlMatch && urlMatch[1]) {
+                result.reference = urlMatch[1].toUpperCase();
+            }
+
+            /* ---------- 2. Reference fallback: standalone token ---------- */
+            if (!result.reference) {
+                const tokens = raw.match(/[A-Z0-9]{8,24}/gi) || [];
+                for (const t of tokens) {
+                    const v = t.toUpperCase();
+                    if (v.length < 8 || v.length > 24) continue;
+                    if (!/[A-Z]/.test(v)) continue;
+                    if (!/\d/.test(v)) continue;
+                    if (/^\d+$/.test(v)) continue;
+                    if (/^(ETB|VAT|SMS|HTTP|HTTPS|WWW)$/.test(v)) continue;
+                    result.reference = v;
+                    break;
+                }
+            }
+
+            /* ---------- 3. Amount: NUMBER (ብር | Birr | ETB | Br) ---------- */
+            const amountRe = /(\d+(?:[,\s]\d{3})*(?:\.\d{1,2})?)\s*(?:ብር|Birr|ETB|Br\b)/i;
+            const am = raw.match(amountRe);
+            if (am && am[1]) {
+                const n = parseFloat(String(am[1]).replace(/[,\s]/g, ''));
+                if (!isNaN(n) && n > 0) result.amount = n;
+            }
+
+            /* ---------- 4. Amount fallback: (ብር | Birr | ETB) NUMBER ---------- */
+            if (result.amount == null) {
+                const amountRevRe = /(?:ብር|Birr|ETB|Br)\s*(\d+(?:[,\s]\d{3})*(?:\.\d{1,2})?)/i;
+                const am2 = raw.match(amountRevRe);
+                if (am2 && am2[1]) {
+                    const n = parseFloat(String(am2[1]).replace(/[,\s]/g, ''));
+                    if (!isNaN(n) && n > 0) result.amount = n;
+                }
+            }
+
+            return result;
+        }
+
+        function applyExtractedDataToDepositForm(extracted) {
+            if (!extracted) return false;
+            const statusEl2 = document.getElementById('textExtractStatus');
+            let any = false;
+
+            if (extracted.amount != null && depositAmount) {
+                depositAmount.value = extracted.amount;
+                any = true;
+            }
+            if (extracted.reference && depositReference) {
+                depositReference.value = extracted.reference;
+                any = true;
+            }
+
+            if (any) {
+                if (depositError) depositError.textContent = '';
+                if (statusEl2) {
+                    statusEl2.textContent = `✅ Extracted · Amount: ${extracted.amount != null ? extracted.amount : '—'} · Ref: ${extracted.reference || '—'}`;
+                    statusEl2.style.color = '#8affb0';
+                }
+            } else {
+                if (statusEl2) {
+                    statusEl2.textContent = '⚠️ Could not detect amount or reference. Please type them manually.';
+                    statusEl2.style.color = '#ffd866';
+                }
+            }
+            return any;
+        }
+
+        if (depositPasteText) {
+            depositPasteText.addEventListener('paste', function() {
+                setTimeout(() => {
+                    const text = depositPasteText.value;
+                    if (text && text.trim()) {
+                        const extracted = extractDataFromText(text);
+                        applyExtractedDataToDepositForm(extracted);
+                    }
+                }, 50);
+            });
+        }
+
+        if (extractFromTextBtn) {
+            extractFromTextBtn.onclick = function() {
+                const text = depositPasteText ? depositPasteText.value : '';
+                if (!text || !text.trim()) {
+                    if (textExtractStatus) {
+                        textExtractStatus.textContent = '⚠️ Paste the Telebirr SMS first.';
+                        textExtractStatus.style.color = '#ffd866';
+                    }
+                    return;
+                }
+                const extracted = extractDataFromText(text);
+                applyExtractedDataToDepositForm(extracted);
             };
         }
 
@@ -2453,8 +2647,7 @@
 
         function selectBet(amount) {
             if (!currentUser) return;
-            // NOTE: The play-balance check has been intentionally removed.
-            // Players may enter any room regardless of play balance.
+            // Play-balance check intentionally removed: players may enter any room.
             // They simply won't be able to pick numbers without enough balance.
             try { refundMyActiveBet(); } catch (e) {}
             removeBotsFromRoom();
