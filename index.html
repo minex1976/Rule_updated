@@ -128,6 +128,22 @@
         .toast .icon { font-size: 2rem; display: block; margin-bottom: 4px; }
         .toast h3 { color: #f0e6ff; font-size: 1.1rem; margin-bottom: 2px; }
         .toast p { color: #b8a0d0; font-size: 0.85rem; line-height: 1.4; }
+
+        /* ---- Transaction result popup ---- */
+        .tx-result-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.78); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 5000; padding: 20px; }
+        .tx-result-modal.active { display: flex; }
+        .tx-result-modal .tx-result-card { background: linear-gradient(160deg, rgba(42, 26, 74, 0.98), rgba(26, 42, 74, 0.98)); border-radius: 28px; padding: 30px 24px 24px; max-width: 340px; width: 100%; text-align: center; border: 2px solid rgba(180, 120, 255, 0.28); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75); animation: txResultIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes txResultIn { 0% { transform: scale(0.7) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+        .tx-result-modal.approved .tx-result-card { border-color: rgba(80, 255, 160, 0.45); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 50px rgba(80, 255, 160, 0.28); }
+        .tx-result-modal.rejected .tx-result-card { border-color: rgba(255, 110, 110, 0.45); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 50px rgba(255, 110, 110, 0.28); }
+        .tx-result-icon { font-size: 3.4rem; line-height: 1; margin-bottom: 12px; }
+        .tx-result-title { font-size: 1.15rem; font-weight: 800; letter-spacing: 0.5px; margin: 0 0 10px; color: #f0e6ff; }
+        .tx-result-modal.approved .tx-result-title { color: #8affb0; }
+        .tx-result-modal.rejected .tx-result-title { color: #ff8a8a; }
+        .tx-result-msg { color: #d4c0f0; font-size: 0.92rem; line-height: 1.5; margin: 0 0 20px; white-space: pre-wrap; word-break: break-word; }
+        .tx-result-ok { background: linear-gradient(135deg, #ffcc44, #f5a623); border: none; border-radius: 30px; padding: 11px 44px; font-weight: 800; font-size: 0.9rem; color: #1a0a2e; cursor: pointer; box-shadow: 0 4px 0 #b87a15; }
+        .tx-result-ok:active { transform: translateY(4px); box-shadow: 0 1px 0 #b87a15; }
+
         #fireworksCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3000; display: none; }
         #fireworksCanvas.active { display: block; pointer-events: none; }
         .ocr-progress-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.7); justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
@@ -195,11 +211,6 @@
 
         /* ============================================================
            BALL ANIMATION — individual per-ball BOUNCE, basket-packed
-           ------------------------------------------------------------
-           • Balls sit on the bottom of the glass in a tight pile.
-           • Each ball bounces straight up off the surface and lands
-             back — no floating, no drifting in mid-air.
-           • Per-ball animation on the GPU compositor.
            ============================================================ */
         .ball-anim-overlay {
             position: fixed; inset: 0; z-index: 3500;
@@ -236,7 +247,6 @@
             letter-spacing: 4px; color: #8a9bad; opacity: .35;
             pointer-events: none; z-index: 0;
         }
-        /* faint floor shading so the pile visibly rests on a surface */
         .ball-anim-glass::after {
             content: "";
             position: absolute; left: 4%; right: 4%; bottom: 2px;
@@ -246,9 +256,7 @@
             pointer-events: none; z-index: 1;
         }
 
-        #baBalls {
-            position: absolute; inset: 0; z-index: 2;
-        }
+        #baBalls { position: absolute; inset: 0; z-index: 2; }
 
         .ba-ball {
             position: absolute;
@@ -271,7 +279,6 @@
             box-shadow: inset -2px -3px 4px rgba(0,0,0,.16), 0 2px 3px rgba(0,0,0,.22);
         }
 
-        /* Per-ball bounce — rests on the surface, hops up, lands back. */
         .ba-ball.ba-bounce {
             -webkit-animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite;
             animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite;
@@ -529,6 +536,16 @@
         <h3>Welcome to Winzo!</h3>
         <p>You've been given <strong>30 Birr</strong> in your play wallet. Good luck!</p>
     </div>
+
+    <div class="tx-result-modal" id="transactionResultModal">
+        <div class="tx-result-card">
+            <div class="tx-result-icon" id="txResultIcon">✅</div>
+            <h3 class="tx-result-title" id="txResultTitle">Request Approved</h3>
+            <p class="tx-result-msg" id="txResultMessage">Your request is approved</p>
+            <button class="tx-result-ok" id="txResultOkBtn">OK</button>
+        </div>
+    </div>
+
     <canvas id="fireworksCanvas"></canvas>
 
     <div id="ballAnimOverlay" class="ball-anim-overlay">
@@ -780,7 +797,10 @@
             measurementId: "G-04EW1D775E"
         };
         let firebaseAvailable = false; let database = null; let storage = null; let isMultiplayer = false;
-        let transactionListeners = {}; let userWalletRef = null; let pendingTxListener = null;
+        let transactionListeners = {};
+        let userWalletRef = null;
+        let pendingTxListenerRef = null;
+        let pendingTxListenerHandler = null;
         let sessionId = null; let sessionListener = null;
         let sessionConflictModal = document.getElementById('sessionConflictModal');
         let lastResultListenerRef = null;
@@ -1325,14 +1345,6 @@
 
         // ============================================================
         //  BALL ANIMATION — per-ball BOUNCE, densely basket-packed
-        //  ------------------------------------------------------------
-        //  • Balls sit on the bottom of the glass in a tight pile.
-        //  • Each ball bounces straight up off the surface and lands
-        //    back — no floating, no drifting in mid-air.
-        //  • ONE ball per taken number, ONE ball per player who picked.
-        //    NO CAP — the layout auto-sizes so everything always fits.
-        //  • 100% client-side rendering (never waits on the network),
-        //    so it behaves identically in room_15 and room_30.
         // ============================================================
         const BALL_ANIM_LOW_END = (navigator.hardwareConcurrency || 4) <= 4
             || (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2)
@@ -1384,7 +1396,6 @@
                 };
                 const safetyTimer = setTimeout(finish, 15000);
 
-                /* ---------- 1. collect EVERY pick + EVERY picker ---------- */
                 const players = engineState.players || {};
                 const allPicks = [];
                 const playerNames = [];
@@ -1399,15 +1410,12 @@
                     playerNames.push(name);
                 });
 
-                // Safety net: if player attribution is missing for some reason,
-                // still show every taken number so nothing is ever lost.
                 if (!allPicks.length && engineState.allTakenNumbers && engineState.allTakenNumbers.size) {
                     engineState.allTakenNumbers.forEach(n => allPicks.push({ number: Number(n), owner: null }));
                 }
 
                 if (!allPicks.length && !playerNames.length) { finish(); return; }
 
-                /* ---------- 2. reset stage ---------- */
                 machine.querySelectorAll('.ba-drop').forEach(el => el.remove());
                 ballBox.innerHTML = '';
                 hole.classList.remove('open');
@@ -1417,7 +1425,6 @@
                 const glassW = glass.clientWidth  || 360;
                 const glassH = glass.clientHeight || 460;
 
-                /* ---------- 3. full pool: numbers + picker names ---------- */
                 const pool = [];
                 allPicks.forEach(p => pool.push({
                     kind: 'number', text: String(p.number), num: p.number, owner: p.owner
@@ -1426,12 +1433,10 @@
                     kind: 'name', text: n, num: null, owner: n
                 }));
 
-                /* ---------- 4. adaptive size — every ball fits ---------- */
                 const totalBalls = pool.length;
                 let ballSize = Math.sqrt((glassW * glassH * 0.70) / Math.max(1, totalBalls));
                 ballSize = Math.max(16, Math.min(56, ballSize));
 
-                /* ---------- 5. basket-pack from the floor upward ---------- */
                 const spacingX  = ballSize * 0.86;
                 const spacingY  = ballSize * 0.84;
                 const cols      = Math.max(3, Math.floor((glassW - 8) / spacingX));
@@ -1463,7 +1468,6 @@
                     el.style.top  = y.toFixed(1) + 'px';
                     el.style.zIndex = String(1 + Math.floor(Math.random() * 4));
 
-                    /* Bounce params — vertical only, height scales with size */
                     el.style.setProperty('--delay', (Math.random() * 1.5).toFixed(2) + 's');
                     el.style.setProperty('--dur',   (1.1 + Math.random() * 0.9).toFixed(2) + 's');
                     el.style.setProperty('--dx',    ((Math.random() - 0.5) * 4).toFixed(1) + 'px');
@@ -1474,7 +1478,6 @@
                     balls.push({ el, kind: item.kind, num: item.num, owner: item.owner, text: item.text });
                 });
 
-                /* ---------- 6. tray geometry ---------- */
                 const machineRect = machine.getBoundingClientRect();
                 const trayRect    = tray.getBoundingClientRect();
                 const holeRect    = hole.getBoundingClientRect();
@@ -1494,7 +1497,6 @@
 
                 const traySlotX = i => trayStartX + i * (trayBallSize + trayGap);
 
-                /* ---------- 7. drop one ball out through the hole ---------- */
                 async function dropOneOut(ball, slotIndex) {
                     if (ball.el && ball.el.parentNode) ball.el.parentNode.removeChild(ball.el);
 
@@ -1524,7 +1526,6 @@
                     return el;
                 }
 
-                /* ---------- 8. show ---------- */
                 (async () => {
                     status.textContent = '🎲 Mixing the balls…';
                     await wait(ANIM.mixMs);
@@ -1840,28 +1841,203 @@
         }
         function checkPendingTransactionStatus() {
             if (!currentUser || !database) return;
+
+            // Detach previous listener correctly (compat .on() returns the callback,
+            // not a ref — so we must store the ref + handler pair and pass both to .off()).
+            if (pendingTxListenerRef && pendingTxListenerHandler) {
+                try { pendingTxListenerRef.off('child_changed', pendingTxListenerHandler); } catch (e) {}
+            }
+            pendingTxListenerRef = null;
+            pendingTxListenerHandler = null;
+
             const txRef = database.ref('transactions');
-            if (pendingTxListener) { pendingTxListener.off(); pendingTxListener = null; }
-            pendingTxListener = txRef.orderByChild('username').equalTo(currentUser).on('child_changed', snapshot => {
-                const tx = snapshot.val(); if (!tx) return; syncWalletFromFirebase();
-            });
+            const query = txRef.orderByChild('username').equalTo(currentUser);
+
+            pendingTxListenerHandler = snapshot => {
+                const tx = snapshot.val();
+                if (!tx) return;
+                syncWalletFromFirebase();
+            };
+
+            query.on('child_changed', pendingTxListenerHandler);
+            pendingTxListenerRef = query;
         }
         function sendNotification(username, message) {
             if (!database || !username) return;
             database.ref('notifications/' + username).push().set({ message, timestamp: Date.now(), read: false });
         }
-        let notificationListener = null;
+
+        /* ============================================================
+           NOTIFICATIONS + TRANSACTION RESULT POPUP
+           ------------------------------------------------------------
+           Robust version:
+           • Fetches existing unread notifications once at login
+             (so nothing is missed when the listener attaches late)
+           • Also listens for new ones in real time
+           • Dedupes by notification key so nothing shows twice
+           • Marks each notification as read ONLY after the player
+             taps OK on the popup
+           • Console-logs every step for diagnosis
+           ============================================================ */
+        let notificationRef = null;
+        let notificationSeenKeys = new Set();
+        let txPopupQueue = [];
+        let txPopupActive = false;
+        let currentPopupNotificationKey = null;
+
         function listenNotifications(username) {
-            if (!database || !username) return;
-            if (notificationListener) { notificationListener.off(); notificationListener = null; }
-            notificationListener = database.ref('notifications/' + username).orderByChild('read').equalTo(false).on('child_added', (snapshot) => {
-                const data = snapshot.val();
-                if (data) { showToast(data.message, 'info'); snapshot.ref.update({ read: true }); }
+            if (!database || !username) {
+                console.warn('[NOTIF] listen skipped - database or username missing');
+                return;
+            }
+            if (notificationRef) {
+                try { notificationRef.off(); } catch (e) {}
+                notificationRef = null;
+            }
+            notificationSeenKeys.clear();
+            console.log('[NOTIF] attaching listener for', username);
+
+            notificationRef = database.ref('notifications/' + username);
+
+            // (1) Real-time listener for anything arriving from now on.
+            notificationRef.on('child_added', (snapshot) => {
+                handleIncomingNotification(snapshot);
+            }, (error) => {
+                console.error('[NOTIF] real-time listener error (permission?):', error);
+            });
+
+            // (2) One-shot read so anything already queued is picked up immediately.
+            notificationRef.once('value').then((snap) => {
+                const all = snap.val() || {};
+                console.log('[NOTIF] initial read: total nodes =', Object.keys(all).length);
+                Object.keys(all).forEach(key => {
+                    const data = all[key];
+                    if (!data) return;
+                    if (data.read === true) {
+                        console.log('[NOTIF] skip (already read):', key);
+                        return;
+                    }
+                    handleIncomingNotification({
+                        key: key,
+                        val: () => data,
+                        ref: database.ref('notifications/' + username + '/' + key)
+                    });
+                });
+            }).catch(err => {
+                console.error('[NOTIF] initial read failed (permission?):', err);
             });
         }
-        function stopNotificationListener() {
-            if (notificationListener && database && currentUser) { database.ref('notifications/' + currentUser).off(); notificationListener = null; }
+
+        function handleIncomingNotification(snapshot) {
+            const key = snapshot.key;
+            const data = snapshot.val();
+            if (!data) return;
+            if (data.read === true) return;
+            if (notificationSeenKeys.has(key)) return;
+            notificationSeenKeys.add(key);
+
+            console.log('[NOTIF] new notification:', key, data);
+
+            // Lenient detection: accept the modern `type` field, or fall back
+            // to `status` / message text so an older admin panel still works.
+            let status = data.status;
+            let isTxResult = false;
+            if (data.type === 'transaction_result') isTxResult = true;
+            else if (status === 'approved' || status === 'rejected') isTxResult = true;
+            else if (data.message && /approv|reject/i.test(data.message)) {
+                isTxResult = true;
+                status = /reject/i.test(data.message) ? 'rejected' : 'approved';
+            }
+
+            if (isTxResult) {
+                // Do NOT mark as read here — wait until OK is tapped.
+                enqueueTransactionPopup(
+                    Object.assign({}, data, { status: status || 'approved' }),
+                    key
+                );
+            } else {
+                // Generic toast — mark read immediately (safe).
+                try { snapshot.ref.update({ read: true }); } catch (e) {}
+                if (data.message) showToast(data.message, 'info');
+            }
         }
+
+        function enqueueTransactionPopup(data, key) {
+            txPopupQueue.push({ data, key });
+            if (!txPopupActive) showNextTransactionPopup();
+        }
+
+        function showNextTransactionPopup() {
+            const modal = document.getElementById('transactionResultModal');
+            if (!modal) { txPopupActive = false; return; }
+            if (!txPopupQueue.length) { txPopupActive = false; return; }
+            txPopupActive = true;
+
+            const item = txPopupQueue.shift();
+            const data = item.data;
+            const key  = item.key;
+            currentPopupNotificationKey = key;
+
+            const isApproved = data.status === 'approved';
+
+            modal.classList.remove('approved', 'rejected', 'active');
+            modal.classList.add(isApproved ? 'approved' : 'rejected');
+
+            const icon  = document.getElementById('txResultIcon');
+            const title = document.getElementById('txResultTitle');
+            const msg   = document.getElementById('txResultMessage');
+            if (icon)  icon.textContent  = isApproved ? '✅' : '❌';
+            if (title) title.textContent = isApproved ? 'Request Approved' : 'Request Rejected';
+
+            let body;
+            if (isApproved) {
+                body = 'Your request is approved';
+            } else {
+                const reason = (data.reason || '').trim();
+                body = reason ? reason : 'Your request was rejected by admin.';
+            }
+            if (msg) msg.textContent = body;
+
+            try { playTone(isApproved ? 880 : 330, 0.28, 'sine', 0.22); } catch (e) {}
+
+            void modal.offsetWidth;
+            modal.classList.add('active');
+            console.log('[NOTIF] popup shown for', key, 'status=', data.status);
+        }
+
+        (function bindTxResultOk(){
+            const btn = document.getElementById('txResultOkBtn');
+            if (btn) btn.onclick = function() {
+                const modal = document.getElementById('transactionResultModal');
+                if (modal) modal.classList.remove('active');
+                if (currentPopupNotificationKey && currentUser && database) {
+                    try {
+                        database.ref('notifications/' + currentUser + '/' + currentPopupNotificationKey)
+                            .update({ read: true })
+                            .catch(err => console.warn('[NOTIF] could not mark read:', err));
+                    } catch (e) {}
+                    currentPopupNotificationKey = null;
+                }
+                txPopupActive = false;
+                setTimeout(showNextTransactionPopup, 260);
+            };
+        })();
+
+        function clearTransactionPopups() {
+            txPopupQueue = [];
+            txPopupActive = false;
+            currentPopupNotificationKey = null;
+            const modal = document.getElementById('transactionResultModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        function stopNotificationListener() {
+            if (notificationRef) {
+                try { notificationRef.off(); } catch (e) {}
+                notificationRef = null;
+            }
+        }
+
         function showToast(message, type = 'info') {
             if (!welcomeToast) return;
             const iconMap = { 'info': 'ℹ️', 'success': '✅', 'warning': '⚠️', 'error': '❌' };
@@ -2017,7 +2193,11 @@
             if (savedCredentials?.username && authUsername) authUsername.value = savedCredentials.username;
             if (savedCredentials?.password && authPassword) authPassword.value = savedCredentials.password;
             if (userWalletRef) { userWalletRef.off(); userWalletRef = null; }
-            if (pendingTxListener) { pendingTxListener.off(); pendingTxListener = null; }
+            if (pendingTxListenerRef && pendingTxListenerHandler) {
+                try { pendingTxListenerRef.off('child_changed', pendingTxListenerHandler); } catch (e) {}
+                pendingTxListenerRef = null;
+                pendingTxListenerHandler = null;
+            }
             stopNotificationListener();
             attemptTelegramDetection();
         }
@@ -2179,9 +2359,14 @@
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
             if (userWalletRef) { userWalletRef.off(); userWalletRef = null; }
-            if (pendingTxListener) { pendingTxListener.off(); pendingTxListener = null; }
+            if (pendingTxListenerRef && pendingTxListenerHandler) {
+                try { pendingTxListenerRef.off('child_changed', pendingTxListenerHandler); } catch (e) {}
+                pendingTxListenerRef = null;
+                pendingTxListenerHandler = null;
+            }
             Object.keys(transactionListeners).forEach(key => { try { database.ref('transactions/' + key).off(); } catch (e) {} delete transactionListeners[key]; });
             stopNetworkListener(); stopSessionListener(); stopNotificationListener();
+            clearTransactionPopups();
             clearAllLocalData(); clearLocalRoundData();
             currentUser = null; currentBet = 15; currentRoom = 'room_15';
             isGameInitialized = false; audioPlayedThisRound = false;
@@ -2268,7 +2453,9 @@
 
         function selectBet(amount) {
             if (!currentUser) return;
-            if (walletData.play < amount) { alert('⚠️ Insufficient play balance. Please deposit.'); return; }
+            // NOTE: The play-balance check has been intentionally removed.
+            // Players may enter any room regardless of play balance.
+            // They simply won't be able to pick numbers without enough balance.
             try { refundMyActiveBet(); } catch (e) {}
             removeBotsFromRoom();
             detachNumbersTakenListener(); detachLastResultListener();
@@ -2539,7 +2726,7 @@
                     return;
                 }
                 if (engineState.allTakenNumbers.has(num)) { updateStatus(`❌ Number ${num} is already taken!`); return; }
-                if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr.`); return; }
+                if (walletData.play < currentBet) { updateStatus(`⚠️ Insufficient play balance. Need ${currentBet} Birr. Please deposit to play.`); return; }
 
                 const nextPicks = [...myPicks, num];
                 syncLocalPlayerPicks(nextPicks, round, false);
