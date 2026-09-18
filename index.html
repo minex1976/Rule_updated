@@ -465,6 +465,10 @@
         const REFERRAL_COMMISSION_RATE = 0.05;
         const TELEGRAM_BOT_LINK = 'http://t.me/WinzoBettingBot';
 
+        // ---- REST API endpoint (independent from the WebSocket) ----
+        // This is the same database URL, served over plain HTTPS GET.
+        const FIREBASE_REST_URL = 'https://renewed-8fe38-default-rtdb.firebaseio.com';
+
         let telegramDetectedUsername = null;
         let pendingReferralCode = null;
 
@@ -748,18 +752,13 @@
         let cardFetchRetryCount = 0;
 
         // ============================================================
-        //  NETWORK + RESILIENCE
-        //  ------------------------------------------------------------
-        //  The overlay is shown ONLY when a real outage is detected
-        //  (browser offline event OR Firebase .info/connected = false
-        //  outside of an intentional reconnect cycle).
+        //  NETWORK + RESILIENCE (with REST fallback)
         // ============================================================
         let isNetworkConnected = true; let networkListenerActive = false;
         const networkOverlay = document.getElementById('networkOfflineOverlay');
         const networkRetryBtn = document.getElementById('networkRetryBtn');
 
-        // Timestamp until which we suppress the offline overlay, because
-        // we ourselves triggered a goOffline/goOnline cycle.
+        // Suppress the offline overlay during an intentional goOffline/goOnline cycle.
         let intentionalDisconnectUntil = 0;
 
         function startNetworkListener() {
@@ -783,21 +782,43 @@
             networkOverlay.classList.remove('active');
         }
         function handleNetworkOnline() {
-            // If we were offline (or overlay is showing), hide it.
             if (!isNetworkConnected) {
                 isNetworkConnected = true;
                 networkOverlay.classList.remove('active');
                 updateStatus('✅ Network restored.');
             }
-            // Do a lightweight sync only — never call goOffline here.
             if (isGameInitialized && gameRef) {
                 attachCriticalFieldListeners(gameRef);
+                // Light burst — REST fetches are cheap and reliable, so we use them here.
                 burstFetchState(3, 700, 'online-recovery');
             }
         }
         function handleNetworkOffline() {
-            // Ignore the transient .info/connected=false caused by our own reconnect.
             if (Date.now() < intentionalDisconnectUntil) return;
+            // Before showing the overlay, try a quick REST probe. If REST works,
+            // the WebSocket is the only thing broken — we're effectively online.
+            if (isGameInitialized && currentRoom) {
+                probeRestQuickly().then(restWorks => {
+                    if (restWorks) {
+                        // WebSocket is dead but HTTP is fine. Do NOT show the overlay.
+                        if (!isNetworkConnected) {
+                            isNetworkConnected = true;
+                            networkOverlay.classList.remove('active');
+                        }
+                        forceRoomResync('ws-dead-rest-alive');
+                        return;
+                    }
+                    // REST also failed — genuine outage.
+                    if (!isNetworkConnected) return;
+                    isNetworkConnected = false;
+                    stopTimer(); stopResultsCountdown();
+                    if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
+                    networkOverlay.classList.add('active');
+                    updateStatus('⚠️ No internet connection. Game paused.');
+                    document.querySelectorAll('.num-btn').forEach(btn => btn.disabled = true);
+                });
+                return;
+            }
             if (!isNetworkConnected) return;
             isNetworkConnected = false;
             stopTimer(); stopResultsCountdown();
@@ -809,13 +830,18 @@
         function enableNetworkListener() { if (firebaseAvailable && currentUser) startNetworkListener(); }
         networkRetryBtn.onclick = function() {
             if (navigator.onLine) {
-                // Force hide overlay, attempt resync
                 if (!isNetworkConnected) handleNetworkOnline();
                 triggerReconnectBurst('manual-retry-online');
             } else if (database) {
                 database.ref('.info/connected').once('value', (snap) => {
                     if (snap.val() === true) { isNetworkConnected = true; handleNetworkOnline(); }
-                    else { networkOverlay.classList.remove('active'); setTimeout(() => networkOverlay.classList.add('active'), 100); }
+                    else {
+                        // Even if WS reports disconnected, try REST.
+                        probeRestQuickly().then(ok => {
+                            if (ok) { isNetworkConnected = true; handleNetworkOnline(); }
+                            else { networkOverlay.classList.remove('active'); setTimeout(() => networkOverlay.classList.add('active'), 100); }
+                        });
+                    }
                 });
             }
         };
@@ -824,6 +850,72 @@
             if (!currentUser) return;
             triggerReconnectBurst('visibility-return');
         });
+
+        // ---------- REST API fallback ----------
+        // -----------------------------------------
+        // Firebase RTDB is also exposed over plain HTTPS. This is a
+        // completely separate transport — a stuck WebSocket cannot affect it.
+        // Every call is a normal HTTP GET with a 5-second timeout and no caching.
+
+        let restFetchInFlight = false;
+
+        async function fetchRoomViaRest() {
+            if (!currentRoom) return null;
+            if (restFetchInFlight) return null;
+            restFetchInFlight = true;
+            const url = `${FIREBASE_REST_URL}/rooms/${encodeURIComponent(currentRoom)}.json?ts=${Date.now()}`;
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const resp = await fetch(url, { method: 'GET', cache: 'no-store', signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!resp.ok) return null;
+                const data = await resp.json();
+                if (!data || typeof data !== 'object') return null;
+                return data;
+            } catch (e) {
+                return null;
+            } finally {
+                restFetchInFlight = false;
+            }
+        }
+
+        async function fetchLastResultViaRest(round) {
+            if (!currentRoom) return null;
+            const url = `${FIREBASE_REST_URL}/rooms/${encodeURIComponent(currentRoom)}/lastResult.json?ts=${Date.now()}`;
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const resp = await fetch(url, { method: 'GET', cache: 'no-store', signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!resp.ok) return null;
+                const data = await resp.json();
+                if (!data || typeof data !== 'object') return null;
+                const dataRound = Number(data.round);
+                if (!isFinite(dataRound) || dataRound !== Number(round)) return null;
+                const wn = Number(data.winningNumber);
+                if (!isFinite(wn) || wn <= 0 || wn > 200) return null;
+                if (!Array.isArray(data.winners)) data.winners = [];
+                return data;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Fast probe used by handleNetworkOffline and the retry button.
+        async function probeRestQuickly() {
+            if (!currentRoom) return false;
+            const url = `${FIREBASE_REST_URL}/rooms/${encodeURIComponent(currentRoom)}.json?shallow=true&ts=${Date.now()}`;
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3500);
+                const resp = await fetch(url, { method: 'GET', cache: 'no-store', signal: controller.signal });
+                clearTimeout(timeoutId);
+                return resp.ok;
+            } catch (e) {
+                return false;
+            }
+        }
 
         // ---------- Resilience engine ----------
         let lastSuccessfulSyncAt = 0;
@@ -837,7 +929,6 @@
             lastRoomSyncAt = lastSuccessfulSyncAt;
         }
 
-        // Intentional disconnect: keeps .info/connected silent to our handler.
         function forceFirebaseReconnect() {
             try {
                 if (database) {
@@ -881,25 +972,35 @@
             resilienceBurstTimers = [];
         }
 
+        // Burst uses REST first, falls back to WebSocket.
         function burstFetchState(count, spacingMs, label) {
             count = count || 4;
             spacingMs = spacingMs || 1200;
             console.log('[RESILIENCE] burst:', label, 'x' + count);
             for (let i = 0; i < count; i++) {
                 const t = setTimeout(() => {
-                    if (!gameRef || !currentUser) return;
-                    gameRef.once('value').then(snap => {
-                        if (snap.exists()) {
-                            syncGameState(snap.val());
+                    if (!currentUser || !currentRoom) return;
+                    // REST first
+                    fetchRoomViaRest().then(data => {
+                        if (data) {
+                            syncGameState(data);
                             markSyncReceived();
+                            if (!isNetworkConnected) {
+                                isNetworkConnected = true;
+                                networkOverlay.classList.remove('active');
+                            }
+                        } else if (gameRef) {
+                            // REST failed — fall back to WebSocket
+                            gameRef.once('value').then(snap => {
+                                if (snap.exists()) { syncGameState(snap.val()); markSyncReceived(); }
+                            }).catch(() => {});
                         }
-                    }).catch(() => {});
+                    });
                 }, i * spacingMs);
                 resilienceBurstTimers.push(t);
             }
         }
 
-        // Silent resync — no overlay, no goOffline.
         function forceRoomResync(why) {
             if (!gameRef || !currentUser) return;
             console.log('[RESILIENCE] silent resync:', why);
@@ -907,7 +1008,6 @@
             burstFetchState(3, 900, why);
         }
 
-        // Heavy burst — used only by manual button + visibility + online-event.
         function triggerReconnectBurst(why) {
             if (!currentUser) return;
             if (!isGameInitialized || !gameRef) return;
@@ -922,31 +1022,53 @@
             if (resilienceIntervalId) return;
             console.log('[RESILIENCE] engine started');
 
+            // Main watchdog: uses REST as the primary fallback.
             resilienceIntervalId = setInterval(() => {
-                if (!currentUser || !isGameInitialized || !gameRef) return;
+                if (!currentUser || !isGameInitialized) return;
                 if (!navigator.onLine) return;
                 const silent = Date.now() - (lastSuccessfulSyncAt || 0);
 
-                if (silent > 18000) {
-                    console.warn('[RESILIENCE] hard silence:', Math.round(silent / 1000) + 's');
-                    forceRoomResync('silence-' + Math.round(silent / 1000) + 's');
-                    markSyncReceived();
-                } else if (silent > 8000) {
-                    gameRef.once('value').then(snap => {
-                        if (snap.exists()) { syncGameState(snap.val()); markSyncReceived(); }
-                    }).catch(() => {});
+                if (silent > 6000) {
+                    // Try REST first — bypasses any stuck WebSocket.
+                    fetchRoomViaRest().then(data => {
+                        if (data) {
+                            syncGameState(data);
+                            markSyncReceived();
+                            console.log('[REST] fresh state via HTTP');
+                            if (!isNetworkConnected) {
+                                isNetworkConnected = true;
+                                networkOverlay.classList.remove('active');
+                                updateStatus('✅ Connection restored via fallback.');
+                            }
+                        } else {
+                            // REST failed too — try the WebSocket as a last resort.
+                            if (silent > 18000) {
+                                console.warn('[RESILIENCE] hard silence, both transports failing');
+                                forceRoomResync('silence-' + Math.round(silent / 1000) + 's');
+                                markSyncReceived();
+                            } else if (gameRef) {
+                                gameRef.once('value').then(snap => {
+                                    if (snap.exists()) { syncGameState(snap.val()); markSyncReceived(); }
+                                }).catch(() => {});
+                            }
+                        }
+                    });
                 }
-            }, 6000);
+            }, 4000);
 
+            // Fast poll during spin/results — uses REST.
             criticalPhasePollId = setInterval(() => {
-                if (!currentUser || !isGameInitialized || !gameRef) return;
+                if (!currentUser || !isGameInitialized) return;
                 const phase = engineState.gamePhase;
                 if (phase !== 'spinning' && phase !== 'results') return;
                 const silent = Date.now() - (lastSuccessfulSyncAt || 0);
-                if (silent > 3500) {
-                    gameRef.once('value').then(snap => {
-                        if (snap.exists()) { syncGameState(snap.val()); markSyncReceived(); }
-                    }).catch(() => {});
+                if (silent > 3000) {
+                    fetchRoomViaRest().then(data => {
+                        if (data) {
+                            syncGameState(data);
+                            markSyncReceived();
+                        }
+                    });
                 }
             }, 2500);
         }
@@ -1284,19 +1406,23 @@
             cardFetchRetryCount = 0;
         }
 
+        // Last-result fetch: REST first (bypasses stuck WebSocket), WebSocket fallback.
         function fetchLastResultFromFirebase(round) {
-            if (!gameRef) return Promise.resolve(null);
-            return gameRef.child('lastResult').once('value').then(snap => {
-                if (!snap.exists()) return null;
-                const data = snap.val();
-                if (!data || typeof data !== 'object') return null;
-                const dataRound = Number(data.round);
-                if (!isFinite(dataRound) || dataRound !== Number(round)) return null;
-                const wn = Number(data.winningNumber);
-                if (!isFinite(wn) || wn <= 0 || wn > 200) return null;
-                if (!Array.isArray(data.winners)) data.winners = [];
-                return data;
-            }).catch(() => null);
+            return fetchLastResultViaRest(round).then(data => {
+                if (data) return data;
+                if (!gameRef) return null;
+                return gameRef.child('lastResult').once('value').then(snap => {
+                    if (!snap.exists()) return null;
+                    const data2 = snap.val();
+                    if (!data2 || typeof data2 !== 'object') return null;
+                    const dataRound = Number(data2.round);
+                    if (!isFinite(dataRound) || dataRound !== Number(round)) return null;
+                    const wn = Number(data2.winningNumber);
+                    if (!isFinite(wn) || wn <= 0 || wn > 200) return null;
+                    if (!Array.isArray(data2.winners)) data2.winners = [];
+                    return data2;
+                }).catch(() => null);
+            });
         }
 
         function setCardLoadingState() {
@@ -2726,7 +2852,7 @@
             showAuthScreen();
         }
 
-        const WINZO_PRODUCTION_VERSION = '10.0.1';
+        const WINZO_PRODUCTION_VERSION = '10.1.0';
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -3346,7 +3472,8 @@
         console.info('Active bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
         console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
         console.info('Ball animation: per-ball bounce, UNCAPPED, lowEnd=' + BALL_ANIM_LOW_END);
-        console.info('Resilience engine: passive silence-detect + critical-field listeners + burst + fast-poll + manual reconnect');
+        console.info('Resilience engine: REST fallback + silence-detect + critical-field listeners + burst + fast-poll + manual reconnect');
+        console.info('REST API endpoint:', FIREBASE_REST_URL);
         console.info('Session conflict restriction: DISABLED — multiple devices per account allowed');
         init();
     </script>
