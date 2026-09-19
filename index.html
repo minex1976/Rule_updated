@@ -157,7 +157,6 @@
         .tx-result-ok { background: linear-gradient(135deg, #ffcc44, #f5a623); border: none; border-radius: 30px; padding: 11px 44px; font-weight: 800; font-size: 0.9rem; color: #1a0a2e; cursor: pointer; box-shadow: 0 4px 0 #b87a15; }
         .tx-result-ok:active { transform: translateY(4px); box-shadow: 0 1px 0 #b87a15; }
 
-        /* ---- Broadcast popup (dismissible) ---- */
         .broadcast-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.78); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 5100; padding: 20px; }
         .broadcast-modal.active { display: flex; }
         .broadcast-modal .broadcast-card { background: linear-gradient(160deg, rgba(42, 26, 74, 0.98), rgba(26, 42, 74, 0.98)); border-radius: 28px; padding: 30px 24px 24px; max-width: 380px; width: 100%; text-align: center; border: 2px solid rgba(255, 204, 68, 0.35); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 45px rgba(255, 204, 68, 0.22); animation: txResultIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -167,7 +166,6 @@
         .broadcast-ok { background: linear-gradient(135deg, #ffcc44, #f5a623); border: none; border-radius: 30px; padding: 11px 44px; font-weight: 800; font-size: 0.9rem; color: #1a0a2e; cursor: pointer; box-shadow: 0 4px 0 #b87a15; }
         .broadcast-ok:active { transform: translateY(4px); box-shadow: 0 1px 0 #b87a15; }
 
-        /* ---- Sticky broadcast (pause-game, admin-only removal) ---- */
         .sticky-broadcast-overlay { display: none; position: fixed; inset: 0; background: rgba(2, 4, 12, 0.94); backdrop-filter: blur(6px); z-index: 9000; justify-content: center; align-items: center; padding: 20px; }
         .sticky-broadcast-overlay.active { display: flex; }
         .sticky-broadcast-card { max-width: 400px; width: 100%; padding: 32px 26px 26px; border-radius: 30px; background: radial-gradient(circle at 50% 0%, rgba(255, 120, 120, 0.18), transparent 60%), linear-gradient(160deg, #2a1640, #1a1030 55%, #221138); border: 2px solid rgba(255, 130, 130, 0.5); box-shadow: 0 0 0 1px rgba(255, 120, 120, 0.2), 0 0 60px rgba(255, 90, 90, 0.35), 0 25px 70px rgba(0, 0, 0, 0.75); text-align: center; animation: stickyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -466,7 +464,6 @@
         </div>
     </div>
 
-    <!-- ===== DISMISSIBLE BROADCAST POPUP ===== -->
     <div class="broadcast-modal" id="broadcastModal">
         <div class="broadcast-card">
             <div class="broadcast-icon">📢</div>
@@ -476,7 +473,6 @@
         </div>
     </div>
 
-    <!-- ===== STICKY PAUSE-GAME OVERLAY (admin-only removal) ===== -->
     <div class="sticky-broadcast-overlay" id="stickyBroadcastOverlay">
         <div class="sticky-broadcast-card">
             <div class="sticky-badge">SERVICE UPDATE</div>
@@ -814,7 +810,7 @@
         let numbersTakenListenerRef = null; let numbersTakenInitialized = false;
         let lastKnownPlayersCache = {}; let watchdogInterval = null; let lastRoomSyncAt = 0;
         let lastRoomSnapshotRaw = null;
-        let botRoomKeeperInterval = null;    // background keeper for both rooms
+        let botRoomKeeperInterval = null;
 
         let displayedCardRound = null;
         let executedSpinRound = null;
@@ -823,17 +819,11 @@
         let cardFetchRetryTimer = null;
         let cardFetchRetryCount = 0;
 
-        // ============================================================
-        //  STICKY BROADCAST STATE
-        // ============================================================
         let gamePausedBySticky = false;
         let activeStickyBroadcast = null;
         let stickyBroadcastRef = null;
         let stickyBroadcastHandler = null;
 
-        // ============================================================
-        //  NETWORK + RESILIENCE
-        // ============================================================
         let isNetworkConnected = true; let networkListenerActive = false;
         const networkOverlay = document.getElementById('networkOfflineOverlay');
         const networkRetryBtn = document.getElementById('networkRetryBtn');
@@ -928,7 +918,6 @@
             triggerReconnectBurst('visibility-return');
         });
 
-        // ---------- REST API fallback ----------
         let restFetchInFlight = false;
 
         async function fetchRoomViaRest() {
@@ -988,7 +977,6 @@
             }
         }
 
-        // ---------- Resilience engine ----------
         let lastSuccessfulSyncAt = 0;
         let criticalFieldListeners = [];
         let resilienceIntervalId = null;
@@ -1190,8 +1178,9 @@
         const BOT_STARTING_WALLET = 1000000;
         const BOT_PICKS_PER_ROUND = 3;
         const BOTS_ENABLED = true;
-        const MIN_BOTS_PER_ROUND = 3;
-        const MAX_BOTS_PER_ROUND = 6;
+        // ---- Bot count per round is 5 to 10 ----
+        const MIN_BOTS_PER_ROUND = 5;
+        const MAX_BOTS_PER_ROUND = 10;
 
         const WANDERER_NAMES = ['Fikru','Samuel','Kebede','Bereket','Natnael','Tadesse'];
         let wanderersPresent = new Set();
@@ -1229,46 +1218,53 @@
         }
 
         // ============================================================
-        //  PERSISTENT BOT MANAGEMENT  (Patch 1)
+        //  addBotsToRoom — prune excess, then top up to 5–10
         // ============================================================
         async function addBotsToRoom() {
             if (!BOTS_ENABLED) return;
             if (!gameRef || !currentUser || !database) return;
             await ensureBotUsers();
 
-            // Bot population is PERSISTENT. We never blindly remove the
-            // existing bots — we only top the room up if it has drifted low.
             const round = Number(engineState.roundNumber) || 1;
             const minBots = Math.min(MIN_BOTS_PER_ROUND, BOT_NAMES.length);
             const maxBots = Math.min(MAX_BOTS_PER_ROUND, BOT_NAMES.length);
 
-            let existingBots = new Set();
+            let existingBots = [];
             try {
                 const snap = await gameRef.child('players').once('value');
                 const players = snap.val() || {};
                 Object.keys(players).forEach(name => {
                     if (players[name] && (players[name].isBot || players[name].isWanderer)) {
-                        existingBots.add(name);
+                        existingBots.push(name);
                     }
                 });
             } catch (e) {}
 
+            // PRUNE: never allow more than maxBots
+            if (existingBots.length > maxBots) {
+                const shuffled = shuffleArray(existingBots);
+                const excess = shuffled.slice(maxBots);
+                for (const name of excess) {
+                    try { gameRef.child('players/' + name).remove().catch(() => {}); } catch (e) {}
+                }
+                existingBots = shuffled.slice(0, maxBots);
+            }
+
             activeBotNamesThisRound = new Set(existingBots);
 
-            if (existingBots.size >= minBots) {
+            if (existingBots.length >= minBots) {
                 botsReadyForGeneration = roomConnectionGeneration;
                 return;
             }
 
+            // TOP UP: randomise target between min and max
             const target = minBots + Math.floor(Math.random() * (maxBots - minBots + 1));
-            const needed = target - existingBots.size;
-            const fresh = shuffleArray(BOT_NAMES.filter(n => !existingBots.has(n))).slice(0, needed);
+            const needed = target - existingBots.length;
+            const fresh = shuffleArray(BOT_NAMES.filter(n => !existingBots.includes(n))).slice(0, needed);
 
             for (const botName of fresh) {
                 try {
                     const ref = gameRef.child('players/' + botName);
-                    // NOTE: no onDisconnect().remove() — bots stay in the
-                    // room even when the client that created them disconnects.
                     await ref.set({
                         name: botName, pick: null, picks: [], bet: currentBet,
                         ready: false, betDeducted: false, betSources: {},
@@ -1295,7 +1291,6 @@
                 if (wanderersPresent.has(name)) continue;
                 try {
                     const ref = gameRef.child('players/' + name);
-                    // Wanderers also persist — no onDisconnect().remove()
                     await ref.set({ name: name, pick: null, picks: [], bet: currentBet, ready: false, betDeducted: false, betSources: {}, round, isWanderer: true }).catch(() => {});
                 } catch (e) {}
             }
@@ -1310,7 +1305,6 @@
             wanderersPresent.clear();
         }
 
-        // Patch 1b — bots are NOT deleted from Firebase here.
         function removeBotsFromRoom() {
             clearBotTimers();
             botScheduledRound = null;
@@ -1338,7 +1332,7 @@
             if (botScheduledRound === round) return;
             clearBotTimers();
             botScheduledRound = round;
-            const botsToSchedule = [...activeBotNamesThisRound];
+            const botsToSchedule = [...activeBotNamesThisRound].slice(0, MAX_BOTS_PER_ROUND);
             if (!botsToSchedule.length) return;
             const remaining = Math.max(3, getRemainingSeconds(phaseDeadline));
             const windowSec = Math.max(4, Math.min(22, remaining - 4));
@@ -1410,7 +1404,7 @@
         }
 
         // ============================================================
-        //  Patch 3 — Guarantee bots pick every round
+        //  ensureBotsPickedForRound — hard capped at MAX_BOTS_PER_ROUND
         // ============================================================
         async function ensureBotsPickedForRound(round) {
             if (!gameRef || !database) return;
@@ -1421,8 +1415,13 @@
             try {
                 const snap = await gameRef.child('players').once('value');
                 const players = snap.val() || {};
-                const botNames = Object.keys(players)
+                let botNames = Object.keys(players)
                     .filter(n => players[n] && (players[n].isBot || players[n].isWanderer));
+
+                // HARD CAP — never more than MAX_BOTS_PER_ROUND pick per round
+                if (botNames.length > MAX_BOTS_PER_ROUND) {
+                    botNames = shuffleArray(botNames).slice(0, MAX_BOTS_PER_ROUND);
+                }
 
                 for (const botName of botNames) {
                     const p = players[botName];
@@ -1440,9 +1439,6 @@
             } catch (e) {}
         }
 
-        // ============================================================
-        //  Patch 2 — Fast-forward a stuck round on join
-        // ============================================================
         async function fastForwardStuckRoom(generation) {
             if (!gameRef || !database) return;
             if (generation != null && generation !== roomConnectionGeneration) return;
@@ -1513,7 +1509,7 @@
         }
 
         // ============================================================
-        //  Patch 7 — Background keeper for BOTH rooms
+        //  maintainBotRooms — trims to max, tops up to min, keeps both rooms alive
         // ============================================================
         async function maintainBotRooms() {
             if (!database || !currentUser) return;
@@ -1524,13 +1520,25 @@
                 try {
                     const pSnap = await database.ref(`rooms/${room}/players`).once('value');
                     const players = pSnap.val() || {};
-                    const bots = Object.keys(players)
+                    let bots = Object.keys(players)
                         .filter(n => players[n] && (players[n].isBot || players[n].isWanderer));
 
+                    // Trim excess first
+                    if (bots.length > MAX_BOTS_PER_ROUND) {
+                        const shuffled = shuffleArray(bots);
+                        const excess = shuffled.slice(MAX_BOTS_PER_ROUND);
+                        for (const name of excess) {
+                            await database.ref(`rooms/${room}/players/${name}`).remove().catch(() => {});
+                        }
+                        bots = shuffled.slice(0, MAX_BOTS_PER_ROUND);
+                    }
+
+                    // Top up if below minimum
                     if (bots.length < MIN_BOTS_PER_ROUND) {
-                        const needed = Math.min(MAX_BOTS_PER_ROUND, MIN_BOTS_PER_ROUND) - bots.length;
-                        const picks = shuffleArray(BOT_NAMES.filter(n => !bots.includes(n))).slice(0, needed);
-                        for (const name of picks) {
+                        const target = MIN_BOTS_PER_ROUND + Math.floor(Math.random() * (MAX_BOTS_PER_ROUND - MIN_BOTS_PER_ROUND + 1));
+                        const needed = target - bots.length;
+                        const fresh = shuffleArray(BOT_NAMES.filter(n => !bots.includes(n))).slice(0, needed);
+                        for (const name of fresh) {
                             await database.ref(`rooms/${room}/players/${name}`).set({
                                 name, pick: null, picks: [], bet,
                                 ready: false, betDeducted: false, betSources: {},
@@ -1559,7 +1567,7 @@
                             }).catch(() => {});
                         }
                     }
-                } catch (e) { /* silent — one room failing shouldn't block the other */ }
+                } catch (e) { /* one room failing shouldn't block the other */ }
             }
         }
 
@@ -1884,7 +1892,6 @@
             if (!isFinite(n) || n <= 0 || n > 200) return;
             if (!Array.isArray(winners)) return;
 
-            // Patch 5b — force-recover if a previous animation is stuck
             if (ballAnimationPlaying) {
                 const started = window._ballAnimStartedAt || 0;
                 if (!started || (Date.now() - started) > 12000) {
@@ -1961,7 +1968,6 @@
                 displayedCardRound = null;
                 clearCardFetchRetry();
                 if (cardFallbackTimer) { clearTimeout(cardFallbackTimer); cardFallbackTimer = null; }
-                // Patch 5a — reset stuck animation flag
                 if (ballAnimationPlaying) {
                     ballAnimationPlaying = false;
                     window._ballAnimStartedAt = null;
@@ -2597,7 +2603,6 @@
             if (currentUser) {
                 listenNotifications(currentUser);
                 listenStickyBroadcast();
-                // Patch 7 — start background room keeper
                 maintainBotRooms().catch(() => {});
                 if (botRoomKeeperInterval) clearInterval(botRoomKeeperInterval);
                 botRoomKeeperInterval = setInterval(() => {
@@ -2749,7 +2754,6 @@
             }
             Object.keys(transactionListeners).forEach(key => { try { database.ref('transactions/' + key).off(); } catch (e) {} delete transactionListeners[key]; });
             stopNetworkListener(); stopNotificationListener(); stopStickyBroadcastListener();
-            // Patch 7 — clear room keeper interval
             if (botRoomKeeperInterval) { clearInterval(botRoomKeeperInterval); botRoomKeeperInterval = null; }
             clearTransactionPopups();
             clearAllLocalData(); clearLocalRoundData();
@@ -3077,7 +3081,6 @@
                 if (!Number.isInteger(num) || num < 1 || num > 200) return;
                 if (gamePausedBySticky) { updateStatus('⏸ Game is paused by admin. Please wait.'); return; }
 
-                // Patch 6 — don't block single player; kick a fast-forward instead
                 if (engineState.activePlayersCount <= 1) {
                     fastForwardStuckRoom(roomConnectionGeneration).catch(() => {});
                     addBotsToRoom().catch(() => {});
@@ -3370,7 +3373,6 @@
                     });
                 }
                 const data = snapshot.val() || {};
-                // Patch 8 — paint immediately, then fix stuck state in background
                 syncGameState(data);
                 markSyncReceived();
                 fastForwardStuckRoom(generation).catch(() => {});
@@ -3470,7 +3472,6 @@
                 stopResultsCountdown();
                 if (!phaseDeadline) ensureSelectionDeadline();
                 if (!isTimerRunning && !gamePausedBySticky) startTimer();
-                // Patch 6 — only show waiting modal if no bots AND we're alone
                 const botCount = playerNames.filter(n => {
                     const p = players[n];
                     return p && (p.isBot || p.isWanderer);
@@ -3493,7 +3494,6 @@
             applyCardState();
             updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
             lastRoomSyncAt = Date.now();
-            // Patch 3 — bots persist + guaranteed to pick
             if (currentUser && gameRef && BOTS_ENABLED && !gamePausedBySticky) {
                 if (botsAddedForGeneration !== roomConnectionGeneration) {
                     botsAddedForGeneration = roomConnectionGeneration;
@@ -3753,7 +3753,6 @@
                         renderNumberPicker(); updatePlayerList();
                         botsReadyForGeneration = -1;
                         if (gamePausedBySticky) return;
-                        // Patch 4 — bots repick immediately for the new round
                         addBotsToRoom().then(() => {
                             ensureBotsPickedForRound(Number(engineState.roundNumber) || 1);
                             refreshWanderers().catch(() => {});
