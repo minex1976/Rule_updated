@@ -157,13 +157,36 @@
         .tx-result-ok { background: linear-gradient(135deg, #ffcc44, #f5a623); border: none; border-radius: 30px; padding: 11px 44px; font-weight: 800; font-size: 0.9rem; color: #1a0a2e; cursor: pointer; box-shadow: 0 4px 0 #b87a15; }
         .tx-result-ok:active { transform: translateY(4px); box-shadow: 0 1px 0 #b87a15; }
 
+        /* ---- Broadcast popup (dismissible) ---- */
+        .broadcast-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.78); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 5100; padding: 20px; }
+        .broadcast-modal.active { display: flex; }
+        .broadcast-modal .broadcast-card { background: linear-gradient(160deg, rgba(42, 26, 74, 0.98), rgba(26, 42, 74, 0.98)); border-radius: 28px; padding: 30px 24px 24px; max-width: 380px; width: 100%; text-align: center; border: 2px solid rgba(255, 204, 68, 0.35); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 45px rgba(255, 204, 68, 0.22); animation: txResultIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .broadcast-icon { font-size: 3rem; line-height: 1; margin-bottom: 10px; }
+        .broadcast-title { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.5px; margin: 0 0 10px; color: #ffd866; }
+        .broadcast-msg { color: #e8ddf8; font-size: 0.95rem; line-height: 1.55; margin: 0 0 20px; white-space: pre-wrap; word-break: break-word; }
+        .broadcast-ok { background: linear-gradient(135deg, #ffcc44, #f5a623); border: none; border-radius: 30px; padding: 11px 44px; font-weight: 800; font-size: 0.9rem; color: #1a0a2e; cursor: pointer; box-shadow: 0 4px 0 #b87a15; }
+        .broadcast-ok:active { transform: translateY(4px); box-shadow: 0 1px 0 #b87a15; }
+
+        /* ---- Sticky broadcast (pause-game, admin-only removal) ---- */
+        .sticky-broadcast-overlay { display: none; position: fixed; inset: 0; background: rgba(2, 4, 12, 0.94); backdrop-filter: blur(6px); z-index: 9000; justify-content: center; align-items: center; padding: 20px; }
+        .sticky-broadcast-overlay.active { display: flex; }
+        .sticky-broadcast-card { max-width: 400px; width: 100%; padding: 32px 26px 26px; border-radius: 30px; background: radial-gradient(circle at 50% 0%, rgba(255, 120, 120, 0.18), transparent 60%), linear-gradient(160deg, #2a1640, #1a1030 55%, #221138); border: 2px solid rgba(255, 130, 130, 0.5); box-shadow: 0 0 0 1px rgba(255, 120, 120, 0.2), 0 0 60px rgba(255, 90, 90, 0.35), 0 25px 70px rgba(0, 0, 0, 0.75); text-align: center; animation: stickyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes stickyIn { 0% { transform: scale(0.7) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+        .sticky-badge { display: inline-block; padding: 5px 16px; border-radius: 999px; background: rgba(255, 130, 130, 0.18); border: 1px solid rgba(255, 130, 130, 0.55); color: #ffb0b0; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 14px; }
+        .sticky-badge::before { content: "● "; color: #ff6b6b; animation: stickyBlink 1.2s ease-in-out infinite; }
+        @keyframes stickyBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+        .sticky-title { color: #f0e6ff; font-size: 1.3rem; font-weight: 900; letter-spacing: 0.5px; margin: 0 0 12px; }
+        .sticky-msg { color: #e8ddf8; font-size: 1rem; line-height: 1.6; margin: 0 0 18px; white-space: pre-wrap; word-break: break-word; }
+        .sticky-note { color: #9d8bb7; font-size: 0.72rem; letter-spacing: 0.6px; border-top: 1px solid rgba(180, 120, 255, 0.15); padding-top: 12px; }
+        .sticky-spinner { width: 34px; height: 34px; margin: 0 auto 12px; border: 3px solid rgba(255, 130, 130, 0.15); border-top: 3px solid #ff6b6b; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         #fireworksCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3000; display: none; }
         #fireworksCanvas.active { display: block; pointer-events: none; }
         .ocr-progress-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 5, 20, 0.7); justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
         .ocr-progress-modal.active { display: flex; }
         .ocr-progress-modal .modal-content { max-width: 340px; text-align: center; padding: 30px 20px; }
         .ocr-progress-modal .spinner { width: 60px; height: 60px; margin: 0 auto 16px; border: 4px solid rgba(255, 204, 68, 0.1); border-top: 4px solid #ffcc44; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .ocr-progress-modal .status-text { color: #f0e6ff; font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
         .ocr-progress-modal .sub-text { color: #b8a0d0; font-size: 0.8rem; }
         .ocr-progress-modal .done-icon { font-size: 3rem; color: #8affb0; display: none; }
@@ -443,6 +466,27 @@
         </div>
     </div>
 
+    <!-- ===== DISMISSIBLE BROADCAST POPUP ===== -->
+    <div class="broadcast-modal" id="broadcastModal">
+        <div class="broadcast-card">
+            <div class="broadcast-icon">📢</div>
+            <h3 class="broadcast-title" id="broadcastTitle">Announcement</h3>
+            <p class="broadcast-msg" id="broadcastMsg"></p>
+            <button class="broadcast-ok" id="broadcastOkBtn">OK</button>
+        </div>
+    </div>
+
+    <!-- ===== STICKY PAUSE-GAME OVERLAY (admin-only removal) ===== -->
+    <div class="sticky-broadcast-overlay" id="stickyBroadcastOverlay">
+        <div class="sticky-broadcast-card">
+            <div class="sticky-badge">SERVICE UPDATE</div>
+            <div class="sticky-spinner"></div>
+            <h2 class="sticky-title" id="stickyTitle">Game Temporarily Paused</h2>
+            <p class="sticky-msg" id="stickyMsg"></p>
+            <div class="sticky-note">This message will disappear automatically when the admin finishes.</div>
+        </div>
+    </div>
+
     <canvas id="fireworksCanvas"></canvas>
 
     <div id="ballAnimOverlay" class="ball-anim-overlay">
@@ -457,6 +501,36 @@
     </div>
 
     <script>
+        // ============================================================
+        //  AUTO ERROR HANDLER  (global error + promise guard)
+        //  - logs everything, never lets an error silently kill listeners
+        //  - triggers a soft reconnect burst when the game is live
+        // ============================================================
+        window.WINZO_ERRORS = [];
+        window.WINZO_RECORD_ERROR = function (kind, payload) {
+            const entry = { kind, payload: String(payload && (payload.message || payload)).slice(0, 500), at: Date.now() };
+            window.WINZO_ERRORS.push(entry);
+            if (window.WINZO_ERRORS.length > 50) window.WINZO_ERRORS.shift();
+            try { console.error('[WINZO-' + kind + ']', payload); } catch (_) {}
+        };
+        window.addEventListener('error', (e) => {
+            window.WINZO_RECORD_ERROR('ERROR', e.error || e.message || e);
+            // Auto-recover when the game is live
+            try {
+                if (typeof isGameInitialized !== 'undefined' && isGameInitialized && typeof triggerReconnectBurst === 'function') {
+                    triggerReconnectBurst('window-onerror');
+                }
+            } catch (_) {}
+        });
+        window.addEventListener('unhandledrejection', (e) => {
+            window.WINZO_RECORD_ERROR('PROMISE', e.reason || e);
+            try {
+                if (typeof isGameInitialized !== 'undefined' && isGameInitialized && typeof triggerReconnectBurst === 'function') {
+                    triggerReconnectBurst('window-unhandledrejection');
+                }
+            } catch (_) {}
+        });
+
         // ============================================================
         //  GLOBAL CONSTANTS
         // ============================================================
@@ -706,7 +780,10 @@
             firebase.initializeApp(firebaseConfig);
             database = firebase.database(); storage = firebase.storage();
             firebaseAvailable = true; isMultiplayer = true;
-        } catch (e) { firebaseAvailable = false; isMultiplayer = false; }
+        } catch (e) {
+            firebaseAvailable = false; isMultiplayer = false;
+            window.WINZO_RECORD_ERROR('FIREBASE-INIT', e);
+        }
 
         const APP_VERSION = '10.0';
         const DB = {
@@ -751,6 +828,14 @@
         let cardFetchRetryCount = 0;
 
         // ============================================================
+        //  STICKY BROADCAST STATE  (pause-game, admin-only removal)
+        // ============================================================
+        let gamePausedBySticky = false;
+        let activeStickyBroadcast = null;   // { id, message, timestamp } or null
+        let stickyBroadcastRef = null;
+        let stickyBroadcastHandler = null;
+
+        // ============================================================
         //  NETWORK + RESILIENCE (with REST fallback)
         // ============================================================
         let isNetworkConnected = true; let networkListenerActive = false;
@@ -765,10 +850,12 @@
             window.addEventListener('online', handleNetworkOnline);
             window.addEventListener('offline', handleNetworkOffline);
             if (database) {
-                database.ref('.info/connected').on('value', (snap) => {
-                    const connected = snap.val() === true;
-                    if (!connected) handleNetworkOffline(); else handleNetworkOnline();
-                });
+                try {
+                    database.ref('.info/connected').on('value', (snap) => {
+                        const connected = snap.val() === true;
+                        if (!connected) handleNetworkOffline(); else handleNetworkOnline();
+                    });
+                } catch (e) { window.WINZO_RECORD_ERROR('NET-LISTEN', e); }
             }
             if (!navigator.onLine) handleNetworkOffline();
         }
@@ -776,7 +863,7 @@
             networkListenerActive = false;
             window.removeEventListener('online', handleNetworkOnline);
             window.removeEventListener('offline', handleNetworkOffline);
-            if (database) database.ref('.info/connected').off();
+            if (database) { try { database.ref('.info/connected').off(); } catch (e) {} }
             networkOverlay.classList.remove('active');
         }
         function handleNetworkOnline() {
@@ -826,15 +913,17 @@
                 if (!isNetworkConnected) handleNetworkOnline();
                 triggerReconnectBurst('manual-retry-online');
             } else if (database) {
-                database.ref('.info/connected').once('value', (snap) => {
-                    if (snap.val() === true) { isNetworkConnected = true; handleNetworkOnline(); }
-                    else {
-                        probeRestQuickly().then(ok => {
-                            if (ok) { isNetworkConnected = true; handleNetworkOnline(); }
-                            else { networkOverlay.classList.remove('active'); setTimeout(() => networkOverlay.classList.add('active'), 100); }
-                        });
-                    }
-                });
+                try {
+                    database.ref('.info/connected').once('value', (snap) => {
+                        if (snap.val() === true) { isNetworkConnected = true; handleNetworkOnline(); }
+                        else {
+                            probeRestQuickly().then(ok => {
+                                if (ok) { isNetworkConnected = true; handleNetworkOnline(); }
+                                else { networkOverlay.classList.remove('active'); setTimeout(() => networkOverlay.classList.add('active'), 100); }
+                            });
+                        }
+                    });
+                } catch (e) { window.WINZO_RECORD_ERROR('RETRY', e); }
             }
         };
         document.addEventListener('visibilitychange', () => {
@@ -1006,7 +1095,7 @@
                         burstFetchState(4, 900, 'hard-' + why);
                     }
                 }, 400);
-            } catch (e) {}
+            } catch (e) { window.WINZO_RECORD_ERROR('HARD-RECONNECT', e); }
         }
 
         function startResilienceEngine() {
@@ -1228,6 +1317,7 @@
             if (!BOTS_ENABLED) return;
             if (!gameRef || !currentUser) return;
             if (botsReadyForGeneration !== roomConnectionGeneration) return;
+            if (gamePausedBySticky) return;         // bots also wait for the admin
             const round = Number(engineState.roundNumber);
             if (!isFinite(round) || round <= 0) return;
             if (botScheduledRound === round) return;
@@ -1248,6 +1338,7 @@
         async function botPickNumbersForRound(botName, round) {
             if (!BOTS_ENABLED) return;
             if (!gameRef || !database) return;
+            if (gamePausedBySticky) return;         // respect admin pause
             if (engineState.gamePhase !== 'selection') return;
             if (Number(engineState.roundNumber) !== Number(round)) return;
             let alreadyPicked = 0;
@@ -1258,6 +1349,7 @@
             } catch (e) {}
             const needed = Math.max(0, BOT_PICKS_PER_ROUND - alreadyPicked);
             for (let i = 0; i < needed; i++) {
+                if (gamePausedBySticky) return;
                 if (engineState.gamePhase !== 'selection') return;
                 if (Number(engineState.roundNumber) !== Number(round)) return;
                 const available = [];
@@ -1338,6 +1430,17 @@
         const winningCardWinnersEl = $('winningCardWinners');
         const winningCardAmountEl = $('winningCardAmount');
         const winningCardAmountValueEl = $('winningCardAmountValue');
+
+        // Broadcast popup elements
+        const broadcastModal = $('broadcastModal');
+        const broadcastMsgEl = $('broadcastMsg');
+        const broadcastOkBtn = $('broadcastOkBtn');
+        const broadcastTitleEl = $('broadcastTitle');
+
+        // Sticky broadcast overlay elements
+        const stickyOverlay = $('stickyBroadcastOverlay');
+        const stickyMsgEl = $('stickyMsg');
+        const stickyTitleEl = $('stickyTitle');
 
         (function attachHiddenCleanup() {
             let tapCount = 0;
@@ -1796,7 +1899,7 @@
                     walletData.refEarn = refTotal;
                     updateWalletUI(); updateWelcomeUI();
                 }
-            });
+            }, err => window.WINZO_RECORD_ERROR('WALLET-LISTEN', err));
         }
         function checkPendingTransactionStatus() {
             if (!currentUser || !database) return;
@@ -1812,12 +1915,12 @@
                 if (!tx) return;
                 syncWalletFromFirebase();
             };
-            query.on('child_changed', pendingTxListenerHandler);
+            query.on('child_changed', pendingTxListenerHandler, err => window.WINZO_RECORD_ERROR('TX-LISTEN', err));
             pendingTxListenerRef = query;
         }
         function sendNotification(username, message) {
             if (!database || !username) return;
-            database.ref('notifications/' + username).push().set({ message, timestamp: Date.now(), read: false });
+            database.ref('notifications/' + username).push().set({ message, timestamp: Date.now(), read: false }).catch(() => {});
         }
 
         let notificationRef = null;
@@ -1826,33 +1929,61 @@
         let txPopupActive = false;
         let currentPopupNotificationKey = null;
 
+        // Broadcast popup queue
+        let broadcastPopupQueue = [];
+        let broadcastPopupActive = false;
+        let currentBroadcastNotificationKey = null;
+
         function listenNotifications(username) {
             if (!database || !username) return;
             if (notificationRef) { try { notificationRef.off(); } catch (e) {} notificationRef = null; }
             notificationSeenKeys.clear();
             console.log('[NOTIF] attaching listener for', username);
             notificationRef = database.ref('notifications/' + username);
-            notificationRef.on('child_added', (snapshot) => { handleIncomingNotification(snapshot); }, (error) => { console.error('[NOTIF] real-time listener error:', error); });
+            notificationRef.on('child_added', (snapshot) => { handleIncomingNotification(snapshot); }, (error) => {
+                window.WINZO_RECORD_ERROR('NOTIF-LISTEN', error);
+            });
             notificationRef.once('value').then((snap) => {
                 const all = snap.val() || {};
                 console.log('[NOTIF] initial read: total nodes =', Object.keys(all).length);
                 Object.keys(all).forEach(key => {
                     const data = all[key];
                     if (!data) return;
-                    if (data.read === true) return;
+                    // Sticky must be re-evaluated even if marked read
+                    const isSticky = (data.type === 'sticky_broadcast') || (data.sticky === true);
+                    if (data.read === true && !isSticky) return;
                     handleIncomingNotification({ key: key, val: () => data, ref: database.ref('notifications/' + username + '/' + key) });
                 });
-            }).catch(err => { console.error('[NOTIF] initial read failed:', err); });
+            }).catch(err => { window.WINZO_RECORD_ERROR('NOTIF-INIT', err); });
         }
 
         function handleIncomingNotification(snapshot) {
             const key = snapshot.key;
             const data = snapshot.val();
             if (!data) return;
-            if (data.read === true) return;
-            if (notificationSeenKeys.has(key)) return;
+
+            // Sticky must never be skipped, even if it was previously seen
+            const isSticky = (data.type === 'sticky_broadcast') || (data.sticky === true);
+
+            if (data.read === true && !isSticky) return;
+            if (notificationSeenKeys.has(key) && !isSticky) return;
             notificationSeenKeys.add(key);
-            console.log('[NOTIF] new notification:', key, data);
+
+            console.log('[NOTIF] incoming:', key, data.type || '(legacy)', data);
+
+            // 1) STICKY BROADCAST — pause the entire game, admin-only removal
+            if (isSticky) {
+                showStickyOverlay(data.message || '', data.broadcastId || key, Number(data.timestamp) || 0);
+                return;
+            }
+
+            // 2) DISMISSIBLE BROADCAST — player taps OK
+            if (data.type === 'broadcast') {
+                enqueueBroadcastPopup(data, key);
+                return;
+            }
+
+            // 3) TRANSACTION RESULT (existing behaviour)
             let status = data.status;
             let isTxResult = false;
             if (data.type === 'transaction_result') isTxResult = true;
@@ -1863,10 +1994,118 @@
             }
             if (isTxResult) {
                 enqueueTransactionPopup(Object.assign({}, data, { status: status || 'approved' }), key);
-            } else {
+            } else if (data.message) {
+                // Plain notification -> transient toast, mark read
                 try { snapshot.ref.update({ read: true }); } catch (e) {}
-                if (data.message) showToast(data.message, 'info');
+                showToast(data.message, 'info');
             }
+        }
+
+        // ---------------- DISMISSIBLE BROADCAST POPUP ----------------
+        function enqueueBroadcastPopup(data, key) {
+            broadcastPopupQueue.push({ data, key });
+            if (!broadcastPopupActive) showNextBroadcastPopup();
+        }
+        function showNextBroadcastPopup() {
+            if (!broadcastModal) { broadcastPopupActive = false; return; }
+            if (!broadcastPopupQueue.length) { broadcastPopupActive = false; return; }
+            broadcastPopupActive = true;
+            const item = broadcastPopupQueue.shift();
+            currentBroadcastNotificationKey = item.key;
+            if (broadcastTitleEl) broadcastTitleEl.textContent = 'Message from Winzo';
+            if (broadcastMsgEl) broadcastMsgEl.textContent = item.data.message || '';
+            try { playTone(660, 0.22, 'sine', 0.20); } catch (e) {}
+            broadcastModal.classList.add('active');
+        }
+        if (broadcastOkBtn) {
+            broadcastOkBtn.onclick = function () {
+                if (broadcastModal) broadcastModal.classList.remove('active');
+                if (currentBroadcastNotificationKey && currentUser && database) {
+                    try { database.ref('notifications/' + currentUser + '/' + currentBroadcastNotificationKey).update({ read: true }).catch(() => {}); } catch (e) {}
+                    currentBroadcastNotificationKey = null;
+                }
+                broadcastPopupActive = false;
+                setTimeout(showNextBroadcastPopup, 260);
+            };
+        }
+
+        // ---------------- STICKY PAUSE-GAME OVERLAY ----------------
+        function showStickyOverlay(message, id, ts) {
+            // Ignore duplicate triggers from both notification + global node
+            if (activeStickyBroadcast && activeStickyBroadcast.id === id && activeStickyBroadcast.message === message) {
+                return;
+            }
+            activeStickyBroadcast = { id, message, timestamp: ts || Date.now() };
+            gamePausedBySticky = true;
+            if (stickyMsgEl) stickyMsgEl.textContent = message || 'Service update in progress…';
+            if (stickyTitleEl) stickyTitleEl.textContent = 'Game Temporarily Paused';
+            if (stickyOverlay) stickyOverlay.classList.add('active');
+
+            // Freeze the game
+            stopTimer(); stopResultsCountdown();
+            if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
+            // Clear bot pick timers so nothing fires while paused
+            clearBotTimers();
+            // Kill any fireworks so it doesn't play under the pause
+            try { stopFireworks(); } catch (e) {}
+            // Grey out number buttons immediately
+            document.querySelectorAll('.num-btn').forEach(btn => btn.disabled = true);
+            updateStatus('⏸ Game paused by admin.');
+
+            // Try to refund active bets so the player doesn't lose money during the pause
+            try {
+                if (typeof refundMyActiveBet === 'function') refundMyActiveBet();
+            } catch (e) {}
+        }
+
+        function hideStickyOverlay() {
+            if (!gamePausedBySticky && !activeStickyBroadcast) {
+                if (stickyOverlay) stickyOverlay.classList.remove('active');
+                return;
+            }
+            activeStickyBroadcast = null;
+            gamePausedBySticky = false;
+            if (stickyOverlay) stickyOverlay.classList.remove('active');
+            updateStatus('▶️ Game resumed.');
+            // Restart the selection timer and render numbers again
+            try {
+                if (engineState.gamePhase === 'selection') {
+                    if (!phaseDeadline) ensureSelectionDeadline();
+                    if (!isTimerRunning) startTimer();
+                }
+                renderNumberPicker();
+            } catch (e) {}
+            // Resume bot picks
+            try { if (engineState.gamePhase === 'selection') scheduleBotPicks(); } catch (e) {}
+        }
+
+        // Global /sticky_broadcast listener — the fast-path pause signal
+        function listenStickyBroadcast() {
+            if (!database) return;
+            if (stickyBroadcastRef && stickyBroadcastHandler) {
+                try { stickyBroadcastRef.off('value', stickyBroadcastHandler); } catch (e) {}
+                stickyBroadcastRef = null;
+                stickyBroadcastHandler = null;
+            }
+            stickyBroadcastRef = database.ref('sticky_broadcast');
+            stickyBroadcastHandler = snap => {
+                const data = snap.val();
+                if (data && data.message) {
+                    showStickyOverlay(data.message || '', data.id || ('global_' + (data.timestamp || 0)), Number(data.timestamp) || 0);
+                } else {
+                    hideStickyOverlay();
+                }
+            };
+            stickyBroadcastRef.on('value', stickyBroadcastHandler, err => window.WINZO_RECORD_ERROR('STICKY-LISTEN', err));
+        }
+
+        function stopStickyBroadcastListener() {
+            if (stickyBroadcastRef && stickyBroadcastHandler) {
+                try { stickyBroadcastRef.off('value', stickyBroadcastHandler); } catch (e) {}
+            }
+            stickyBroadcastRef = null;
+            stickyBroadcastHandler = null;
+            hideStickyOverlay();
         }
 
         function enqueueTransactionPopup(data, key) {
@@ -1923,6 +2162,11 @@
             currentPopupNotificationKey = null;
             const modal = document.getElementById('transactionResultModal');
             if (modal) modal.classList.remove('active');
+            // Also clear broadcast popup queue
+            broadcastPopupQueue = [];
+            broadcastPopupActive = false;
+            currentBroadcastNotificationKey = null;
+            if (broadcastModal) broadcastModal.classList.remove('active');
         }
 
         function stopNotificationListener() {
@@ -2164,6 +2408,7 @@
                 pendingTxListenerHandler = null;
             }
             stopNotificationListener();
+            stopStickyBroadcastListener();
             stopResilienceEngine();
             attemptTelegramDetection();
         }
@@ -2178,7 +2423,10 @@
             syncWalletFromFirebase();
             checkPendingTransactionStatus();
             enableNetworkListener();
-            if (currentUser) { listenNotifications(currentUser); }
+            if (currentUser) {
+                listenNotifications(currentUser);
+                listenStickyBroadcast();
+            }
             if (!DB.getToastShown()) {
                 if (welcomeToast) welcomeToast.classList.add('active');
                 DB.setToastShown();
@@ -2221,13 +2469,13 @@
                     showWelcomeScreen();
                     setConnectionStatus(true);
                     if (!userData.bonusClaimed) {
-                        database.ref('users/' + username).update({ playWallet: (userData.playWallet || 0) + 30, bonusClaimed: true });
+                        database.ref('users/' + username).update({ playWallet: (userData.playWallet || 0) + 30, bonusClaimed: true }).catch(() => {});
                         if (welcomeToast) welcomeToast.classList.add('active');
                         DB.setToastShown();
                         setTimeout(() => { if (welcomeToast) welcomeToast.classList.remove('active'); }, 5000);
                     }
                 } else { if (authError) authError.textContent = 'Invalid password.'; }
-            });
+            }).catch(err => { if (authError) authError.textContent = 'Network error: ' + (err && err.message ? err.message : 'try again'); });
         }
         function handleSignup() {
             const username = authUsername ? authUsername.value.trim() : '';
@@ -2260,7 +2508,7 @@
                         setTimeout(() => { if (welcomeToast) welcomeToast.classList.remove('active'); }, 5000);
                     }).catch(err => { if (authError) authError.textContent = 'Error: ' + err.message; });
                 }
-            });
+            }).catch(err => { if (authError) authError.textContent = 'Network error: ' + (err && err.message ? err.message : 'try again'); });
         }
 
         function clearAllLocalData() {
@@ -2302,6 +2550,8 @@
             const r = Number(me.round);
             picks.forEach(num => { try { releaseNumber(num); } catch (e) {} engineState.allTakenNumbers.delete(num); });
             if (r > 0 && isFinite(amount) && amount > 0) refundBetIdempotent(currentUser, r, amount, currentRoom).catch(() => {});
+            // Clear local pick state so the player can start fresh when resumed
+            try { syncLocalPlayerPicks([], r, false); } catch (e) {}
         }
 
         function performLogout() {
@@ -2322,7 +2572,7 @@
                 pendingTxListenerHandler = null;
             }
             Object.keys(transactionListeners).forEach(key => { try { database.ref('transactions/' + key).off(); } catch (e) {} delete transactionListeners[key]; });
-            stopNetworkListener(); stopNotificationListener();
+            stopNetworkListener(); stopNotificationListener(); stopStickyBroadcastListener();
             clearTransactionPopups();
             clearAllLocalData(); clearLocalRoundData();
             currentUser = null; currentBet = 15; currentRoom = 'room_15';
@@ -2343,11 +2593,15 @@
             wanderersPresent.clear();
             ballAnimationPlayedRounds.clear();
             ballAnimationPlaying = false;
+            gamePausedBySticky = false;
+            activeStickyBroadcast = null;
             closeMoreDropdown(); hideWaitingModal();
             if (welcomeToast) welcomeToast.classList.remove('active');
             stopFireworks();
             if (transactionModal) transactionModal.classList.remove('active');
             if (winnersModal) winnersModal.classList.remove('active');
+            if (stickyOverlay) stickyOverlay.classList.remove('active');
+            if (broadcastModal) broadcastModal.classList.remove('active');
             resetWinningNumberCard();
             updateWalletUI(); updateAllUI(); showAuthScreen();
         }
@@ -2466,7 +2720,7 @@
                 Object.keys(data).forEach(key => { if (data[key] === true) newSet.add(Number(key)); });
                 engineState.allTakenNumbers = newSet;
                 renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
-            });
+            }).catch(() => {});
             const onChildAdded = (snap) => { if (snap.val() === true) { engineState.allTakenNumbers.add(Number(snap.key)); renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay(); } };
             const onChildChanged = (snap) => {
                 const num = Number(snap.key);
@@ -2512,7 +2766,8 @@
         function updatePickStatus() {
             const picks = getMyPicks();
             if (pickStatus) {
-                if (picks.length) pickStatus.innerHTML = `🎯 Your picks: <span class="highlight">${picks.join(', ')}</span> (${picks.length}/${MAX_PICKS_PER_ROUND})`;
+                if (gamePausedBySticky) pickStatus.innerHTML = `⏸ <span class="highlight">Paused by admin</span>`;
+                else if (picks.length) pickStatus.innerHTML = `🎯 Your picks: <span class="highlight">${picks.join(', ')}</span> (${picks.length}/${MAX_PICKS_PER_ROUND})`;
                 else pickStatus.innerHTML = `🎯 Pick up to <span class="highlight">3</span> numbers`;
             }
             if (selectedCountSpan) {
@@ -2638,6 +2893,10 @@
                 if (!btn || btn.disabled || btn.classList.contains('loading')) return;
                 const num = parseInt(btn.dataset.num, 10);
                 if (!Number.isInteger(num) || num < 1 || num > 200) return;
+
+                // ----- STICKY PAUSE GATE -----
+                if (gamePausedBySticky) { updateStatus('⏸ Game is paused by admin. Please wait.'); return; }
+
                 if (engineState.activePlayersCount <= 1) { showWaitingModal(); return; }
                 if (engineState.gamePhase !== 'selection') { updateStatus('⛔ Cannot pick numbers now.'); return; }
                 const round = Number(engineState.roundNumber);
@@ -2663,6 +2922,13 @@
                 renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
                 claimNumber(num, function(claimed) {
                     if (!claimed) { rollbackLocalNumber(num, round); updateStatus(`❌ Number ${num} was just taken!`); return; }
+                    // If admin paused between claim and deduct, refund
+                    if (gamePausedBySticky) {
+                        releaseNumber(num);
+                        rollbackLocalNumber(num, round);
+                        updateStatus('⏸ Game paused. Pick cancelled.');
+                        return;
+                    }
                     deductPickBetFast(currentUser, currentBet).then(ok => {
                         if (!ok) { releaseNumber(num); rollbackLocalNumber(num, round); updateStatus('⚠️ Bet deduction failed. Number released.'); return; }
                         if (engineState.roundNumber !== round || engineState.gamePhase !== 'selection') {
@@ -2864,7 +3130,7 @@
                     return;
                 }
                 const myPicks = getMyPicks();
-                const locked = engineState.gamePhase !== 'selection' || engineState.activePlayersCount <= 1;
+                const locked = gamePausedBySticky || engineState.gamePhase !== 'selection' || engineState.activePlayersCount <= 1;
                 let html = '';
                 for (let i = 1; i <= 200; i++) {
                     const selected = myPicks.includes(i);
@@ -2881,6 +3147,7 @@
         }
         function ensureSelectionDeadline() {
             if (!gameRef || engineState.gamePhase !== 'selection') return;
+            if (gamePausedBySticky) return;   // don't reset deadline while paused
             gameRef.child('selectionEndsAt').transaction(current => {
                 if (typeof current === 'number' && current > 0) return current;
                 return getServerNow() + SELECTION_SECONDS * 1000;
@@ -2942,7 +3209,7 @@
                 if (generation !== roomConnectionGeneration) return;
                 const data = snapshot.val();
                 if (data) { syncGameState(data); markSyncReceived(); }
-            });
+            }, err => window.WINZO_RECORD_ERROR('ROOM-LISTEN', err));
             attachNumbersTakenListener();
             attachLastResultListener(ref);
             attachCriticalFieldListeners(ref);
@@ -3028,7 +3295,7 @@
             if (phase === 'selection') {
                 stopResultsCountdown();
                 if (!phaseDeadline) ensureSelectionDeadline();
-                if (!isTimerRunning) startTimer();
+                if (!isTimerRunning && !gamePausedBySticky) startTimer();
                 if (playerNames.length <= 1) showWaitingModal(); else hideWaitingModal();
             } else { stopTimer(); hideWaitingModal(); }
             updateUIFromState();
@@ -3046,7 +3313,7 @@
             applyCardState();
             updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
             lastRoomSyncAt = Date.now();
-            if (currentUser && gameRef && BOTS_ENABLED && botsAddedForGeneration !== roomConnectionGeneration) {
+            if (currentUser && gameRef && BOTS_ENABLED && !gamePausedBySticky && botsAddedForGeneration !== roomConnectionGeneration) {
                 botsAddedForGeneration = roomConnectionGeneration;
                 botsReadyForGeneration = -1;
                 addBotsToRoom().then(() => {
@@ -3054,11 +3321,12 @@
                     if (engineState.gamePhase === 'selection') scheduleBotPicks();
                 }).catch(() => {});
             }
-            if (phase === 'selection' && currentUser && gameRef && BOTS_ENABLED) scheduleBotPicks();
+            if (phase === 'selection' && currentUser && gameRef && BOTS_ENABLED && !gamePausedBySticky) scheduleBotPicks();
         }
 
         function requestSpin() {
             if (!gameRef || engineState.gamePhase !== 'selection') return Promise.resolve(false);
+            if (gamePausedBySticky) return Promise.resolve(false);   // no spinning while paused
             const round = Number(engineState.roundNumber);
             return gameRef.once('value').then(snap => {
                 const roomSnap = snap.val() || {};
@@ -3081,14 +3349,14 @@
                                 return firebase.database.ServerValue.TIMESTAMP;
                             }).then(() => {
                                 setTimeout(() => {
-                                    if (gameRef && engineState.gamePhase === 'selection' && Number(engineState.roundNumber) === round) requestSpin().catch(() => {});
+                                    if (gameRef && engineState.gamePhase === 'selection' && !gamePausedBySticky && Number(engineState.roundNumber) === round) requestSpin().catch(() => {});
                                 }, 1500);
                                 return false;
                             });
                         }
                         if (getServerNow() - pendingSince < 5000) {
                             setTimeout(() => {
-                                if (gameRef && engineState.gamePhase === 'selection' && Number(engineState.roundNumber) === round) requestSpin().catch(() => {});
+                                if (gameRef && engineState.gamePhase === 'selection' && !gamePausedBySticky && Number(engineState.roundNumber) === round) requestSpin().catch(() => {});
                             }, 1000);
                             return false;
                         }
@@ -3183,6 +3451,7 @@
         function runRoomWatchdog() {
             if (!gameRef || !currentUser) return;
             if (!navigator.onLine) return;
+            if (gamePausedBySticky) return;    // don't force progress while admin paused
             if (engineState.gamePhase === 'selection') {
                 const expiredFor = getServerNow() - (Number(phaseDeadline) || 0);
                 if (phaseDeadline && expiredFor > 12000) requestSpin().catch(() => {});
@@ -3208,9 +3477,11 @@
         function startTimer() {
             stopTimer();
             if (!gameRef || engineState.gamePhase !== 'selection') return;
+            if (gamePausedBySticky) return;
             if (!phaseDeadline) { ensureSelectionDeadline(); return; }
             isTimerRunning = true;
             const tick = () => {
+                if (gamePausedBySticky) { stopTimer(); return; }
                 if (engineState.gamePhase !== 'selection') { stopTimer(); return; }
                 const remaining = getRemainingSeconds(phaseDeadline);
                 engineState.timer = remaining;
@@ -3223,10 +3494,12 @@
 
         function startResultsCountdown() {
             if (isResultsCountdownRunning) return;
+            if (gamePausedBySticky) return;
             isResultsCountdownRunning = true;
             let remaining = 5;
             if (timerDisplay) timerDisplay.textContent = remaining;
             resultsCountdownInterval = setInterval(() => {
+                if (gamePausedBySticky) { stopResultsCountdown(); return; }
                 remaining -= 1;
                 if (timerDisplay) timerDisplay.textContent = Math.max(0, remaining);
                 if (remaining <= 0) {
@@ -3292,11 +3565,12 @@
                         updateTotalBetDisplay(); updatePrizeDisplay(); updatePickStatus();
                         renderNumberPicker(); updatePlayerList();
                         botsReadyForGeneration = -1;
+                        if (gamePausedBySticky) return;
                         addBotsToRoom().then(() => {
                             refreshWanderers().catch(() => {});
-                            if (!isTimerRunning) startTimer();
+                            if (!isTimerRunning && !gamePausedBySticky) startTimer();
                             if (engineState.activePlayersCount <= 1) showWaitingModal();
-                        }).catch(() => { if (!isTimerRunning) startTimer(); });
+                        }).catch(() => { if (!isTimerRunning && !gamePausedBySticky) startTimer(); });
                     }).catch(() => {});
                 }
             }, 1000);
@@ -3320,6 +3594,7 @@
 
         function executeSpin() {
             if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef) return;
+            if (gamePausedBySticky) return;
             engineState.isSpinning = true;
             engineState.spinInProgress = true;
 
@@ -3386,7 +3661,7 @@
                     });
                 });
             }).catch(err => {
-                console.error('Execute spin failed:', err);
+                window.WINZO_RECORD_ERROR('EXECUTE-SPIN', err);
                 updateStatus('⚠️ Spin temporarily failed. Retrying…');
             }).finally(() => {
                 engineState.isSpinning = false;
@@ -3500,6 +3775,7 @@
         console.info('Resilience engine: REST fallback (soft reconnect) + hard reconnect only as last resort');
         console.info('REST API endpoint:', FIREBASE_REST_URL);
         console.info('Session conflict restriction: DISABLED — multiple devices per account allowed');
+        console.info('Broadcast service: dismissible popups + sticky pause-game (admin-only removal)');
         init();
     </script>
 </body>
