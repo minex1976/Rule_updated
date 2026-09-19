@@ -525,6 +525,35 @@
         });
 
         // ============================================================
+        //  BOOT-LOOP DETECTOR
+        // ============================================================
+        (function detectBootLoop() {
+            try {
+                const now = Date.now();
+                const key = 'winzo_boot_times';
+                const raw = sessionStorage.getItem(key);
+                const times = raw ? JSON.parse(raw) : [];
+                const recent = times.filter(t => (now - t) < 60000);
+                recent.push(now);
+                sessionStorage.setItem(key, JSON.stringify(recent.slice(-10)));
+                if (recent.length >= 6) {
+                    console.warn('[BOOT-LOOP] detected ' + recent.length + ' reloads in 60s');
+                    try {
+                        localStorage.removeItem('bingo_current_user');
+                        localStorage.removeItem('bingo_saved_bet');
+                        sessionStorage.removeItem(key);
+                    } catch (_) {}
+                    setTimeout(() => {
+                        const banner = document.createElement('div');
+                        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#3b1717;color:#ffb0b0;padding:10px;text-align:center;font-family:sans-serif;z-index:999999;font-size:12px;';
+                        banner.textContent = '⚠️ Multiple reloads detected. State cleared. Reload to continue.';
+                        document.body.appendChild(banner);
+                    }, 500);
+                }
+            } catch (_) {}
+        })();
+
+        // ============================================================
         //  GLOBAL CONSTANTS
         // ============================================================
         const SERVICE_FEE_RATE = 0.20;
@@ -1181,10 +1210,6 @@
         const MIN_BOTS_PER_ROUND = 5;
         const MAX_BOTS_PER_ROUND = 10;
 
-        // Wanderers have been removed. WANDERER_NAMES and BOT_NAMES overlapped,
-        // causing duplicate entries and unpredictable bot counts. All bot-like
-        // players now come from BOT_NAMES alone.
-
         let activeBotNamesThisRound = new Set();
         let botScheduledRound = null;
         let botPickTimers = [];
@@ -1198,8 +1223,6 @@
             botPickTimers = [];
         }
 
-        // Target bot count for a given round. Deterministic so every client agrees.
-        // Cycles 5, 6, 7, 8, 9, 10, 5, 6, ...
         function getTargetBotCountForRound(round) {
             const r = Math.abs(Number(round) || 1);
             const range = MAX_BOTS_PER_ROUND - MIN_BOTS_PER_ROUND + 1;
@@ -1225,9 +1248,6 @@
             }
         }
 
-        // ============================================================
-        //  addBotsToRoom — deterministic target, alphabetical pruning
-        // ============================================================
         async function addBotsToRoom() {
             if (!BOTS_ENABLED) return;
             if (!gameRef || !currentUser || !database) return;
@@ -1279,8 +1299,6 @@
         }
 
         function removeBotsFromRoom() {
-            // Bots are permanent residents of the room. This only clears the
-            // local tracking so the next join re-reads state from Firebase.
             clearBotTimers();
             botScheduledRound = null;
             botsReadyForGeneration = -1;
@@ -1378,9 +1396,6 @@
             return true;
         }
 
-        // ============================================================
-        //  ensureBotsPickedForRound — alphabetical slice (deterministic)
-        // ============================================================
         async function ensureBotsPickedForRound(round) {
             if (!gameRef || !database) return;
             if (gamePausedBySticky) return;
@@ -1482,9 +1497,6 @@
             } catch (e) { window.WINZO_RECORD_ERROR('FAST-FORWARD', e); }
         }
 
-        // ============================================================
-        //  maintainBotRooms — trims/tops both rooms to the round's target
-        // ============================================================
         async function maintainBotRooms() {
             if (!database || !currentUser) return;
             if (!botsUsersEnsured) { try { await ensureBotUsers(); } catch (e) {} }
@@ -2119,6 +2131,16 @@
                     handleIncomingNotification({ key: key, val: () => data, ref: database.ref('notifications/' + username + '/' + key) });
                 });
             }).catch(err => { window.WINZO_RECORD_ERROR('NOTIF-INIT', err); });
+            // Health check
+            if (window._notifHealthTimer) clearInterval(window._notifHealthTimer);
+            window._notifHealthTimer = setInterval(() => {
+                if (!currentUser || !database) return;
+                database.ref('notifications/' + currentUser).limitToLast(1).once('value')
+                    .catch(() => {
+                        try { console.warn('[WD] notification listener health check failed — reattaching'); } catch (_) {}
+                        try { listenNotifications(currentUser); } catch (e) {}
+                    });
+            }, 30000);
         }
 
         function handleIncomingNotification(snapshot) {
@@ -2316,6 +2338,7 @@
         }
 
         function stopNotificationListener() {
+            if (window._notifHealthTimer) { clearInterval(window._notifHealthTimer); window._notifHealthTimer = null; }
             if (notificationRef) { try { notificationRef.off(); } catch (e) {} notificationRef = null; }
         }
 
@@ -2746,6 +2769,9 @@
             window._ballAnimStartedAt = null;
             gamePausedBySticky = false;
             activeStickyBroadcast = null;
+            watchdogState.recoveryCooldowns = {};
+            watchdogState.stallLog = [];
+            watchdogState.lastPhaseValue = null;
             closeMoreDropdown(); hideWaitingModal();
             if (welcomeToast) welcomeToast.classList.remove('active');
             stopFireworks();
@@ -3136,6 +3162,295 @@
             if (gamePhaseLabel) gamePhaseLabel.textContent = labels[phase] || '⏳';
         }
 
+        // ============================================================
+        //  MASTER WATCHDOG
+        // ============================================================
+        const watchdogState = {
+            lastRoomSyncAt: 0,
+            lastTimerTickAt: 0,
+            lastPhaseChangeAt: 0,
+            lastPhaseValue: null,
+            lastBotCheckAt: 0,
+            lastNetworkOkAt: 0,
+            bootedAt: Date.now(),
+            recoveryCooldowns: {},
+            stallLog: [],
+        };
+
+        function watchdogCooldown(key, ms) {
+            const now = Date.now();
+            const last = watchdogState.recoveryCooldowns[key] || 0;
+            if (now - last < ms) return false;
+            watchdogState.recoveryCooldowns[key] = now;
+            return true;
+        }
+
+        function watchdogLog(level, msg, data) {
+            const entry = { at: Date.now(), level, msg, data };
+            watchdogState.stallLog.push(entry);
+            if (watchdogState.stallLog.length > 200) watchdogState.stallLog.shift();
+            try {
+                if (level === 'warn') console.warn('[WD]', msg, data || '');
+                else if (level === 'error') console.error('[WD]', msg, data || '');
+                else console.log('[WD]', msg, data || '');
+            } catch (_) {}
+        }
+
+        function runMasterWatchdog() {
+            if (!currentUser) return;
+            if (!isGameInitialized) return;
+            if (gamePausedBySticky) return;
+
+            const now = Date.now();
+            const phase = engineState.gamePhase;
+            const round = Number(engineState.roundNumber) || 1;
+
+            if (phase !== watchdogState.lastPhaseValue) {
+                watchdogState.lastPhaseValue = phase;
+                watchdogState.lastPhaseChangeAt = now;
+            }
+
+            if (navigator.onLine) {
+                const silent = now - (lastSuccessfulSyncAt || 0);
+                if (silent > 8000) {
+                    if (watchdogCooldown('sync-stall', 5000)) {
+                        watchdogLog('warn', 'sync silent for ' + Math.round(silent / 1000) + 's — recovering');
+                        recoverRoomSync();
+                    }
+                }
+            }
+
+            if (phase === 'selection') {
+                const dl = Number(phaseDeadline) || 0;
+                if (dl && (getServerNow() - dl) > 3000) {
+                    if (watchdogCooldown('selection-timer', 4000)) {
+                        watchdogLog('warn', 'selection timer expired but phase not advanced');
+                        recoverSelectionStall(round);
+                    }
+                }
+                if (!isTimerRunning && dl && getServerNow() < dl) {
+                    if (watchdogCooldown('timer-restart', 5000)) {
+                        watchdogLog('warn', 'timer not running — restarting');
+                        try { startTimer(); } catch (e) {}
+                    }
+                }
+            }
+
+            if (phase === 'spinning') {
+                const lock = lastRoomSnapshotRaw && lastRoomSnapshotRaw.spinLock;
+                const lockTs = lock && typeof lock.timestamp === 'number' ? lock.timestamp : 0;
+                const lockAge = lockTs ? (now - lockTs) : Infinity;
+                if (lockAge > 8000) {
+                    if (watchdogCooldown('spinning-stall', 5000)) {
+                        watchdogLog('warn', 'spinning locked for ' + Math.round(lockAge / 1000) + 's');
+                        recoverSpinningStall(round);
+                    }
+                }
+            }
+
+            if (phase === 'results') {
+                const finished = lastRoomSnapshotRaw && Number(lastRoomSnapshotRaw.spinFinishedAt);
+                const age = finished ? (now - finished) : Infinity;
+                if (age > 10000) {
+                    if (watchdogCooldown('results-stall', 5000)) {
+                        watchdogLog('warn', 'results phase stuck for ' + Math.round(age / 1000) + 's');
+                        recoverResultsStall(round);
+                    }
+                }
+                if (ballAnimationPlaying) {
+                    const started = window._ballAnimStartedAt || 0;
+                    if (!started || (now - started) > 12000) {
+                        watchdogLog('warn', 'ball animation stuck — clearing');
+                        ballAnimationPlaying = false;
+                        window._ballAnimStartedAt = null;
+                        const ov = document.getElementById('ballAnimOverlay');
+                        if (ov) ov.classList.remove('active');
+                    }
+                }
+            }
+
+            if (phase === 'selection') {
+                checkBotPicksHealth(round);
+            }
+
+            if (now - (watchdogState.lastBotCheckAt || 0) > 20000) {
+                watchdogState.lastBotCheckAt = now;
+                checkBotPopulationHealth(round);
+            }
+
+            verifyPlayerPicksOnServer();
+
+            if (currentUser && currentRoom && !gameRef) {
+                if (watchdogCooldown('no-gameRef', 5000)) {
+                    watchdogLog('warn', 'gameRef missing — re-initializing connection');
+                    try { initGameConnection(); } catch (e) {}
+                }
+            }
+        }
+
+        function recoverRoomSync() {
+            if (!gameRef) {
+                if (watchdogCooldown('no-gameRef-2', 4000)) {
+                    try { initGameConnection(); } catch (e) {}
+                }
+                return;
+            }
+            burstFetchState(5, 600, 'wd-sync-recover');
+            gameRef.once('value').then(snap => {
+                if (snap.exists()) {
+                    syncGameState(snap.val());
+                    markSyncReceived();
+                    watchdogLog('info', 'room sync recovered via .once()');
+                }
+            }).catch(() => {});
+            try {
+                attachCriticalFieldListeners(gameRef);
+                attachNumbersTakenListener();
+                attachLastResultListener(gameRef);
+            } catch (e) {}
+        }
+
+        function recoverSelectionStall(round) {
+            requestSpin().catch(() => {});
+            setTimeout(() => {
+                if (engineState.gamePhase !== 'selection') return;
+                if (Number(engineState.roundNumber) !== Number(round)) return;
+                const dl = Number(phaseDeadline) || 0;
+                if (dl && (getServerNow() - dl) > 6000 && gameRef) {
+                    watchdogLog('warn', 'forcing selection deadline reset');
+                    gameRef.child('selectionEndsAt').transaction(cur => {
+                        if (typeof cur === 'number' && cur > 0 && (getServerNow() - cur) < 6000) return cur;
+                        return getServerNow() + SELECTION_SECONDS * 1000;
+                    }).catch(() => {});
+                    phaseDeadline = getServerNow() + SELECTION_SECONDS * 1000;
+                    if (!isTimerRunning) startTimer();
+                }
+            }, 4000);
+        }
+
+        function recoverSpinningStall(round) {
+            if (!gameRef) return;
+            gameRef.transaction(r => {
+                if (!r || r.gameState !== 'spinning') return r;
+                if (Number(r.round) !== Number(round)) return r;
+                const lockTs = r.spinLock && typeof r.spinLock.timestamp === 'number' ? r.spinLock.timestamp : 0;
+                const age = lockTs ? (Date.now() - lockTs) : Infinity;
+                if (age < 6000) return r;
+                r.gameState = 'selection';
+                r.spinLock = null;
+                r.winningNumber = null;
+                r.winners = [];
+                r.drawnNumbers = [];
+                r.numbersTaken = {};
+                r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                r.timer = SELECTION_SECONDS;
+                return r;
+            }).then(res => {
+                if (res && res.committed) {
+                    watchdogLog('info', 'spinning stall recovered');
+                    executedSpinRound = null;
+                }
+            }).catch(() => {});
+        }
+
+        function recoverResultsStall(round) {
+            if (!gameRef) return;
+            gameRef.transaction(r => {
+                if (!r || r.gameState !== 'results') return r;
+                if (Number(r.round) !== Number(round)) return r;
+                const finished = Number(r.spinFinishedAt) || 0;
+                const age = finished ? (Date.now() - finished) : Infinity;
+                if (age < 8000) return r;
+                r.gameState = 'selection';
+                r.round = Number(r.round) + 1;
+                r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
+                r.timer = SELECTION_SECONDS;
+                r.numbersTaken = {};
+                r.winningNumber = null;
+                r.spinLock = null;
+                r.winners = [];
+                r.drawnNumbers = [];
+                r.spinFinishedAt = null;
+                const ps = r.players || {};
+                Object.keys(ps).forEach(n => {
+                    if (ps[n]) {
+                        ps[n].pick = null; ps[n].picks = []; ps[n].ready = false;
+                        ps[n].betDeducted = false; ps[n].betSources = {}; ps[n].round = null;
+                    }
+                });
+                r.players = ps;
+                return r;
+            }).then(res => {
+                if (res && res.committed) {
+                    watchdogLog('info', 'results stall recovered');
+                    executedSpinRound = null;
+                    ballAnimationPlaying = false;
+                    window._ballAnimStartedAt = null;
+                    const ov = document.getElementById('ballAnimOverlay');
+                    if (ov) ov.classList.remove('active');
+                    if (winnersModal) winnersModal.classList.remove('active');
+                }
+            }).catch(() => {});
+        }
+
+        function checkBotPicksHealth(round) {
+            if (!gameRef || !database) return;
+            if (!watchdogCooldown('bot-picks-check', 5000)) return;
+            const remaining = Math.max(0, Math.ceil((Number(phaseDeadline) - getServerNow()) / 1000));
+            if (remaining > 10 || remaining < 2) return;
+            const target = getTargetBotCountForRound(round);
+            const players = engineState.players || {};
+            const bots = Object.keys(players)
+                .filter(n => players[n] && players[n].isBot === true)
+                .sort()
+                .slice(0, target);
+            const missing = bots.filter(n => {
+                const p = players[n];
+                if (!p) return true;
+                const picks = getPlayerPicks(p);
+                return Number(p.round) !== Number(round) || picks.length < BOT_PICKS_PER_ROUND;
+            });
+            if (missing.length > 0) {
+                watchdogLog('warn', 'late-round bot pick recovery: ' + missing.join(', '));
+                missing.forEach(n => botPickNumbersForRound(n, round).catch(() => {}));
+            }
+        }
+
+        function checkBotPopulationHealth(round) {
+            if (!gameRef) return;
+            const target = getTargetBotCountForRound(round);
+            const players = engineState.players || {};
+            const bots = Object.keys(players).filter(n => players[n] && players[n].isBot === true);
+            if (bots.length !== target) {
+                watchdogLog('warn', 'bot population off: have ' + bots.length + ', want ' + target);
+                addBotsToRoom().catch(() => {});
+            }
+        }
+
+        function verifyPlayerPicksOnServer() {
+            if (!currentUser || !gameRef) return;
+            if (engineState.gamePhase !== 'selection') return;
+            if (localSelectionPicks.length === 0) return;
+            if (localSelectionRound !== engineState.roundNumber) return;
+            if (!watchdogCooldown('player-pick-verify', 5000)) return;
+            const serverPlayer = engineState.players[currentUser];
+            const serverPicks = serverPlayer ? getPlayerPicks(serverPlayer) : [];
+            const localPicks = localSelectionPicks;
+            const matches = serverPicks.length === localPicks.length
+                && serverPicks.every(p => localPicks.includes(p));
+            if (!matches) {
+                watchdogLog('warn', 'pick mismatch — local:' + JSON.stringify(localPicks) + ' server:' + JSON.stringify(serverPicks));
+                const round = localSelectionRound;
+                let chain = Promise.resolve();
+                localPicks.forEach(num => {
+                    chain = chain.then(() => associateClaimedNumber(currentUser, num, round).catch(() => {}));
+                });
+                chain.then(() => {
+                    if (localPicks.length) finalizeNumberBet(currentUser, localPicks[0], round).catch(() => {});
+                });
+            }
+        }
+
         function init() {
             if (authLoginBtn) authLoginBtn.onclick = handleLogin;
             if (authSignupBtn) authSignupBtn.onclick = handleSignup;
@@ -3248,7 +3563,7 @@
             }
             currentUser = null;
             if (watchdogInterval) clearInterval(watchdogInterval);
-            watchdogInterval = setInterval(runRoomWatchdog, 5000);
+            watchdogInterval = setInterval(runMasterWatchdog, 2000);
             setInterval(() => {
                 if (!database) return;
                 database.ref('.info/serverTimeOffset').once('value')
@@ -3309,6 +3624,9 @@
 
         function initGameConnection() {
             const generation = ++roomConnectionGeneration;
+            // Reset watchdog cooldowns
+            watchdogState.recoveryCooldowns = {};
+            watchdogState.lastBotCheckAt = 0;
             if (isGameInitialized) {
                 if (gameRef) gameRef.off();
                 detachNumbersTakenListener(); detachLastResultListener();
@@ -3366,6 +3684,10 @@
         }
 
         function syncGameState(data) {
+            if (!data || typeof data !== 'object') {
+                watchdogLog('warn', 'syncGameState received malformed data');
+                return;
+            }
             lastRoomSnapshotRaw = data;
             const players = (data && data.players && typeof data.players === 'object') ? data.players : {};
             const playerNames = Object.keys(players);
@@ -3467,7 +3789,6 @@
                     }).catch(() => {});
                 }
                 if (phase === 'selection') {
-                    // Throttle — sync fires many times per second during selection
                     const now = Date.now();
                     if (!window._lastEnsureBots || (now - window._lastEnsureBots) > 2000) {
                         window._lastEnsureBots = now;
@@ -3639,6 +3960,7 @@
                 if (engineState.gamePhase !== 'selection') { stopTimer(); return; }
                 const remaining = getRemainingSeconds(phaseDeadline);
                 engineState.timer = remaining;
+                watchdogState.lastTimerTickAt = Date.now();
                 if (timerDisplay) timerDisplay.textContent = remaining;
                 if (remaining <= 0) { stopTimer(); requestSpin(); }
             };
@@ -3928,6 +4250,35 @@
         console.info('REST API endpoint:', FIREBASE_REST_URL);
         console.info('Bot persistence: ENABLED — rooms stay populated across sessions');
         console.info('Broadcast service: dismissible popups + sticky pause-game (admin-only removal)');
+        console.info('Master watchdog: ACTIVE — every expected stall has a recovery path');
+
+        // Debug helpers
+        window.winzoDiag = {
+            log: () => watchdogState.stallLog.slice(),
+            state: () => ({
+                user: currentUser,
+                room: currentRoom,
+                round: engineState.roundNumber,
+                phase: engineState.gamePhase,
+                isGameInitialized,
+                isTimerRunning,
+                gamePausedBySticky,
+                lastSyncMsAgo: Date.now() - (lastSuccessfulSyncAt || 0),
+                bots: Object.keys(engineState.players || {}).filter(n => engineState.players[n] && engineState.players[n].isBot),
+            }),
+            forceSync: () => recoverRoomSync(),
+            forceSpin: () => requestSpin(),
+            forceReset: () => {
+                engineState.gamePhase = 'selection';
+                executedSpinRound = null;
+                ballAnimationPlaying = false;
+                window._ballAnimStartedAt = null;
+                const ov = document.getElementById('ballAnimOverlay');
+                if (ov) ov.classList.remove('active');
+                watchdogLog('info', 'manual reset');
+            },
+        };
+
         init();
     </script>
 </body>
