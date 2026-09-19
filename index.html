@@ -1178,12 +1178,12 @@
         const BOT_STARTING_WALLET = 1000000;
         const BOT_PICKS_PER_ROUND = 3;
         const BOTS_ENABLED = true;
-        // ---- Bot count per round is 5 to 10 ----
         const MIN_BOTS_PER_ROUND = 5;
         const MAX_BOTS_PER_ROUND = 10;
 
-        const WANDERER_NAMES = ['Fikru','Samuel','Kebede','Bereket','Natnael','Tadesse'];
-        let wanderersPresent = new Set();
+        // Wanderers have been removed. WANDERER_NAMES and BOT_NAMES overlapped,
+        // causing duplicate entries and unpredictable bot counts. All bot-like
+        // players now come from BOT_NAMES alone.
 
         let activeBotNamesThisRound = new Set();
         let botScheduledRound = null;
@@ -1191,17 +1191,25 @@
         let botsUsersEnsured = false;
         let botsAddedForGeneration = -1;
         let botsReadyForGeneration = -1;
+        let botPopulationBusy = false;
 
         function clearBotTimers() {
             botPickTimers.forEach(t => { try { clearTimeout(t); } catch (e) {} });
             botPickTimers = [];
         }
 
+        // Target bot count for a given round. Deterministic so every client agrees.
+        // Cycles 5, 6, 7, 8, 9, 10, 5, 6, ...
+        function getTargetBotCountForRound(round) {
+            const r = Math.abs(Number(round) || 1);
+            const range = MAX_BOTS_PER_ROUND - MIN_BOTS_PER_ROUND + 1;
+            return MIN_BOTS_PER_ROUND + (r % range);
+        }
+
         async function ensureBotUsers() {
             if (botsUsersEnsured || !database) return;
             botsUsersEnsured = true;
-            const allReserved = BOT_NAMES.concat(WANDERER_NAMES);
-            for (const botName of allReserved) {
+            for (const botName of BOT_NAMES) {
                 try {
                     const ref = database.ref('users/' + botName);
                     const snap = await ref.once('value');
@@ -1218,99 +1226,65 @@
         }
 
         // ============================================================
-        //  addBotsToRoom — prune excess, then top up to 5–10
+        //  addBotsToRoom — deterministic target, alphabetical pruning
         // ============================================================
         async function addBotsToRoom() {
             if (!BOTS_ENABLED) return;
             if (!gameRef || !currentUser || !database) return;
-            await ensureBotUsers();
-
-            const round = Number(engineState.roundNumber) || 1;
-            const minBots = Math.min(MIN_BOTS_PER_ROUND, BOT_NAMES.length);
-            const maxBots = Math.min(MAX_BOTS_PER_ROUND, BOT_NAMES.length);
-
-            let existingBots = [];
+            if (botPopulationBusy) return;
+            botPopulationBusy = true;
             try {
+                await ensureBotUsers();
+                const round = Number(engineState.roundNumber) || 1;
+                const target = getTargetBotCountForRound(round);
+
                 const snap = await gameRef.child('players').once('value');
                 const players = snap.val() || {};
-                Object.keys(players).forEach(name => {
-                    if (players[name] && (players[name].isBot || players[name].isWanderer)) {
-                        existingBots.push(name);
-                    }
-                });
-            } catch (e) {}
+                const currentBots = Object.keys(players)
+                    .filter(n => players[n] && players[n].isBot === true);
 
-            // PRUNE: never allow more than maxBots
-            if (existingBots.length > maxBots) {
-                const shuffled = shuffleArray(existingBots);
-                const excess = shuffled.slice(maxBots);
-                for (const name of excess) {
-                    try { gameRef.child('players/' + name).remove().catch(() => {}); } catch (e) {}
+                if (currentBots.length > target) {
+                    const sorted = currentBots.slice().sort();
+                    const excess = sorted.slice(target);
+                    await Promise.all(excess.map(name =>
+                        gameRef.child('players/' + name).remove().catch(() => {})
+                    ));
                 }
-                existingBots = shuffled.slice(0, maxBots);
-            }
 
-            activeBotNamesThisRound = new Set(existingBots);
+                if (currentBots.length < target) {
+                    const needed = target - currentBots.length;
+                    const fresh = BOT_NAMES
+                        .filter(n => !currentBots.includes(n))
+                        .slice(0, needed);
+                    await Promise.all(fresh.map(name =>
+                        gameRef.child('players/' + name).set({
+                            name, pick: null, picks: [], bet: currentBet,
+                            ready: false, betDeducted: false, betSources: {},
+                            round, isBot: true, addedBy: currentUser
+                        }).catch(() => {})
+                    ));
+                }
 
-            if (existingBots.length >= minBots) {
+                const finalSnap = await gameRef.child('players').once('value');
+                const finalPlayers = finalSnap.val() || {};
+                activeBotNamesThisRound = new Set(
+                    Object.keys(finalPlayers).filter(n => finalPlayers[n] && finalPlayers[n].isBot === true)
+                );
                 botsReadyForGeneration = roomConnectionGeneration;
-                return;
+            } catch (e) {
+                window.WINZO_RECORD_ERROR('ADD-BOTS', e);
+            } finally {
+                botPopulationBusy = false;
             }
-
-            // TOP UP: randomise target between min and max
-            const target = minBots + Math.floor(Math.random() * (maxBots - minBots + 1));
-            const needed = target - existingBots.length;
-            const fresh = shuffleArray(BOT_NAMES.filter(n => !existingBots.includes(n))).slice(0, needed);
-
-            for (const botName of fresh) {
-                try {
-                    const ref = gameRef.child('players/' + botName);
-                    await ref.set({
-                        name: botName, pick: null, picks: [], bet: currentBet,
-                        ready: false, betDeducted: false, betSources: {},
-                        round, isBot: true, addedBy: currentUser
-                    }).catch(() => {});
-                    activeBotNamesThisRound.add(botName);
-                } catch (e) {}
-            }
-            botsReadyForGeneration = roomConnectionGeneration;
-        }
-
-        async function refreshWanderers() {
-            if (!gameRef || !currentUser) return;
-            const shuffled = shuffleArray(WANDERER_NAMES);
-            const target = 1 + Math.floor(Math.random() * WANDERER_NAMES.length);
-            const newPresent = new Set(shuffled.slice(0, target));
-            for (const name of wanderersPresent) {
-                if (!newPresent.has(name)) {
-                    try { gameRef.child('players/' + name).remove().catch(() => {}); } catch (e) {}
-                }
-            }
-            const round = Number(engineState.roundNumber) || 1;
-            for (const name of newPresent) {
-                if (wanderersPresent.has(name)) continue;
-                try {
-                    const ref = gameRef.child('players/' + name);
-                    await ref.set({ name: name, pick: null, picks: [], bet: currentBet, ready: false, betDeducted: false, betSources: {}, round, isWanderer: true }).catch(() => {});
-                } catch (e) {}
-            }
-            wanderersPresent = newPresent;
-        }
-
-        function removeWanderersFromRoom() {
-            if (!gameRef) { wanderersPresent.clear(); return; }
-            wanderersPresent.forEach(name => {
-                try { gameRef.child('players/' + name).remove().catch(() => {}); } catch (e) {}
-            });
-            wanderersPresent.clear();
         }
 
         function removeBotsFromRoom() {
+            // Bots are permanent residents of the room. This only clears the
+            // local tracking so the next join re-reads state from Firebase.
             clearBotTimers();
             botScheduledRound = null;
             botsReadyForGeneration = -1;
             activeBotNamesThisRound.clear();
-            wanderersPresent.clear();
         }
 
         function shuffleArray(arr) {
@@ -1332,7 +1306,8 @@
             if (botScheduledRound === round) return;
             clearBotTimers();
             botScheduledRound = round;
-            const botsToSchedule = [...activeBotNamesThisRound].slice(0, MAX_BOTS_PER_ROUND);
+            const target = getTargetBotCountForRound(round);
+            const botsToSchedule = [...activeBotNamesThisRound].slice(0, target);
             if (!botsToSchedule.length) return;
             const remaining = Math.max(3, getRemainingSeconds(phaseDeadline));
             const windowSec = Math.max(4, Math.min(22, remaining - 4));
@@ -1404,7 +1379,7 @@
         }
 
         // ============================================================
-        //  ensureBotsPickedForRound — hard capped at MAX_BOTS_PER_ROUND
+        //  ensureBotsPickedForRound — alphabetical slice (deterministic)
         // ============================================================
         async function ensureBotsPickedForRound(round) {
             if (!gameRef || !database) return;
@@ -1415,13 +1390,12 @@
             try {
                 const snap = await gameRef.child('players').once('value');
                 const players = snap.val() || {};
-                let botNames = Object.keys(players)
-                    .filter(n => players[n] && (players[n].isBot || players[n].isWanderer));
+                const target = getTargetBotCountForRound(round);
 
-                // HARD CAP — never more than MAX_BOTS_PER_ROUND pick per round
-                if (botNames.length > MAX_BOTS_PER_ROUND) {
-                    botNames = shuffleArray(botNames).slice(0, MAX_BOTS_PER_ROUND);
-                }
+                const botNames = Object.keys(players)
+                    .filter(n => players[n] && players[n].isBot === true)
+                    .sort()
+                    .slice(0, target);
 
                 for (const botName of botNames) {
                     const p = players[botName];
@@ -1509,7 +1483,7 @@
         }
 
         // ============================================================
-        //  maintainBotRooms — trims to max, tops up to min, keeps both rooms alive
+        //  maintainBotRooms — trims/tops both rooms to the round's target
         // ============================================================
         async function maintainBotRooms() {
             if (!database || !currentUser) return;
@@ -1518,37 +1492,32 @@
             for (const room of ['room_15', 'room_30']) {
                 const bet = room === 'room_15' ? 15 : 30;
                 try {
-                    const pSnap = await database.ref(`rooms/${room}/players`).once('value');
-                    const players = pSnap.val() || {};
-                    let bots = Object.keys(players)
-                        .filter(n => players[n] && (players[n].isBot || players[n].isWanderer));
+                    const rSnap = await database.ref(`rooms/${room}`).once('value');
+                    const data = rSnap.val() || {};
+                    const round = Number(data.round) || 1;
+                    const target = getTargetBotCountForRound(round);
 
-                    // Trim excess first
-                    if (bots.length > MAX_BOTS_PER_ROUND) {
-                        const shuffled = shuffleArray(bots);
-                        const excess = shuffled.slice(MAX_BOTS_PER_ROUND);
-                        for (const name of excess) {
-                            await database.ref(`rooms/${room}/players/${name}`).remove().catch(() => {});
-                        }
-                        bots = shuffled.slice(0, MAX_BOTS_PER_ROUND);
-                    }
+                    const players = data.players || {};
+                    const bots = Object.keys(players).filter(n => players[n] && players[n].isBot === true);
 
-                    // Top up if below minimum
-                    if (bots.length < MIN_BOTS_PER_ROUND) {
-                        const target = MIN_BOTS_PER_ROUND + Math.floor(Math.random() * (MAX_BOTS_PER_ROUND - MIN_BOTS_PER_ROUND + 1));
+                    if (bots.length > target) {
+                        const sorted = bots.slice().sort();
+                        const excess = sorted.slice(target);
+                        await Promise.all(excess.map(name =>
+                            database.ref(`rooms/${room}/players/${name}`).remove().catch(() => {})
+                        ));
+                    } else if (bots.length < target) {
                         const needed = target - bots.length;
-                        const fresh = shuffleArray(BOT_NAMES.filter(n => !bots.includes(n))).slice(0, needed);
-                        for (const name of fresh) {
-                            await database.ref(`rooms/${room}/players/${name}`).set({
+                        const fresh = BOT_NAMES.filter(n => !bots.includes(n)).slice(0, needed);
+                        await Promise.all(fresh.map(name =>
+                            database.ref(`rooms/${room}/players/${name}`).set({
                                 name, pick: null, picks: [], bet,
                                 ready: false, betDeducted: false, betSources: {},
                                 isBot: true, addedBy: currentUser
-                            }).catch(() => {});
-                        }
+                            }).catch(() => {})
+                        ));
                     }
 
-                    const rSnap = await database.ref(`rooms/${room}`).once('value');
-                    const data = rSnap.val() || {};
                     if (data.gameState === 'selection') {
                         const dl = Number(data.selectionEndsAt) || 0;
                         if (!dl || (Date.now() - dl) > 15000) {
@@ -1567,7 +1536,7 @@
                             }).catch(() => {});
                         }
                     }
-                } catch (e) { /* one room failing shouldn't block the other */ }
+                } catch (e) {}
             }
         }
 
@@ -2772,7 +2741,6 @@
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
             activeBotNamesThisRound.clear();
-            wanderersPresent.clear();
             ballAnimationPlayedRounds.clear();
             ballAnimationPlaying = false;
             window._ballAnimStartedAt = null;
@@ -2825,7 +2793,6 @@
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
             activeBotNamesThisRound.clear();
-            wanderersPresent.clear();
             ballAnimationPlayedRounds.clear();
             ballAnimationPlaying = false;
             window._ballAnimStartedAt = null;
@@ -2856,7 +2823,6 @@
             botsAddedForGeneration = -1;
             botsReadyForGeneration = -1;
             activeBotNamesThisRound.clear();
-            wanderersPresent.clear();
             ballAnimationPlayedRounds.clear();
             ballAnimationPlaying = false;
             window._ballAnimStartedAt = null;
@@ -3270,7 +3236,6 @@
                         botsAddedForGeneration = -1;
                         botsReadyForGeneration = -1;
                         activeBotNamesThisRound.clear();
-                        wanderersPresent.clear();
                         ballAnimationPlayedRounds.clear();
                         ballAnimationPlaying = false;
                         window._ballAnimStartedAt = null;
@@ -3377,7 +3342,6 @@
                 markSyncReceived();
                 fastForwardStuckRoom(generation).catch(() => {});
                 addBotsToRoom().then(() => {
-                    refreshWanderers().catch(() => {});
                     ensureBotsPickedForRound(Number(engineState.roundNumber) || 1);
                 }).catch(() => {});
             }).catch(() => {});
@@ -3474,7 +3438,7 @@
                 if (!isTimerRunning && !gamePausedBySticky) startTimer();
                 const botCount = playerNames.filter(n => {
                     const p = players[n];
-                    return p && (p.isBot || p.isWanderer);
+                    return p && p.isBot === true;
                 }).length;
                 if (playerNames.length <= 1 && botCount === 0) showWaitingModal();
                 else hideWaitingModal();
@@ -3499,12 +3463,16 @@
                     botsAddedForGeneration = roomConnectionGeneration;
                     botsReadyForGeneration = -1;
                     addBotsToRoom().then(() => {
-                        refreshWanderers().catch(() => {});
                         ensureBotsPickedForRound(round);
                     }).catch(() => {});
                 }
                 if (phase === 'selection') {
-                    ensureBotsPickedForRound(round);
+                    // Throttle — sync fires many times per second during selection
+                    const now = Date.now();
+                    if (!window._lastEnsureBots || (now - window._lastEnsureBots) > 2000) {
+                        window._lastEnsureBots = now;
+                        ensureBotsPickedForRound(round);
+                    }
                     scheduleBotPicks();
                 }
             }
@@ -3755,7 +3723,6 @@
                         if (gamePausedBySticky) return;
                         addBotsToRoom().then(() => {
                             ensureBotsPickedForRound(Number(engineState.roundNumber) || 1);
-                            refreshWanderers().catch(() => {});
                             if (!isTimerRunning && !gamePausedBySticky) startTimer();
                         }).catch(() => { if (!isTimerRunning && !gamePausedBySticky) startTimer(); });
                     }).catch(() => {});
@@ -3955,8 +3922,7 @@
 
         console.info('WINZO production hardening loaded:', WINZO_PRODUCTION_VERSION);
         console.info('Bot pool size:', BOT_NAMES.length);
-        console.info('Active bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND);
-        console.info('Wanderers enabled (' + WANDERER_NAMES.length + '):', WANDERER_NAMES.join(', '));
+        console.info('Active bots per round:', MIN_BOTS_PER_ROUND + '–' + MAX_BOTS_PER_ROUND, '(deterministic per round)');
         console.info('Ball animation: per-ball bounce, UNCAPPED, lowEnd=' + BALL_ANIM_LOW_END);
         console.info('Resilience engine: REST fallback (soft reconnect) + hard reconnect only as last resort');
         console.info('REST API endpoint:', FIREBASE_REST_URL);
