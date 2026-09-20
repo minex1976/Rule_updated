@@ -1200,8 +1200,8 @@
         const BOT_STARTING_WALLET = 1000000;
         const BOT_PICKS_PER_ROUND = 3;
         const BOTS_ENABLED = true;
-        const MIN_BOTS_PER_ROUND = 5;
-        const MAX_BOTS_PER_ROUND = 10;
+        const MIN_BOTS_PER_ROUND = 3;
+        const MAX_BOTS_PER_ROUND = 6;
 
         let activeBotNamesThisRound = new Set();
         let botScheduledRound = null;
@@ -1210,6 +1210,8 @@
         let botsAddedForGeneration = -1;
         let botsReadyForGeneration = -1;
         let botPopulationBusy = false;
+        // Prevent duplicate/concurrent pick loops for the same bot.
+        const botPickInFlight = new Set();
 
         function clearBotTimers() {
             botPickTimers.forEach(t => { try { clearTimeout(t); } catch (e) {} });
@@ -1222,12 +1224,30 @@
             return MIN_BOTS_PER_ROUND + (r % range);
         }
 
+        // Select a rotating, deterministic subset from the full 100-bot pool.
+        // Every client derives the same participants from the round number, so
+        // clients do not randomly disagree about which bots belong to a round.
+        function getBotRosterForRound(round, targetCount = getTargetBotCountForRound(round)) {
+            const pool = BOT_NAMES.slice();
+            if (!pool.length) return [];
+            const r = Math.max(1, Number(round) || 1);
+            const offset = ((r - 1) * 7) % pool.length;
+            const rotated = pool.slice(offset).concat(pool.slice(0, offset));
+            // Add a deterministic shuffle inside the rotated window. This keeps
+            // substitution moving through the whole pool instead of always using
+            // the first 3-6 names.
+            for (let i = rotated.length - 1; i > 0; i--) {
+                const j = ((r * 1103515245 + i * 12345) >>> 0) % (i + 1);
+                [rotated[i], rotated[j]] = [rotated[j], rotated[i]];
+            }
+            return rotated.slice(0, Math.min(targetCount, pool.length));
+        }
+
         async function ensureBotUsers() {
             if (!BOTS_ENABLED || !database) return;
-            // Only create the bots that can actually be used in this room.
-            // The old code scanned/created the entire 90-name pool for every client.
-            const target = Math.min(MAX_BOTS_PER_ROUND, BOT_NAMES.length);
-            const names = BOT_NAMES.slice(0, target);
+            // The game keeps a pool of 100 bot accounts, but only 3-6 are
+            // admitted to a room in any single round.
+            const names = BOT_NAMES.slice(0, 100);
             await Promise.all(names.map(async botName => {
                 try {
                     const ref = database.ref('users/' + botName);
@@ -1248,6 +1268,7 @@
                 }
             }));
         }
+
         async function addBotsToRoom() {
             if (!BOTS_ENABLED || !gameRef || !currentUser || !database) return;
             if (botPopulationBusy) return botSetupPromise || undefined;
@@ -1262,20 +1283,29 @@
                     if (!gameRef || Number(engineState.roundNumber) !== round) return;
 
                     const target = getTargetBotCountForRound(round);
+                    const selected = getBotRosterForRound(round, target);
+                    const selectedSet = new Set(selected);
                     const snap = await gameRef.child('players').once('value');
                     const players = snap.val() || {};
                     const currentBots = Object.keys(players)
                         .filter(n => players[n] && players[n].isBot === true);
 
-                    // Keep exactly the deterministic target without deleting real players.
-                    if (currentBots.length > target) {
-                        await Promise.all(currentBots.slice(target).map(name =>
+                    // Remove only bots that are not part of this round's roster.
+                    // Real players are never touched.
+                    const staleBots = currentBots.filter(name => !selectedSet.has(name));
+                    if (staleBots.length) {
+                        await Promise.all(staleBots.map(name =>
                             gameRef.child('players/' + name).remove().catch(() => {})
                         ));
-                    } else if (currentBots.length < target) {
-                        const needed = target - currentBots.length;
-                        const fresh = BOT_NAMES.filter(n => !currentBots.includes(n)).slice(0, needed);
-                        await Promise.all(fresh.map(name =>
+                    }
+
+                    // Add the deterministic 3-6 round participants. Using the
+                    // same roster calculation on every client prevents clients
+                    // from replacing one another with random bot selections.
+                    const existing = new Set(currentBots);
+                    const missing = selected.filter(name => !existing.has(name));
+                    if (missing.length) {
+                        await Promise.all(missing.map(name =>
                             gameRef.child('players/' + name).set({
                                 name,
                                 pick: null,
@@ -1295,7 +1325,7 @@
                     const finalSnap = await gameRef.child('players').once('value');
                     const finalPlayers = finalSnap.val() || {};
                     activeBotNamesThisRound = new Set(
-                        Object.keys(finalPlayers).filter(n => finalPlayers[n] && finalPlayers[n].isBot === true)
+                        selected.filter(n => finalPlayers[n] && finalPlayers[n].isBot === true)
                     );
                     lastBotSetupRound = round;
                     lastBotSetupAt = Date.now();
@@ -1354,29 +1384,69 @@
             if (gamePausedBySticky) return;
             if (engineState.gamePhase !== 'selection') return;
             if (Number(engineState.roundNumber) !== Number(round)) return;
-            let alreadyPicked = 0;
+
+            // A bot is allowed exactly BOT_PICKS_PER_ROUND numbers per round.
+            // Serialize the bot's own pick loop so scheduleBotPicks() and
+            // ensureBotsPickedForRound() can never make the same bot overshoot.
+            const lockKey = String(botName) + ':' + String(round);
+            if (botPickInFlight.has(lockKey)) return;
+            botPickInFlight.add(lockKey);
+
             try {
-                const snap = await gameRef.child('players/' + botName).once('value');
-                const botPlayer = snap.val();
-                if (botPlayer && Number(botPlayer.round) === Number(round)) alreadyPicked = getPlayerPicks(botPlayer).length;
-            } catch (e) {}
-            const needed = Math.max(0, BOT_PICKS_PER_ROUND - alreadyPicked);
-            for (let i = 0; i < needed; i++) {
-                if (gamePausedBySticky) return;
-                if (engineState.gamePhase !== 'selection') return;
-                if (Number(engineState.roundNumber) !== Number(round)) return;
-                const available = [];
-                for (let n = 1; n <= 200; n++) { if (!engineState.allTakenNumbers.has(n)) available.push(n); }
-                if (!available.length) return;
-                const num = available[Math.floor(Math.random() * available.length)];
-                const ok = await botClaimNumber(botName, num, round);
-                if (!ok) continue;
-                await new Promise(r => setTimeout(r, 400 + Math.random() * 900));
+                let alreadyPicked = 0;
+                try {
+                    const snap = await gameRef.child('players/' + botName).once('value');
+                    const botPlayer = snap.val();
+                    if (botPlayer && Number(botPlayer.round) === Number(round)) {
+                        alreadyPicked = Math.min(BOT_PICKS_PER_ROUND, getPlayerPicks(botPlayer).length);
+                    }
+                } catch (e) {}
+
+                const needed = Math.max(0, BOT_PICKS_PER_ROUND - alreadyPicked);
+                for (let i = 0; i < needed; i++) {
+                    if (gamePausedBySticky) return;
+                    if (engineState.gamePhase !== 'selection') return;
+                    if (Number(engineState.roundNumber) !== Number(round)) return;
+
+                    // Re-read the bot immediately before every pick so a delayed
+                    // callback cannot make a 4th pick after another callback won.
+                    try {
+                        const latest = await gameRef.child('players/' + botName).once('value');
+                        const latestPlayer = latest.val();
+                        if (latestPlayer && Number(latestPlayer.round) === Number(round) &&
+                            getPlayerPicks(latestPlayer).length >= BOT_PICKS_PER_ROUND) return;
+                    } catch (e) {}
+
+                    const available = [];
+                    for (let n = 1; n <= 200; n++) {
+                        if (!engineState.allTakenNumbers.has(n)) available.push(n);
+                    }
+                    if (!available.length) return;
+
+                    const num = available[Math.floor(Math.random() * available.length)];
+                    const ok = await botClaimNumber(botName, num, round);
+                    if (!ok) continue;
+                    await new Promise(r => setTimeout(r, 400 + Math.random() * 900));
+                }
+            } finally {
+                botPickInFlight.delete(lockKey);
             }
         }
 
         async function botClaimNumber(botName, num, round) {
             if (!gameRef || !database) return false;
+            if (engineState.gamePhase !== 'selection' || Number(engineState.roundNumber) !== Number(round)) return false;
+
+            // Final authoritative guard: never let a bot exceed 3 numbers in a round.
+            try {
+                const botSnap = await gameRef.child('players/' + botName).once('value');
+                const botPlayer = botSnap.val();
+                if (botPlayer && Number(botPlayer.round) === Number(round) &&
+                    getPlayerPicks(botPlayer).length >= BOT_PICKS_PER_ROUND) return false;
+            } catch (e) {
+                return false;
+            }
+
             const claimed = await new Promise(resolve => {
                 const takenRef = gameRef.child('numbersTaken/' + num);
                 takenRef.transaction(current => { if (current === true) return; return true; },
