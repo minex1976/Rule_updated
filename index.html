@@ -1170,6 +1170,10 @@
                 return current === true ? null : current;
             }).catch(() => {});
         }
+        function releaseNumber(number) {
+            if (!gameRef) return;
+            gameRef.child('numbersTaken/' + number).set(false).catch(() => {});
+        }
 
         const BOT_NAMES = [
             'Dawit','Abel','Yonas','Biruk','Tesfaye',
@@ -1196,8 +1200,8 @@
         const BOT_STARTING_WALLET = 1000000;
         const BOT_PICKS_PER_ROUND = 3;
         const BOTS_ENABLED = true;
-        // Firebase game engine is authoritative. Browser only displays bot activity and handles human picks.
         const WORKER_AUTHORITATIVE = true;
+        const WORKER_ENGINE_NAME = 'koyeb';
         const MIN_BOTS_PER_ROUND = 3;
         const MAX_BOTS_PER_ROUND = 6;
 
@@ -1241,15 +1245,8 @@
             return rotated.slice(0, Math.min(targetCount, pool.length));
         }
 
-        async function ensureBotUsers() {
-            // Worker-authoritative: bot accounts are maintained by the worker.
-            return;
-        }
-
-        async function addBotsToRoom() {
-            // Worker-authoritative: active bots are maintained by the worker.
-            return;
-        }
+        async function ensureBotUsers() { return true; }
+        async function addBotsToRoom() { return true; }
         function removeBotsFromRoom() {
             clearBotTimers();
             botScheduledRound = null;
@@ -1266,37 +1263,12 @@
             return a;
         }
 
-        function scheduleBotPicks() {
-            // Worker-authoritative: browser never schedules bot picks.
-            return;
-        }
-
-        async function botPickNumbersForRound(botName, round) {
-            // Worker-authoritative: browser never picks numbers for bots.
-            return false;
-        }
-
-        async function botClaimNumber(botName, num, round) {
-            // Worker-authoritative: browser never claims numbers for bots.
-            return false;
-        }
-
-        async function ensureBotsPickedForRound(round) {
-            // Worker-authoritative: bot population/picks are owned by the worker.
-            return;
-        }
-
-        async function fastForwardStuckRoom(generation) {
-            // Worker-authoritative: browser never resets room state.
-            return;
-        }
-
-        async function maintainBotRooms() {
-            // Worker-authoritative: browser never mutates either room's bot roster.
-            return;
-        }
-
-        const $ = (id) => document.getElementById(id);
+        function scheduleBotPicks() { return; }
+        async function botPickNumbersForRound(botName, round) { return false; }
+        async function botClaimNumber(botName, num, round) { return false; }
+        async function ensureBotsPickedForRound(round) { return false; }
+        async function fastForwardStuckRoom(generation) { return false; }
+        async function maintainBotRooms() { return true; }
         const authScreen = $('authScreen'); const welcomeScreen = $('welcomeScreen'); const gameScreen = $('gameScreen');
         const authError = $('authError'); const authUsername = $('authUsername'); const authPassword = $('authPassword');
         const authLoginBtn = $('authLoginBtn'); const authSignupBtn = $('authSignupBtn'); const authStatus = $('authStatus');
@@ -3171,24 +3143,10 @@
             }, 4000);
         }
 
-        function recoverSpinningStall(round) {
-            // Worker-authoritative: browser never resets a spinning room.
-            return;
-        }
-        function recoverResultsStall(round) {
-            // Worker-authoritative: browser never advances/clears rounds.
-            return;
-        }
-        function checkBotPicksHealth(round) {
-            // Worker-authoritative: no browser bot recovery.
-            return;
-        }
-
-        function checkBotPopulationHealth(round) {
-            // Worker-authoritative: no browser bot population recovery.
-            return;
-        }
-
+        function recoverSpinningStall(round) { return false; }
+        function recoverResultsStall(round) { return false; }
+        function checkBotPicksHealth(round) { return; }
+        function checkBotPopulationHealth(round) { return; }
         function verifyPlayerPicksOnServer() {
             if (!currentUser || !gameRef) return;
             if (engineState.gamePhase !== 'selection') return;
@@ -3397,6 +3355,7 @@
             });
         }
         function ensureSelectionDeadline() {
+            if (WORKER_AUTHORITATIVE) return;
             if (!gameRef || engineState.gamePhase !== 'selection') return;
             if (gamePausedBySticky) return;
             gameRef.child('selectionEndsAt').transaction(current => {
@@ -3437,7 +3396,7 @@
 
             ref.once('value').then(snapshot => {
                 if (generation !== roomConnectionGeneration) return;
-                if (!snapshot.exists() && !WORKER_AUTHORITATIVE) {
+                if (!snapshot.exists()) {
                     return ref.set({
                         gameState: 'selection',
                         round: 1,
@@ -3468,7 +3427,8 @@
                 const data = snapshot.val() || {};
                 syncGameState(data);
                 markSyncReceived();
-                // Worker-authoritative mode: no browser bot/game-engine mutation.
+                fastForwardStuckRoom(generation).catch(() => {});
+                // Bot population and bot picks are owned exclusively by the worker.
             }).catch(err => {
                 if (generation === roomConnectionGeneration) {
                     window.WINZO_RECORD_ERROR('ROOM-INIT', err);
@@ -3520,8 +3480,6 @@
             const players = (data && data.players && typeof data.players === 'object') ? data.players : {};
             const playerNames = Object.keys(players);
             const phase = data.gameState || 'selection';
-            // If the worker writes engine.managedBy, treat it as informational confirmation.
-            const managedByWorker = data.engine && data.engine.managedBy === 'koyeb';
             const round = Number(data.round) || 1;
             const roundChanged = (round !== engineState.roundNumber);
             if (roundChanged) { localSelectionRound = null; localSelectionPicks = []; }
@@ -3577,11 +3535,9 @@
                     if (prev.betDeducted !== true) return;
                     const prevRound = Number(prev.round || 0);
                     if (prevRound <= 0) return;
-                    // Never release a bot's claimed numbers from the browser.
-                    // The worker owns bot claims until the round is officially closed.
                     if (prev.isBot === true) return;
-                    try { if (gameRef) prevPicks.forEach(n => gameRef.child('numbersTaken/' + Number(n)).transaction(cur => cur === true ? null : cur).catch(() => {})); } catch (e) {}
                     if (name === currentUser) return;
+                    try { if (gameRef) prevPicks.forEach(n => gameRef.child('numbersTaken/' + Number(n)).transaction(cur => cur === true ? null : cur).catch(() => {})); } catch (e) {}
                     refundBetIdempotent(name, prevRound, Number(prev.bet || currentBet) * prevPicks.length, currentRoom).catch(() => {});
                 });
             } catch (e) {}
@@ -3599,8 +3555,8 @@
             } else { stopTimer(); hideWaitingModal(); }
             updateUIFromState();
             if (phase === 'spinning' && !engineState.isSpinning && !engineState.spinInProgress && executedSpinRound !== round) {
-                // Worker owns the spin. Browser does not mutate room state.
                 executedSpinRound = round;
+                setTimeout(() => { if (engineState.gamePhase === 'spinning') executeSpin(); }, 30);
             }
             if (phase === 'results') {
                 if (!engineState.winnersModalShown) {
@@ -3612,17 +3568,26 @@
             applyCardState();
             updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
             lastRoomSyncAt = Date.now();
-            // No browser-side bot setup/picking. Firebase worker is authoritative.
+            if (currentUser && gameRef && BOTS_ENABLED && !gamePausedBySticky) {
+                if (lastBotSetupRound !== round && !botPopulationBusy) {
+                    addBotsToRoom().then(() => {
+                        if (Number(engineState.roundNumber) === round) {
+                            ensureBotsPickedForRound(round);
+                        }
+                    }).catch(() => {});
+                }
+                if (phase === 'selection') {
+                    const now = Date.now();
+                    if (now - lastBotSetupAt > 5000) {
+                        ensureBotsPickedForRound(round).catch(() => {});
+                    }
+                    scheduleBotPicks();
+                }
+            }
         }
 
-        function requestSpin() {
-            // Worker-authoritative: timer expiry is observed only; worker starts the spin.
-            return Promise.resolve(false);
-        }
-        function runRoomWatchdog() {
-            // Worker-authoritative: browser never repairs deadlines, spins, or rounds.
-            return;
-        }
+        function requestSpin() { return Promise.resolve(false); }
+        function runRoomWatchdog() { return; }
         function startTimer() {
             stopTimer();
             if (!gameRef || engineState.gamePhase !== 'selection') return;
@@ -3643,17 +3608,14 @@
         }
 
         function startResultsCountdown() {
-            if (isResultsCountdownRunning || gamePausedBySticky || roundTransitionInFlight) return;
+            if (isResultsCountdownRunning) return;
+            stopResultsCountdown();
             isResultsCountdownRunning = true;
-            const generation = roomConnectionGeneration;
             let remaining = 5;
-            if (timerDisplay) timerDisplay.textContent = remaining;
+            if (timerDisplay) timerDisplay.textContent = String(remaining);
             resultsCountdownInterval = setInterval(() => {
-                if (gamePausedBySticky || generation !== roomConnectionGeneration) {
-                    stopResultsCountdown(); return;
-                }
                 remaining -= 1;
-                if (timerDisplay) timerDisplay.textContent = Math.max(0, remaining);
+                if (timerDisplay) timerDisplay.textContent = String(Math.max(0, remaining));
                 if (remaining <= 0) stopResultsCountdown();
             }, 1000);
         }
@@ -3675,10 +3637,7 @@
             }
         }
 
-        async function executeSpin() {
-            // Worker-authoritative: browser never changes spinning/results state.
-            return false;
-        }
+        function executeSpin() { return Promise.resolve(false); }
         function creditWinnerAndReferral(winnerName, winAmount, attempt = 0, payoutRoom = currentRoom, payoutRound = Number(engineState.roundNumber)) {
             if (!database || !winnerName || Number(winAmount) <= 0) return Promise.resolve(false);
             const amount = Number(winAmount);
