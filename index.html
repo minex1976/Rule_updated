@@ -1269,6 +1269,9 @@
         async function ensureBotsPickedForRound(round) { return false; }
         async function fastForwardStuckRoom(generation) { return false; }
         async function maintainBotRooms() { return true; }
+        // DOM helper: the worker-authoritative rebuild does not use jQuery.
+        // Keep this helper local so every existing $('elementId') reference works.
+        const $ = (id) => document.getElementById(id);
         const authScreen = $('authScreen'); const welcomeScreen = $('welcomeScreen'); const gameScreen = $('gameScreen');
         const authError = $('authError'); const authUsername = $('authUsername'); const authPassword = $('authPassword');
         const authLoginBtn = $('authLoginBtn'); const authSignupBtn = $('authSignupBtn'); const authStatus = $('authStatus');
