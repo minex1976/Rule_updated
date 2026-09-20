@@ -839,6 +839,7 @@
         let numbersTakenListenerRef = null; let numbersTakenInitialized = false;
         let lastKnownPlayersCache = {}; let watchdogInterval = null; let lastRoomSyncAt = 0;
         let lastRoomSnapshotRaw = null;
+        let koyebManagedRoom = false;
         let botRoomKeeperInterval = null;
 
         let displayedCardRound = null;
@@ -2676,11 +2677,10 @@
             if (currentUser) {
                 listenNotifications(currentUser);
                 listenStickyBroadcast();
-                maintainBotRooms().catch(() => {});
-                if (botRoomKeeperInterval) clearInterval(botRoomKeeperInterval);
-                botRoomKeeperInterval = setInterval(() => {
-                    if (currentUser) maintainBotRooms().catch(() => {});
-                }, 30000);
+                // When the Koyeb Worker is deployed, bot population and room
+                // progression are server-authoritative. Do not run a second
+                // bot keeper from the player's browser.
+                if (botRoomKeeperInterval) { clearInterval(botRoomKeeperInterval); botRoomKeeperInterval = null; }
             }
             if (!DB.getToastShown()) {
                 if (welcomeToast) welcomeToast.classList.add('active');
@@ -3947,6 +3947,7 @@
                 return;
             }
             lastRoomSnapshotRaw = data;
+            koyebManagedRoom = !!(data.engine && data.engine.managedBy === 'koyeb');
             const players = (data && data.players && typeof data.players === 'object') ? data.players : {};
             const playerNames = Object.keys(players);
             const phase = data.gameState || 'selection';
@@ -4014,7 +4015,7 @@
             lastKnownPlayersCache = JSON.parse(JSON.stringify(players));
             if (phase === 'selection') {
                 stopResultsCountdown();
-                if (!phaseDeadline) ensureSelectionDeadline();
+                if (!koyebManagedRoom && !phaseDeadline) ensureSelectionDeadline();
                 if (!isTimerRunning && !gamePausedBySticky) startTimer();
                 const botCount = playerNames.filter(n => {
                     const p = players[n];
@@ -4038,7 +4039,7 @@
             applyCardState();
             updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
             lastRoomSyncAt = Date.now();
-            if (currentUser && gameRef && BOTS_ENABLED && !gamePausedBySticky) {
+            if (!koyebManagedRoom && currentUser && gameRef && BOTS_ENABLED && !gamePausedBySticky) {
                 if (lastBotSetupRound !== round && !botPopulationBusy) {
                     addBotsToRoom().then(() => {
                         if (Number(engineState.roundNumber) === round) {
@@ -4057,6 +4058,7 @@
         }
 
         function requestSpin() {
+            if (koyebManagedRoom) return Promise.resolve(false);
             if (!gameRef || engineState.gamePhase !== 'selection' || gamePausedBySticky) {
                 return Promise.resolve(false);
             }
@@ -4253,6 +4255,21 @@
             stopTimer();
             if (!gameRef || engineState.gamePhase !== 'selection') return;
             if (gamePausedBySticky) return;
+            if (koyebManagedRoom) {
+                // Display-only timer. Koyeb owns the authoritative deadline and
+                // advances the round; the browser must never request a spin.
+                isTimerRunning = true;
+                const tickDisplayOnly = () => {
+                    if (gamePausedBySticky || !koyebManagedRoom || engineState.gamePhase !== 'selection') { stopTimer(); return; }
+                    const remaining = phaseDeadline ? getRemainingSeconds(phaseDeadline) : Number(engineState.timer || 0);
+                    engineState.timer = remaining;
+                    watchdogState.lastTimerTickAt = Date.now();
+                    if (timerDisplay) timerDisplay.textContent = remaining;
+                };
+                tickDisplayOnly();
+                timerInterval = setInterval(tickDisplayOnly, 500);
+                return;
+            }
             if (!phaseDeadline) { ensureSelectionDeadline(); return; }
             isTimerRunning = true;
             const tick = () => {
@@ -4274,6 +4291,23 @@
             const generation = roomConnectionGeneration;
             const round = Number(engineState.roundNumber);
             let remaining = 5;
+            if (koyebManagedRoom) {
+                const displayOnly = setInterval(() => {
+                    if (!koyebManagedRoom || generation !== roomConnectionGeneration || engineState.gamePhase !== 'results') {
+                        clearInterval(displayOnly);
+                        isResultsCountdownRunning = false;
+                        return;
+                    }
+                    remaining -= 1;
+                    if (timerDisplay) timerDisplay.textContent = Math.max(0, remaining);
+                    if (remaining <= 0) {
+                        clearInterval(displayOnly);
+                        isResultsCountdownRunning = false;
+                    }
+                }, 1000);
+                if (timerDisplay) timerDisplay.textContent = remaining;
+                return;
+            }
             if (timerDisplay) timerDisplay.textContent = remaining;
 
             resultsCountdownInterval = setInterval(() => {
@@ -4424,6 +4458,14 @@
                         .map(Number).filter(n => n >= 1 && n <= 200)
                 );
                 engineState.winners = winners;
+
+                // With Koyeb active, the Worker owns the authoritative transition
+                // and payout. The browser may still play the visual spin, but must
+                // not write results or pay winners itself.
+                if (koyebManagedRoom) {
+                    await new Promise(resolve => setTimeout(resolve, 1800));
+                    return;
+                }
 
                 // Keep the visual spin local; do not hold Firebase in an artificial
                 // "spinning" state longer than necessary.
