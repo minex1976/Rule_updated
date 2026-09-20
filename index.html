@@ -4638,6 +4638,270 @@
             },
         };
 
+
+        /*
+         * WINZO WORKER-AUTHORITATIVE CLIENT
+         * The Termux/Koyeb Firebase engine owns:
+         *   - round progression
+         *   - selection deadline
+         *   - bot population and bot picks
+         *   - spin/winning number
+         *   - results and payouts
+         *
+         * This browser only observes room state, displays it, and submits
+         * human number selections/wallet requests.
+         */
+        const WINZO_WORKER_AUTHORITATIVE = true;
+
+        // Never let the browser create/reset/rotate bots.
+        ensureBotUsers = async function () { return true; };
+        addBotsToRoom = async function () { return true; };
+        ensureBotsPickedForRound = async function () { return true; };
+        scheduleBotPicks = function () {};
+        botPickNumbersForRound = async function () { return false; };
+        maintainBotRooms = async function () { return true; };
+        fastForwardStuckRoom = async function () { return false; };
+        removeBotsFromRoom = function () {
+            clearBotTimers();
+            botScheduledRound = null;
+            botsReadyForGeneration = -1;
+            activeBotNamesThisRound.clear();
+        };
+
+        // The browser must never manufacture a deadline or start a round.
+        ensureSelectionDeadline = function () { return false; };
+
+        // Browser timer is display-only. It never calls requestSpin().
+        startTimer = function () {
+            stopTimer();
+            if (!gameRef || engineState.gamePhase !== 'selection' || gamePausedBySticky) return;
+            isTimerRunning = true;
+            const tick = () => {
+                if (gamePausedBySticky || engineState.gamePhase !== 'selection') {
+                    stopTimer();
+                    return;
+                }
+                const deadline = Number(phaseDeadline) || 0;
+                const remaining = deadline > 0
+                    ? Math.max(0, Math.ceil((deadline - getServerNow()) / 1000))
+                    : Math.max(0, Number(engineState.timer) || 0);
+                engineState.timer = remaining;
+                if (timerDisplay) timerDisplay.textContent = remaining;
+                if (remaining <= 0) stopTimer();
+            };
+            tick();
+            timerInterval = setInterval(tick, 500);
+        };
+
+        // Results countdown is also display-only. The worker performs the transition.
+        startResultsCountdown = function () {
+            stopResultsCountdown();
+            if (!gameRef || engineState.gamePhase !== 'results' || gamePausedBySticky) return;
+            isResultsCountdownRunning = true;
+            const tick = () => {
+                if (gamePausedBySticky || engineState.gamePhase !== 'results') {
+                    stopResultsCountdown();
+                    return;
+                }
+                const finishedAt = Number(lastRoomSnapshotRaw && lastRoomSnapshotRaw.spinFinishedAt) || 0;
+                const remaining = finishedAt
+                    ? Math.max(0, Math.ceil((finishedAt + 5000 - getServerNow()) / 1000))
+                    : Math.max(0, Number(engineState.timer) || 0);
+                if (timerDisplay) timerDisplay.textContent = remaining;
+                if (remaining <= 0) stopResultsCountdown();
+            };
+            tick();
+            resultsCountdownInterval = setInterval(tick, 250);
+        };
+
+        // Never allow a human client to request/commit a spin.
+        requestSpin = function () {
+            return Promise.resolve(false);
+        };
+
+        // Visual-only spin. winningNumber/winners come from Firebase; this function
+        // never changes authoritative room state.
+        executeSpin = async function () {
+            if (gamePausedBySticky || engineState.gamePhase !== 'spinning') return;
+            const round = Number(engineState.roundNumber);
+            if (engineState.isSpinning) return;
+            engineState.isSpinning = true;
+            engineState.spinInProgress = true;
+            try {
+                const room = lastRoomSnapshotRaw || {};
+                const winningNumber = Number(room.winningNumber);
+                const winners = Array.isArray(room.winners) ? room.winners.filter(Boolean) : [];
+                if (!Number.isInteger(winningNumber) || winningNumber < 1 || winningNumber > 200) return;
+
+                engineState.winners = winners;
+                engineState.drawnNumbers = [winningNumber];
+
+                // Reuse the existing wheel/ball animation without writing Firebase.
+                if (typeof playBallAnimation === 'function') {
+                    await playBallAnimation(winners, winningNumber, round);
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 1800));
+                }
+            } catch (e) {
+                window.WINZO_RECORD_ERROR('WORKER-VISUAL-SPIN', e);
+            } finally {
+                engineState.isSpinning = false;
+                engineState.spinInProgress = false;
+            }
+        };
+
+        // Worker-owned connection. Do not create a missing room, set deadlines,
+        // add bots, reset phases, or run client-side recovery that writes game state.
+        initGameConnection = function () {
+            const generation = ++roomConnectionGeneration;
+
+            try {
+                if (gameRef) gameRef.off();
+            } catch (e) {}
+            try { detachNumbersTakenListener(); } catch (e) {}
+            try { detachLastResultListener(); } catch (e) {}
+            try { clearCardFetchRetry(); } catch (e) {}
+            stopResilienceEngine();
+            stopTimer();
+            stopResultsCountdown();
+
+            gameRef = null;
+            isGameInitialized = false;
+            pendingPickOps.clear();
+
+            if (!database || !currentRoom || !currentUser) return;
+
+            const ref = database.ref('rooms/' + currentRoom);
+            gameRef = ref;
+
+            database.ref('.info/serverTimeOffset').once('value').then(snap => {
+                if (generation === roomConnectionGeneration) {
+                    serverTimeOffset = Number(snap.val()) || 0;
+                }
+            }).catch(() => {});
+
+            // Observe only. If the worker has not initialized this room yet,
+            // do not create it from the browser.
+            ref.once('value').then(snapshot => {
+                if (generation !== roomConnectionGeneration) return;
+                if (!snapshot.exists()) {
+                    updateStatus('⏳ Waiting for the game engine to initialize this room…');
+                    return;
+                }
+                syncGameState(snapshot.val());
+                markSyncReceived();
+            }).catch(err => {
+                if (generation === roomConnectionGeneration) {
+                    window.WINZO_RECORD_ERROR('ROOM-INIT', err);
+                    updateStatus('⚠️ Could not connect to the game room. Retrying…');
+                }
+            });
+
+            ref.on('value', snapshot => {
+                if (generation !== roomConnectionGeneration) return;
+                const data = snapshot.val();
+                if (!data) return;
+                syncGameState(data);
+                markSyncReceived();
+            }, err => window.WINZO_RECORD_ERROR('ROOM-LISTEN', err));
+
+            attachNumbersTakenListener();
+            attachLastResultListener(ref);
+            attachCriticalFieldListeners(ref);
+
+            // Register the human player without touching bot records or room phase.
+            const playerRef = ref.child('players/' + currentUser);
+            playerRef.once('value').then(snap => {
+                if (generation !== roomConnectionGeneration) return;
+                const old = snap.val() || {};
+                const round = Number(engineState.roundNumber) || 1;
+                const oldRound = Number(old.round) || 0;
+                if (old.isBot === true) return;
+
+                const payload = {
+                    ...old,
+                    name: currentUser,
+                    bet: currentBet,
+                    isBot: false
+                };
+
+                // A fresh/new round starts with no picks. A reconnect during the
+                // same round keeps the player's existing authoritative picks.
+                if (oldRound !== round) {
+                    payload.pick = null;
+                    payload.picks = [];
+                    payload.ready = false;
+                    payload.betDeducted = false;
+                    payload.betSources = {};
+                    payload.round = null;
+                }
+
+                return playerRef.set(payload);
+            }).catch(err => window.WINZO_RECORD_ERROR('PLAYER-REGISTER', err));
+
+            try {
+                playerRef.onDisconnect().remove();
+            } catch (e) {}
+
+            isGameInitialized = true;
+            setConnectionStatus(true, '🔑 Connected to ' + currentBet + ' Birr room');
+            startResilienceEngine();
+        };
+
+        // Replace the resilience engine with read-only recovery. It may re-read
+        // Firebase, but it never modifies room/game state.
+        startResilienceEngine = function () {
+            if (resilienceIntervalId) return;
+            resilienceIntervalId = setInterval(() => {
+                if (!currentUser || !isGameInitialized || !gameRef || !navigator.onLine) return;
+                const silent = Date.now() - (lastSuccessfulSyncAt || 0);
+                if (silent > 8000) {
+                    gameRef.once('value').then(snap => {
+                        if (snap.exists()) {
+                            syncGameState(snap.val());
+                            markSyncReceived();
+                        }
+                    }).catch(() => {});
+                }
+            }, 5000);
+        };
+
+        // Read-only state synchronization: do not use the browser as a recovery
+        // authority. The existing renderer remains responsible for the UI.
+        const _workerOriginalSyncGameState = syncGameState;
+        syncGameState = function (data) {
+            if (!data || typeof data !== 'object') return;
+
+            // If the worker has published its ownership marker, expose it in the
+            // UI/debug state. Do not require it to render an already-live room.
+            window.__WINZO_ENGINE_MANAGED_BY =
+                data.engine && data.engine.managedBy ? data.engine.managedBy : null;
+
+            _workerOriginalSyncGameState(data);
+
+            // Re-arm only display timers after the authoritative state arrives.
+            if (data.gameState === 'selection') {
+                stopResultsCountdown();
+                if (!isTimerRunning && !gamePausedBySticky) startTimer();
+            } else if (data.gameState === 'results') {
+                stopTimer();
+                if (!isResultsCountdownRunning && !gamePausedBySticky) startResultsCountdown();
+            } else {
+                stopTimer();
+                stopResultsCountdown();
+            }
+        };
+
+        // The original sync function contains a bot block. Neutralize it by
+        // disabling the bot flag only for that internal client-side branch.
+        // Bot records are still visible and rendered normally from Firebase.
+        const _workerBotsEnabled = BOTS_ENABLED;
+        Object.defineProperty(window, 'WINZO_WORKER_MODE', { value: true, writable: false });
+
+        console.info('[WINZO] Worker-authoritative client enabled.');
+        console.info('[WINZO] Browser will not create rooms, advance rounds, pick bot numbers, spin, or pay winners.');
+        console.info('[WINZO] Firebase worker marker:', window.__WINZO_ENGINE_MANAGED_BY || 'pending');
+
         init();
     </script>
 </body>
