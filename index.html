@@ -257,6 +257,166 @@
         .ball-anim-status { text-align: center; color: #c6d4e3; font-size: 14px; font-weight: 600; min-height: 22px; padding: 2px 0; }
         .ba-winner-glow { box-shadow: 0 0 0 3px #fff, 0 0 22px 6px #ffcc44 !important; animation: baWinnerPulse .9s ease-in-out infinite alternate !important; }
         @keyframes baWinnerPulse { 0% { filter: brightness(1); } 100% { filter: brightness(1.35); } }
+
+        /* ============================================================
+           FLOATING GUIDE (Amharic step-by-step help bubbles)
+           ============================================================ */
+        .guide-help-btn {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            background: rgba(255, 204, 68, 0.15);
+            border: 1px solid rgba(255, 204, 68, 0.45);
+            color: #ffcc44;
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            letter-spacing: 0.4px;
+            z-index: 5;
+            font-family: inherit;
+        }
+        .guide-help-btn:active { transform: translateY(1px); }
+
+        .guide-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 2100;
+            pointer-events: none;
+        }
+        .guide-overlay.active { display: block; }
+
+        .guide-highlight {
+            position: absolute;
+            display: none;
+            border: 3px solid #ffcc44;
+            border-radius: 30px;
+            background: rgba(255, 204, 68, 0.06);
+            box-shadow: 0 0 0 4px rgba(255, 204, 68, 0.20), 0 0 32px rgba(255, 204, 68, 0.55);
+            pointer-events: none;
+            transition: left .35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        top .35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        width .35s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        height .35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: guideHighlightPulse 1.8s ease-in-out infinite alternate;
+        }
+        .guide-highlight.show { display: block; }
+        @keyframes guideHighlightPulse {
+            0%   { box-shadow: 0 0 0 4px rgba(255, 204, 68, 0.18), 0 0 22px rgba(255, 204, 68, 0.45); }
+            100% { box-shadow: 0 0 0 8px rgba(255, 204, 68, 0.08), 0 0 44px rgba(255, 204, 68, 0.85); }
+        }
+
+        .guide-bubble {
+            position: absolute;
+            display: none;
+            max-width: 280px;
+            background: linear-gradient(160deg, #3a1a5e, #1e2a4e);
+            border: 2px solid #ffcc44;
+            border-radius: 20px;
+            padding: 14px 16px 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 204, 68, 0.35);
+            color: #f0e6ff;
+            pointer-events: auto;
+            z-index: 2200;
+        }
+        .guide-bubble.show {
+            display: block;
+            animation: guideBubbleIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes guideBubbleIn {
+            0%   { transform: scale(0.6) translateY(10px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .guide-bubble::after {
+            content: "";
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            left: var(--arrow-left, 50%);
+            transform: translateX(-50%) rotate(45deg);
+            border: 2px solid #ffcc44;
+        }
+        .guide-bubble.arrow-bottom::after {
+            bottom: -7px;
+            border-top: none;
+            border-left: none;
+            background: #1e2a4e;
+        }
+        .guide-bubble.arrow-top::after {
+            top: -7px;
+            border-bottom: none;
+            border-right: none;
+            background: #3a1a5e;
+        }
+
+        .guide-step-counter {
+            display: inline-block;
+            background: rgba(255, 204, 68, 0.18);
+            color: #ffcc44;
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 2px 10px;
+            border-radius: 12px;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+        .guide-text {
+            color: #f0e6ff;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .guide-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .guide-btns { display: flex; gap: 6px; }
+        .guide-btn {
+            border: none;
+            border-radius: 14px;
+            padding: 6px 14px;
+            font-weight: 800;
+            font-size: 0.72rem;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            font-family: inherit;
+        }
+        .guide-btn.next {
+            background: linear-gradient(135deg, #ffcc44, #f5a623);
+            color: #1a0a2e;
+            box-shadow: 0 3px 0 #b87a15;
+        }
+        .guide-btn.next:active { transform: translateY(3px); box-shadow: none; }
+        .guide-btn.prev {
+            background: rgba(120, 80, 200, 0.22);
+            color: #d4c0f0;
+            border: 1px solid rgba(120, 80, 200, 0.30);
+        }
+        .guide-btn.skip {
+            background: transparent;
+            color: #9d8bb7;
+            font-size: 0.68rem;
+            padding: 4px 8px;
+            text-decoration: underline;
+        }
+        .guide-dismiss-x {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            background: transparent;
+            border: none;
+            color: #9d8bb7;
+            font-size: 0.9rem;
+            cursor: pointer;
+            padding: 2px 6px;
+            font-family: inherit;
+        }
+        .guide-dismiss-x:active { color: #ff8a8a; }
     </style>
 </head>
 <body>
@@ -383,7 +543,7 @@
     </div>
     <div class="deposit-modal" id="depositModal">
         <div class="modal-content">
-            <h3> በቴሌብር ወደ 0998487148 ገቢ ያድርጉ </h3>
+            <h3> በቴሌብር ወደ 0998487148 ያስገቡ </h3>
             <div class="balance-info">አሁን ያሎት ብር: <span class="amount" id="depositPlayBalance">0</span></div>
 
             <div class="paste-box">
@@ -1716,6 +1876,239 @@
             else bindFooter();
         })();
 
+        // ============================================================
+        //  FLOATING GUIDE (Amharic step-by-step help bubbles)
+        // ============================================================
+        const Guide = (function () {
+            let overlayEl = null;
+            let highlightEl = null;
+            let bubbleEl = null;
+            let counterEl = null;
+            let textEl = null;
+            let prevBtnEl = null;
+            let nextBtnEl = null;
+            let skipBtnEl = null;
+            let dismissBtnEl = null;
+            let currentSteps = null;
+            let currentIndex = 0;
+            let currentTargetSelector = null;
+            let currentGuideKey = null;
+            let repositionRaf = null;
+
+            function ensureDom() {
+                if (overlayEl) return;
+                overlayEl = document.createElement('div');
+                overlayEl.className = 'guide-overlay';
+                overlayEl.id = 'guideOverlay';
+                overlayEl.innerHTML = `
+                    <div class="guide-highlight" id="guideHighlight"></div>
+                    <div class="guide-bubble" id="guideBubble">
+                        <button class="guide-dismiss-x" id="guideDismissX" type="button" aria-label="Close">✕</button>
+                        <div class="guide-step-counter" id="guideStepCounter">ደረጃ 1/1</div>
+                        <div class="guide-text" id="guideText"></div>
+                        <div class="guide-actions">
+                            <button class="guide-btn skip" id="guideSkipBtn" type="button">ዝለል</button>
+                            <div class="guide-btns">
+                                <button class="guide-btn prev" id="guidePrevBtn" type="button">← ቀዳሚ</button>
+                                <button class="guide-btn next" id="guideNextBtn" type="button">ቀጣይ →</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlayEl);
+
+                highlightEl = document.getElementById('guideHighlight');
+                bubbleEl = document.getElementById('guideBubble');
+                counterEl = document.getElementById('guideStepCounter');
+                textEl = document.getElementById('guideText');
+                prevBtnEl = document.getElementById('guidePrevBtn');
+                nextBtnEl = document.getElementById('guideNextBtn');
+                skipBtnEl = document.getElementById('guideSkipBtn');
+                dismissBtnEl = document.getElementById('guideDismissX');
+
+                prevBtnEl.addEventListener('click', () => showStep(currentIndex - 1));
+                nextBtnEl.addEventListener('click', () => {
+                    if (!currentSteps) return;
+                    if (currentIndex >= currentSteps.length - 1) {
+                        markSeen();
+                        stop();
+                    } else {
+                        showStep(currentIndex + 1);
+                    }
+                });
+                skipBtnEl.addEventListener('click', () => { markSeen(); stop(); });
+                dismissBtnEl.addEventListener('click', () => { markSeen(); stop(); });
+
+                window.addEventListener('resize', schedulePosition);
+                window.addEventListener('scroll', schedulePosition, true);
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', schedulePosition);
+                    window.visualViewport.addEventListener('scroll', schedulePosition);
+                }
+            }
+
+            function schedulePosition() {
+                if (!currentSteps || !currentTargetSelector) return;
+                if (repositionRaf) cancelAnimationFrame(repositionRaf);
+                repositionRaf = requestAnimationFrame(positionAll);
+            }
+
+            function showStep(i) {
+                if (!currentSteps) return;
+                if (i < 0 || i >= currentSteps.length) return;
+                currentIndex = i;
+                const step = currentSteps[i];
+                const target = document.querySelector(step.target);
+                if (!target) {
+                    if (i < currentSteps.length - 1) showStep(i + 1);
+                    else stop();
+                    return;
+                }
+                currentTargetSelector = step.target;
+
+                try { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+
+                counterEl.textContent = `ደረጃ ${i + 1}/${currentSteps.length}`;
+                textEl.textContent = step.text;
+
+                prevBtnEl.style.display = i === 0 ? 'none' : 'inline-block';
+                nextBtnEl.textContent = i === currentSteps.length - 1 ? 'ጨርስ ✓' : 'ቀጣይ →';
+
+                bubbleEl.classList.remove('show');
+                void bubbleEl.offsetWidth;
+                bubbleEl.classList.add('show');
+                highlightEl.classList.add('show');
+
+                setTimeout(positionAll, 60);
+                setTimeout(positionAll, 340);
+            }
+
+            function positionAll() {
+                if (!currentTargetSelector) return;
+                const target = document.querySelector(currentTargetSelector);
+                if (!target) return;
+                const rect = target.getBoundingClientRect();
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                const pad = 6;
+
+                highlightEl.style.left = (rect.left - pad) + 'px';
+                highlightEl.style.top = (rect.top - pad) + 'px';
+                highlightEl.style.width = (rect.width + pad * 2) + 'px';
+                highlightEl.style.height = (rect.height + pad * 2) + 'px';
+
+                const bubbleW = Math.min(280, vw - 24);
+                bubbleEl.style.width = bubbleW + 'px';
+                const bH = bubbleEl.offsetHeight || 140;
+
+                const spaceBelow = vh - rect.bottom;
+                const spaceAbove = rect.top;
+                const placeBelow = spaceBelow >= bH + 20 || spaceBelow >= spaceAbove;
+
+                let bLeft = rect.left + rect.width / 2 - bubbleW / 2;
+                bLeft = Math.max(12, Math.min(vw - bubbleW - 12, bLeft));
+
+                let bTop = placeBelow
+                    ? (rect.bottom + 16)
+                    : (rect.top - bH - 16);
+                bTop = Math.max(12, Math.min(vh - bH - 12, bTop));
+
+                bubbleEl.style.left = bLeft + 'px';
+                bubbleEl.style.top = bTop + 'px';
+
+                bubbleEl.classList.remove('arrow-top', 'arrow-bottom');
+                bubbleEl.classList.add(placeBelow ? 'arrow-top' : 'arrow-bottom');
+
+                const targetCenterX = rect.left + rect.width / 2;
+                let arrowLeft = targetCenterX - bLeft;
+                arrowLeft = Math.max(22, Math.min(bubbleW - 22, arrowLeft));
+                bubbleEl.style.setProperty('--arrow-left', arrowLeft + 'px');
+            }
+
+            function start(steps, guideKey) {
+                ensureDom();
+                currentSteps = steps;
+                currentIndex = 0;
+                currentGuideKey = guideKey || null;
+                overlayEl.classList.add('active');
+                showStep(0);
+            }
+
+            function stop() {
+                if (!overlayEl) return;
+                overlayEl.classList.remove('active');
+                highlightEl.classList.remove('show');
+                bubbleEl.classList.remove('show');
+                currentSteps = null;
+                currentIndex = 0;
+                currentTargetSelector = null;
+                currentGuideKey = null;
+            }
+
+            function isActive() { return !!(overlayEl && overlayEl.classList.contains('active')); }
+
+            function markSeen() {
+                if (currentGuideKey) {
+                    try { localStorage.setItem('winzo_guide_seen_' + currentGuideKey, 'true'); } catch (_) {}
+                }
+            }
+            function hasSeen(key) {
+                try { return localStorage.getItem('winzo_guide_seen_' + key) === 'true'; } catch (_) { return false; }
+            }
+
+            return { start, stop, isActive, hasSeen };
+        })();
+
+        function getDepositGuideSteps() {
+            return [
+                { target: '#depositPasteText', text: '1️⃣የላኩበትን  የቴሌብር መልእክት copy ያድርጉና እዚህ paste ያድርጉ። የብር መጠኑና ማጣቀሻው  (Reference) ከስር ይሞላል።' },
+                { target: '#extractFromTextBtn', text: '2️⃣ መረጃውን በራሱ  ለማውጣት ይህን 🔍 Extract ቁልፍ ይጫኑ።' },
+                { target: '#depositAmount', text: '3️⃣ ያስገቡትን የብር መጠን እዚህ ያረጋግጡ ወይም በእጅ ያስገቡ።' },
+                { target: '#depositReference', text: '4️⃣ Reference ጥቁር እዚህ ያረጋግጡ።' },
+                { target: '#depositImage', text: '5️⃣አሊያም ደግሞ፣ Screenshot ያድርጉና እዚህ ይላኩ።' },
+                { target: '#depositConfirm', text: '6️⃣ ሁሉንም አረጋግጠው Send የሚለውን ይጫኑ።  Admin ካጸደቀው በኋላ ብሩ ወደ ሒሳብዎ ይገባል።' }
+            ];
+        }
+
+        function getWithdrawGuideSteps() {
+            return [
+                { target: '#withdrawName', text: '1️⃣ ሙሉ ስምዎን እዚህ ያስገቡ' },
+                { target: '#withdrawPhone', text: '2️⃣ ስልክ ቁጥርዎን ያስገቡ።' },
+                { target: '#withdrawAmount', text: '3️⃣ ወጪ ማድረግ የሚፈልጉትን የብር መጠን ያስገቡ።' },
+                { target: '#withdrawConfirm', text: '4️⃣ መረጃውን አረጋግጠው Send ይጫኑ። ' }
+            ];
+        }
+
+        function injectGuideHelpButton(modalId, stepsFn, guideKey) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            const content = modal.querySelector('.modal-content');
+            if (!content) return;
+            if (content.querySelector('.guide-help-btn')) return;
+            if (getComputedStyle(content).position === 'static') content.style.position = 'relative';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'guide-help-btn';
+            btn.textContent = '❓ እርዳታ';
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                Guide.start(stepsFn(), guideKey);
+            });
+            content.appendChild(btn);
+        }
+
+        function watchGuideModalClose(modalEl) {
+            if (!modalEl || modalEl._guideWatched) return;
+            modalEl._guideWatched = true;
+            const observer = new MutationObserver(() => {
+                if (!modalEl.classList.contains('active')) {
+                    if (Guide.isActive()) Guide.stop();
+                }
+            });
+            observer.observe(modalEl, { attributes: true, attributeFilter: ['class'] });
+        }
+
         function formatWinnerNames(winners) {
             const list = Array.isArray(winners) ? winners.filter(Boolean).map(w => String(w).trim()).filter(Boolean) : [];
             if (!list.length) return '😔 No Winner';
@@ -2443,6 +2836,10 @@
             if (textExtractStatus) { textExtractStatus.textContent = ''; textExtractStatus.style.color = '#ffd866'; }
             if (depositModal) depositModal.classList.add('active');
             closeMoreDropdown();
+            // Show floating guide on first-time users
+            if (!Guide.hasSeen('deposit')) {
+                setTimeout(() => Guide.start(getDepositGuideSteps(), 'deposit'), 380);
+            }
         }
         function depositToPlay(amount, reference, imageFile) {
             if (!currentUser) return false;
@@ -2859,6 +3256,7 @@
             if (winnersModal) winnersModal.classList.remove('active');
             if (stickyOverlay) stickyOverlay.classList.remove('active');
             if (broadcastModal) broadcastModal.classList.remove('active');
+            try { Guide.stop(); } catch (e) {}
             resetWinningNumberCard();
             updateWalletUI(); updateAllUI(); showAuthScreen();
         }
@@ -3661,6 +4059,9 @@
                 if (withdrawAmountEl) withdrawAmountEl.value = '';
                 if (withdrawModal) withdrawModal.classList.add('active');
                 closeMoreDropdown();
+                if (!Guide.hasSeen('withdraw')) {
+                    setTimeout(() => Guide.start(getWithdrawGuideSteps(), 'withdraw'), 380);
+                }
             };
             if (transferBtn) transferBtn.onclick = () => {
                 const amount = prompt('Enter amount to transfer from Main to Play:', '10');
@@ -3720,6 +4121,11 @@
                 withdrawFromMain(amount, name, phone);
             };
             if (withdrawCancel) withdrawCancel.onclick = () => { if (withdrawModal) withdrawModal.classList.remove('active'); };
+            // Wire up the floating guide for both modals
+            injectGuideHelpButton('depositModal', getDepositGuideSteps, 'deposit');
+            injectGuideHelpButton('withdrawModal', getWithdrawGuideSteps, 'withdraw');
+            watchGuideModalClose(depositModal);
+            watchGuideModalClose(withdrawModal);
             if (tg && tg.BackButton) {
                 tg.BackButton.onClick(() => {
                     if (gameScreen && gameScreen.style.display !== 'none') {
@@ -4610,6 +5016,7 @@
         console.info('Broadcast service: dismissible popups + sticky pause-game (admin-only removal)');
         console.info('Master watchdog: ACTIVE — every expected stall has a recovery path');
         console.info('Auth mode: passwordless (Telegram username only)');
+        console.info('Floating guide: ENABLED for deposit & withdraw modals (Amharic)');
 
         // Debug helpers
         window.winzoDiag = {
@@ -4636,6 +5043,12 @@
                 if (ov) ov.classList.remove('active');
                 watchdogLog('info', 'manual reset');
             },
+            resetGuides: () => {
+                try { localStorage.removeItem('winzo_guide_seen_deposit'); localStorage.removeItem('winzo_guide_seen_withdraw'); } catch (_) {}
+                console.log('[GUIDE] reset both guides — they will auto-show next time');
+            },
+            showDepositGuide: () => Guide.start(getDepositGuideSteps(), 'deposit'),
+            showWithdrawGuide: () => Guide.start(getWithdrawGuideSteps(), 'withdraw'),
         };
 
         init();
