@@ -273,7 +273,6 @@
             <div id="authError" class="auth-error"></div>
             <div class="telegram-info" id="telegramInfo">📱 Detecting Telegram user...</div>
             <input type="text" id="authUsername" placeholder="Username" maxlength="20" autocomplete="username">
-            <input type="password" id="authPassword" placeholder="Password" minlength="4" autocomplete="current-password" value="">
             <button class="auth-btn" id="authLoginBtn">Login</button>
             <button class="auth-btn auth-btn-secondary" id="authSignupBtn">Sign Up</button>
             <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:4px;">
@@ -769,12 +768,8 @@
         }
         function applyTelegramAutoLogin(username) {
             const usernameInput = document.getElementById('authUsername');
-            const passwordInput = document.getElementById('authPassword');
-            if (!usernameInput || !passwordInput) return;
+            if (!usernameInput) return;
             usernameInput.value = username; usernameInput.readOnly = true; usernameInput.style.color = '#8affb0';
-            const savedCredentials = DB.getSavedCredentials();
-            if (savedCredentials && savedCredentials.password) passwordInput.value = savedCredentials.password;
-            else { passwordInput.value = ''; passwordInput.placeholder = 'Enter your password'; }
             usernameInput.addEventListener('focus', function() { this.value = username; });
             usernameInput.addEventListener('input', function() { this.value = username; });
             usernameInput.addEventListener('keydown', function(e) { e.preventDefault(); return false; });
@@ -1635,7 +1630,7 @@
 
         const $ = (id) => document.getElementById(id);
         const authScreen = $('authScreen'); const welcomeScreen = $('welcomeScreen'); const gameScreen = $('gameScreen');
-        const authError = $('authError'); const authUsername = $('authUsername'); const authPassword = $('authPassword');
+        const authError = $('authError'); const authUsername = $('authUsername');
         const authLoginBtn = $('authLoginBtn'); const authSignupBtn = $('authSignupBtn'); const authStatus = $('authStatus');
         const telegramInfo = $('telegramInfo'); const bet15Btn = $('bet15Btn'); const bet30Btn = $('bet30Btn');
         const welcomeBalance = $('welcomeBalance'); const welcomeLogoutBtn = $('welcomeLogoutBtn'); const welcomeDepositBtn = $('welcomeDepositBtn');
@@ -2650,7 +2645,6 @@
             DB.setSavedBet(null);
             const savedCredentials = DB.getSavedCredentials();
             if (savedCredentials?.username && authUsername) authUsername.value = savedCredentials.username;
-            if (savedCredentials?.password && authPassword) authPassword.value = savedCredentials.password;
             if (userWalletRef) { userWalletRef.off(); userWalletRef = null; }
             if (pendingTxListenerRef && pendingTxListenerHandler) {
                 try { pendingTxListenerRef.off('child_changed', pendingTxListenerHandler); } catch (e) {}
@@ -2701,68 +2695,73 @@
             requestAnimationFrame(() => renderNumberPicker(true));
         }
 
-        function handleLogin() {
+        function resolveLoginUsername() {
             const username = authUsername ? authUsername.value.trim() : '';
-            const password = authPassword ? authPassword.value.trim() : '';
-            if (!username || !password) { if (authError) authError.textContent = 'Please fill in all fields.'; return; }
+            if (!username) { if (authError) authError.textContent = 'Please enter your username.'; return null; }
             if (telegramDetectedUsername && username !== telegramDetectedUsername) {
                 if (authError) authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
                 if (authUsername) authUsername.value = telegramDetectedUsername;
-                return;
+                return null;
             }
-            if (!database) { if (authError) authError.textContent = 'Firebase not available.'; return; }
+            if (!database) { if (authError) authError.textContent = 'Firebase not available.'; return null; }
+            return username;
+        }
+
+        function startUserSession(username, userData) {
+            currentUser = username;
+            DB.setCurrentUser(username);
+            DB.setSavedCredentials(username, '');
+            if (authError) authError.textContent = '';
+            syncWalletFromFirebase();
+            checkPendingTransactionStatus();
+            showWelcomeScreen();
+            setConnectionStatus(true);
+            if (!userData || userData.bonusClaimed) return;
+            database.ref('users/' + username).update({ playWallet: (userData.playWallet || 0) + 30, bonusClaimed: true }).catch(() => {});
+            if (welcomeToast) welcomeToast.classList.add('active');
+            DB.setToastShown();
+            setTimeout(() => { if (welcomeToast) welcomeToast.classList.remove('active'); }, 5000);
+        }
+
+        function createAccount(username) {
+            let refCode = pendingReferralCode;
+            if (!refCode) { const saved = localStorage.getItem('winzo_pending_referral'); if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) refCode = saved; }
+            const newUserData = { mainWallet: 0, playWallet: 30, pendingWithdrawal: 0, bonusClaimed: true };
+            if (refCode && refCode !== username) { newUserData.referredBy = refCode; newUserData.referralJoinedAt = firebase.database.ServerValue.TIMESTAMP; }
+            return database.ref('users').child(username).set(newUserData).then(() => {
+                if (pendingReferralCode) { localStorage.removeItem('winzo_pending_referral'); pendingReferralCode = null; }
+                startUserSession(username, newUserData);
+                if (welcomeToast) welcomeToast.classList.add('active');
+                DB.setToastShown();
+                setTimeout(() => { if (welcomeToast) welcomeToast.classList.remove('active'); }, 5000);
+            });
+        }
+
+        function handleLogin() {
+            const username = resolveLoginUsername();
+            if (!username) return;
             database.ref('users').child(username).once('value', snapshot => {
                 const userData = snapshot.val();
-                if (!userData) { if (authError) authError.textContent = 'User not found. Please sign up.'; return; }
-                else if (userData.password === password) {
-                    currentUser = username;
-                    DB.setCurrentUser(username);
-                    DB.setSavedCredentials(username, password);
-                    if (authError) authError.textContent = '';
-                    syncWalletFromFirebase();
-                    checkPendingTransactionStatus();
-                    showWelcomeScreen();
-                    setConnectionStatus(true);
-                    if (!userData.bonusClaimed) {
-                        database.ref('users/' + username).update({ playWallet: (userData.playWallet || 0) + 30, bonusClaimed: true }).catch(() => {});
-                        if (welcomeToast) welcomeToast.classList.add('active');
-                        DB.setToastShown();
-                        setTimeout(() => { if (welcomeToast) welcomeToast.classList.remove('active'); }, 5000);
-                    }
-                } else { if (authError) authError.textContent = 'Invalid password.'; }
+                if (!userData) {
+                    // No password gate any more — a detected Telegram username
+                    // that has no account yet is simply registered on first login.
+                    createAccount(username).catch(err => {
+                        if (authError) authError.textContent = 'Error: ' + (err && err.message ? err.message : 'try again');
+                    });
+                    return;
+                }
+                startUserSession(username, userData);
             }).catch(err => { if (authError) authError.textContent = 'Network error: ' + (err && err.message ? err.message : 'try again'); });
         }
+
         function handleSignup() {
-            const username = authUsername ? authUsername.value.trim() : '';
-            const password = authPassword ? authPassword.value.trim() : '';
-            if (!username || !password) { if (authError) authError.textContent = 'Please fill in all fields.'; return; }
-            if (telegramDetectedUsername && username !== telegramDetectedUsername) {
-                if (authError) authError.textContent = 'You must use your Telegram username: @' + telegramDetectedUsername;
-                if (authUsername) authUsername.value = telegramDetectedUsername;
-                return;
-            }
-            if (!database) { if (authError) authError.textContent = 'Firebase not available.'; return; }
+            const username = resolveLoginUsername();
+            if (!username) return;
             database.ref('users').child(username).once('value', snapshot => {
-                const userData = snapshot.val();
-                if (userData) { if (authError) authError.textContent = 'Username already exists. Please login.'; return; }
-                else {
-                    let refCode = pendingReferralCode;
-                    if (!refCode) { const saved = localStorage.getItem('winzo_pending_referral'); if (saved && /^[A-Za-z0-9_]{1,32}$/.test(saved)) refCode = saved; }
-                    const newUserData = { password, mainWallet: 0, playWallet: 30, pendingWithdrawal: 0, bonusClaimed: true };
-                    if (refCode && refCode !== username) { newUserData.referredBy = refCode; newUserData.referralJoinedAt = firebase.database.ServerValue.TIMESTAMP; }
-                    database.ref('users').child(username).set(newUserData).then(() => {
-                        if (authError) authError.textContent = '✅ Account created! +30 Birr bonus.';
-                        currentUser = username;
-                        DB.setCurrentUser(username);
-                        DB.setSavedCredentials(username, password);
-                        if (pendingReferralCode) { localStorage.removeItem('winzo_pending_referral'); pendingReferralCode = null; }
-                        syncWalletFromFirebase(); checkPendingTransactionStatus();
-                        showWelcomeScreen(); setConnectionStatus(true);
-                        if (welcomeToast) welcomeToast.classList.add('active');
-                        DB.setToastShown();
-                        setTimeout(() => { if (welcomeToast) welcomeToast.classList.remove('active'); }, 5000);
-                    }).catch(err => { if (authError) authError.textContent = 'Error: ' + err.message; });
-                }
+                if (snapshot.val()) { if (authError) authError.textContent = 'Username already exists. Please login.'; return; }
+                createAccount(username).catch(err => {
+                    if (authError) authError.textContent = 'Error: ' + (err && err.message ? err.message : 'try again');
+                });
             }).catch(err => { if (authError) authError.textContent = 'Network error: ' + (err && err.message ? err.message : 'try again'); });
         }
 
@@ -4610,6 +4609,7 @@
         console.info('Bot persistence: ENABLED — rooms stay populated across sessions');
         console.info('Broadcast service: dismissible popups + sticky pause-game (admin-only removal)');
         console.info('Master watchdog: ACTIVE — every expected stall has a recovery path');
+        console.info('Auth mode: passwordless (Telegram username only)');
 
         // Debug helpers
         window.winzoDiag = {
