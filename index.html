@@ -4957,6 +4957,17 @@
                     setAt: firebase.database.ServerValue.TIMESTAMP
                 }).catch(() => {});
 
+                // Record completed-round player analytics independently of payout.
+                // This excludes bots from the human-player metric used by the dashboard.
+                recordWinzoPlayerAnalytics(
+                    roomName,
+                    finalRoom,
+                    round,
+                    winningNumber,
+                    finalWinners,
+                    winAmount
+                ).catch(() => {});
+
                 if (finalWinners.length && winAmount > 0) {
                     const payoutResults = await Promise.allSettled(
                         finalWinners.map(name => creditWinnerAndReferral(
@@ -4984,6 +4995,53 @@
                 engineState.spinInProgress = false;
             }
         }
+        // ============================================================
+        //  WINZO PLAYER ANALYTICS INTEGRATION
+        //  Writes one immutable summary record for every completed round.
+        //  The analytics dashboard reads /analytics/gameHistory/{date}/{room}/{round}.
+        // ============================================================
+        function recordWinzoPlayerAnalytics(roomName, roomData, round, winningNumber, finalWinners, winAmount) {
+            if (!database || !roomName || !roomData || !Number.isFinite(Number(round))) {
+                return Promise.resolve(false);
+            }
+
+            const players = (roomData.players && typeof roomData.players === 'object') ? roomData.players : {};
+            const playerNames = Object.keys(players);
+            const botNames = playerNames.filter(name => players[name] && players[name].isBot === true);
+            const humanPlayerCount = playerNames.length - botNames.length;
+            const timestamp = Number(roomData.spinFinishedAt || roomData.finishedAt || Date.now()) || Date.now();
+            const d = new Date(timestamp);
+            const date = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            const analyticsRef = database.ref(`analytics/gameHistory/${date}/${roomName}/${Number(round)}`);
+
+            const record = {
+                timestamp,
+                room: roomName,
+                round: Number(round),
+                betAmount: Number(roomData.betAmount || currentBet || 0),
+                playerCount: playerNames.length,
+                humanPlayerCount: Math.max(0, humanPlayerCount),
+                botPlayerCount: botNames.length,
+                winningNumber: Number(winningNumber) || null,
+                winnersCount: Array.isArray(finalWinners) ? finalWinners.length : 0,
+                winAmount: Number(winAmount) || 0,
+                totalBets: Number(roomData.totalBets || 0),
+                potAmount: Number(roomData.potAmount || 0),
+                prizePool: Number(roomData.prizePool || 0),
+                botsExcluded: true,
+                recordedAt: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            // Transaction makes the operation idempotent when more than one client
+            // reaches the completed-game state at the same time.
+            return analyticsRef.transaction(current => current || record)
+                .then(result => !!(result && result.committed))
+                .catch(err => {
+                    window.WINZO_RECORD_ERROR('ANALYTICS-WRITE', err);
+                    return false;
+                });
+        }
+
         function creditWinnerAndReferral(winnerName, winAmount, attempt = 0, payoutRoom = currentRoom, payoutRound = Number(engineState.roundNumber)) {
             if (!database || !winnerName || Number(winAmount) <= 0) return Promise.resolve(false);
             const amount = Number(winAmount);
