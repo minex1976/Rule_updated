@@ -236,24 +236,60 @@
         @media (max-width: 430px) { #usernameWalletItem { display: none !important; } }
         @media (max-height: 700px) { #usernameWalletItem { display: none !important; } }
 
-        .ball-anim-overlay { position: fixed; inset: 0; z-index: 3500; display: none; align-items: center; justify-content: center; background: rgba(2,7,14,.88); padding: 16px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .ball-anim-overlay { position: fixed; inset: 0; z-index: 3500; display: none; align-items: flex-start; justify-content: center; background: rgba(2,7,14,.88); padding: 42px 16px 18px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
         .ball-anim-overlay.active { display: flex; }
-        .ball-anim-machine { position: relative; width: min(460px, 100%); height: min(640px, 94vh); border-radius: 30px; padding: 14px; background: linear-gradient(145deg, #2a1a4a, #1a2a4a); border: 1px solid rgba(180,120,255,.28); box-shadow: 0 20px 60px rgba(0,0,0,.7); display: flex; flex-direction: column; gap: 10px; }
-        .ball-anim-glass { position: relative; flex: 1 1 auto; min-height: 0; border-radius: 22px; background: linear-gradient(180deg, #eaf2fb 0%, #cddceb 100%); border: 5px solid #b8c9d8; overflow: hidden; }
-        .ball-anim-glass::before { content: "LUCKY DRAW"; position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: 900; letter-spacing: 4px; color: #8a9bad; opacity: .35; pointer-events: none; z-index: 0; }
-        .ball-anim-glass::after { content: ""; position: absolute; left: 4%; right: 4%; bottom: 2px; height: 14px; background: radial-gradient(ellipse at 50% 100%, rgba(70,90,115,.32) 0%, rgba(70,90,115,0) 72%); border-radius: 50%; pointer-events: none; z-index: 1; }
+        .ball-anim-machine { position: relative; width: min(460px, 100%); height: min(690px, calc(100vh - 62px)); min-height: 500px; border-radius: 30px; padding: 14px; background: transparent; border: none; box-shadow: none; display: flex; flex-direction: column; gap: 10px; }
+        .ball-anim-glass { position: relative; flex: 1 1 auto; min-height: 0; border-radius: 28px; background: linear-gradient(145deg, rgba(245,250,255,.34), rgba(170,195,220,.20)); border: 3px solid rgba(235,245,255,.72); overflow: hidden; box-shadow: 0 28px 55px rgba(0,0,0,.42), 0 0 30px rgba(190,220,255,.16), inset 0 1px 0 rgba(255,255,255,.72), inset 0 -20px 45px rgba(90,120,155,.12); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); animation: baGlassFloat 3.8s ease-in-out infinite; will-change: transform; transform-origin: 50% 55%; }
+        @keyframes baGlassFloat { 0%,100% { transform: translate3d(0,0,0) rotateX(0deg) rotateZ(0deg); } 25% { transform: translate3d(-5px,-7px,0) rotateX(.7deg) rotateZ(-.35deg); } 50% { transform: translate3d(3px,-12px,0) rotateX(-.6deg) rotateZ(.3deg); } 75% { transform: translate3d(6px,-6px,0) rotateX(.5deg) rotateZ(.4deg); } }
+        /* Vigorous lucky-draw shaker: the glass itself moves, so everything inside feels the motion. */
+        .ball-anim-glass.ba-shaking { animation: baGlassShake .11s linear infinite; }
+        @keyframes baGlassShake {
+          0%   { transform: translate3d(-7px,  1px, 0) rotateZ(-1.15deg); }
+          20%  { transform: translate3d( 6px, -2px, 0) rotateZ( 1.05deg); }
+          40%  { transform: translate3d(-5px,  3px, 0) rotateZ(-.85deg); }
+          60%  { transform: translate3d( 7px, -1px, 0) rotateZ( .95deg); }
+          80%  { transform: translate3d(-4px, -2px, 0) rotateZ(-.7deg); }
+          100% { transform: translate3d( 5px,  1px, 0) rotateZ( .8deg); }
+        }
+        #baBalls.ba-shake-balls { animation: baBallsShake .075s linear infinite; transform-origin: 50% 55%; }
+        @keyframes baBallsShake {
+          0%   { transform: translate3d(-4px,  2px, 0) rotate(-.5deg); }
+          25%  { transform: translate3d( 5px, -2px, 0) rotate(.6deg); }
+          50%  { transform: translate3d(-6px,  1px, 0) rotate(-.7deg); }
+          75%  { transform: translate3d( 4px,  3px, 0) rotate(.55deg); }
+          100% { transform: translate3d(-3px, -1px, 0) rotate(-.4deg); }
+        }
+        .ball-anim-glass::before { content: "LUCKY DRAW"; position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: 900; letter-spacing: 4px; color: #71879b; opacity: .25; pointer-events: none; z-index: 0; }
+        .ball-anim-glass::after { content: ""; position: absolute; left: 4%; right: 4%; bottom: 2px; height: 14px; background: radial-gradient(ellipse at 50% 100%, rgba(70,90,115,.30) 0%, rgba(70,90,115,0) 72%); border-radius: 50%; pointer-events: none; z-index: 1; }
         #baBalls { position: absolute; inset: 0; z-index: 2; }
-        .ba-ball { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; line-height: 1; text-align: center; padding: 2px; overflow: hidden; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
-        .ba-ball.ba-white { background: radial-gradient(circle at 34% 30%, #ffffff 0%, #eef1f5 55%, #b8c2cc 100%); color: #101820; box-shadow: inset -2px -3px 4px rgba(0,0,0,.14), 0 2px 3px rgba(0,0,0,.22); }
-        .ba-ball.ba-yellow { background: radial-gradient(circle at 34% 30%, #fffbe0 0%, #ffe868 40%, #d18a00 100%); color: #3d2c00; word-break: break-word; box-shadow: inset -2px -3px 4px rgba(0,0,0,.16), 0 2px 3px rgba(0,0,0,.22); }
-        .ba-ball.ba-bounce { -webkit-animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite; animation: baBounce var(--dur, 1.6s) cubic-bezier(0.37, 0, 0.63, 1) var(--delay, 0s) infinite; }
-        @-webkit-keyframes baBounce { 0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); } 46% { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); } 55% { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); } }
-        @keyframes baBounce { 0%, 100% { -webkit-transform: translate3d(0, 0, 0) rotate(0deg); transform: translate3d(0, 0, 0) rotate(0deg); } 46% { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(140deg); } 55% { -webkit-transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); transform: translate3d(var(--dx, 3px), var(--jump, -16px), 0) rotate(200deg); } }
+        .ba-ball { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; line-height: 1; text-align: center; padding: 2px; overflow: hidden; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform-origin: center; }
+        .ba-ball.ba-white { background: radial-gradient(circle at 34% 30%, #ffffff 0%, #eef1f5 55%, #b8c2cc 100%); color: #101820; box-shadow: inset -2px -3px 4px rgba(0,0,0,.14), 0 3px 5px rgba(0,0,0,.22); }
+        .ba-ball.ba-yellow { background: radial-gradient(circle at 34% 30%, #fffbe0 0%, #ffe868 40%, #d18a00 100%); color: #3d2c00; word-break: break-word; box-shadow: inset -2px -3px 4px rgba(0,0,0,.16), 0 3px 5px rgba(0,0,0,.22); }
+        .ba-ball.ba-bounce { -webkit-animation: baBounce var(--dur, 1.6s) ease-in-out var(--delay, 0s) infinite; animation: baBounce var(--dur, 1.6s) ease-in-out var(--delay, 0s) infinite; }
+        @-webkit-keyframes baBounce {
+          0%   { -webkit-transform: translate3d(0,0,0) rotate(0deg) scale(1); transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+          16%  { -webkit-transform: translate3d(var(--x1),var(--y1),0) rotate(var(--r1)) scale(1.03); transform: translate3d(var(--x1),var(--y1),0) rotate(var(--r1)) scale(1.03); }
+          34%  { -webkit-transform: translate3d(var(--x2),var(--y2),0) rotate(var(--r2)) scale(.98); transform: translate3d(var(--x2),var(--y2),0) rotate(var(--r2)) scale(.98); }
+          52%  { -webkit-transform: translate3d(var(--x3),var(--y3),0) rotate(var(--r3)) scale(1.05); transform: translate3d(var(--x3),var(--y3),0) rotate(var(--r3)) scale(1.05); }
+          70%  { -webkit-transform: translate3d(var(--x4),var(--y4),0) rotate(var(--r4)) scale(.97); transform: translate3d(var(--x4),var(--y4),0) rotate(var(--r4)) scale(.97); }
+          86%  { -webkit-transform: translate3d(var(--x5),var(--y5),0) rotate(var(--r5)) scale(1.02); transform: translate3d(var(--x5),var(--y5),0) rotate(var(--r5)) scale(1.02); }
+          100% { -webkit-transform: translate3d(0,0,0) rotate(360deg) scale(1); transform: translate3d(0,0,0) rotate(360deg) scale(1); }
+        }
+        @keyframes baBounce {
+          0%   { transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+          16%  { transform: translate3d(var(--x1),var(--y1),0) rotate(var(--r1)) scale(1.03); }
+          34%  { transform: translate3d(var(--x2),var(--y2),0) rotate(var(--r2)) scale(.98); }
+          52%  { transform: translate3d(var(--x3),var(--y3),0) rotate(var(--r3)) scale(1.05); }
+          70%  { transform: translate3d(var(--x4),var(--y4),0) rotate(var(--r4)) scale(.97); }
+          86%  { transform: translate3d(var(--x5),var(--y5),0) rotate(var(--r5)) scale(1.02); }
+          100% { transform: translate3d(0,0,0) rotate(360deg) scale(1); }
+        }
         .ba-hole { position: absolute; left: 50%; bottom: -3px; width: 76px; height: 38px; transform: translateX(-50%); border-radius: 76px 76px 0 0; background: #05040a; box-shadow: 0 -2px 0 2px rgba(130,150,175,.5), inset 0 6px 10px rgba(0,0,0,.9); z-index: 5; overflow: hidden; }
         .ba-hole-lid { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; border-radius: 76px 76px 0 0; background: linear-gradient(#e6edf4, #a9b7c6); transition: transform .5s cubic-bezier(.55,0,.75,.35), opacity .45s ease; }
         .ba-hole.open .ba-hole-lid { transform: translateY(115%); opacity: 0; }
         .ba-drop { z-index: 60; box-shadow: inset -2px -3px 4px rgba(0,0,0,.15), 0 4px 10px rgba(0,0,0,.55) !important; will-change: transform; }
-        .ba-tray { flex: 0 0 auto; height: 70px; border-radius: 18px; background: linear-gradient(#0d1220, #1a2436); border: 1px solid rgba(180,120,255,.22); box-shadow: inset 0 4px 10px rgba(0,0,0,.6); position: relative; z-index: 3; }
+        .ba-tray { flex: 0 0 auto; height: 70px; border-radius: 18px; background: linear-gradient(rgba(13,18,32,.78), rgba(26,36,54,.88)); border: 1px solid rgba(180,120,255,.22); box-shadow: 0 18px 30px rgba(0,0,0,.38), inset 0 4px 10px rgba(0,0,0,.6); position: relative; z-index: 3; animation: baTrayFloat 3.8s ease-in-out infinite reverse; }
+        @keyframes baTrayFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         .ball-anim-status { text-align: center; color: #c6d4e3; font-size: 14px; font-weight: 600; min-height: 22px; padding: 2px 0; }
         .ba-winner-glow { box-shadow: 0 0 0 3px #fff, 0 0 22px 6px #ffcc44 !important; animation: baWinnerPulse .9s ease-in-out infinite alternate !important; }
         @keyframes baWinnerPulse { 0% { filter: brightness(1); } 100% { filter: brightness(1.35); } }
@@ -661,10 +697,16 @@
         // ============================================================
         window.WINZO_ERRORS = [];
         window.WINZO_RECORD_ERROR = function (kind, payload) {
-            const entry = { kind, payload: String(payload && (payload.message || payload)).slice(0, 500), at: Date.now() };
+            const code = payload && payload.code ? String(payload.code) : '';
+            const message = payload && payload.message ? String(payload.message) : String(payload || 'Unknown error');
+            const stack = payload && payload.stack ? String(payload.stack) : '';
+            const detail = (code ? code + ': ' : '') + message;
+            const entry = { kind, code, payload: detail.slice(0, 500), stack: stack.slice(0, 1200), at: Date.now() };
             window.WINZO_ERRORS.push(entry);
             if (window.WINZO_ERRORS.length > 50) window.WINZO_ERRORS.shift();
-            try { console.error('[WINZO-' + kind + ']', payload); } catch (_) {}
+            try {
+                console.error('[WINZO-' + kind + '] ' + detail, payload || '');
+            } catch (_) {}
         };
         window.addEventListener('error', (e) => {
             window.WINZO_RECORD_ERROR('ERROR', e.error || e.message || e);
@@ -1399,9 +1441,11 @@
         }
 
         async function ensureBotUsers() {
-            if (!BOTS_ENABLED || !database) return;
+            if (!BOTS_ENABLED || !database || botsUsersEnsured) return;
             // The game keeps a pool of 100 bot accounts, but only 3-6 are
-            // admitted to a room in any single round.
+            // admitted to a room in any single round. Do this once per page
+            // session; repeating 100 reads/writes every round can cause
+            // transient Firebase stalls and unnecessary permission traffic.
             const names = BOT_NAMES.slice(0, 100);
             await Promise.all(names.map(async botName => {
                 try {
@@ -1422,6 +1466,7 @@
                     window.WINZO_RECORD_ERROR('BOT-USER', e);
                 }
             }));
+            botsUsersEnsured = true;
         }
 
         async function addBotsToRoom() {
@@ -1460,7 +1505,7 @@
                     const existing = new Set(currentBots);
                     const missing = selected.filter(name => !existing.has(name));
                     if (missing.length) {
-                        await Promise.all(missing.map(name =>
+                        const botWriteResults = await Promise.allSettled(missing.map(name =>
                             gameRef.child('players/' + name).set({
                                 name,
                                 pick: null,
@@ -1472,8 +1517,12 @@
                                 round,
                                 isBot: true,
                                 addedBy: currentUser
-                            }).catch(() => {})
+                            })
                         ));
+                        const botWriteFailures = botWriteResults.filter(r => r.status === 'rejected');
+                        if (botWriteFailures.length) {
+                            window.WINZO_RECORD_ERROR('ADD-BOTS', botWriteFailures[0].reason);
+                        }
                     }
 
                     if (!gameRef) return;
@@ -2165,7 +2214,7 @@
                 const tray = document.getElementById('baTray');
                 const status = document.getElementById('baStatus');
                 if (!machine || !glass || !ballBox || !hole || !tray || !status) { resolve(); return; }
-                const ANIM = { mixMs: BALL_ANIM_LOW_END ? 900 : 1300, holeOpenMs: BALL_ANIM_LOW_END ? 300 : 420, dropMs: BALL_ANIM_LOW_END ? 440 : 560, gapBeforeWinner: 240, gapBetweenWinners: 200, finalHoldMs: 700 };
+                const ANIM = { mixMs: BALL_ANIM_LOW_END ? 1100 : 1550, holeOpenMs: BALL_ANIM_LOW_END ? 300 : 420, dropMs: BALL_ANIM_LOW_END ? 500 : 620, gapBeforeWinner: 300, gapBetweenWinners: 260, resultRevealHoldMs: BALL_ANIM_LOW_END ? 1100 : 1500 };
                 let resolved = false;
                 const timers = [];
                 const wait = ms => new Promise(r => { const t = setTimeout(r, ms); timers.push(t); });
@@ -2175,6 +2224,8 @@
                     resolved = true;
                     clearTimeout(safetyTimer);
                     cleanup();
+                    glass.classList.remove('ba-shaking');
+                    ballBox.classList.remove('ba-shake-balls');
                     overlay.classList.remove('active');
                     machine.querySelectorAll('.ba-drop').forEach(el => el.remove());
                     ballBox.innerHTML = '';
@@ -2233,6 +2284,29 @@
                     el.style.fontSize = fs + 'px';
                     el.style.left = x.toFixed(1) + 'px';
                     el.style.top = y.toFixed(1) + 'px';
+
+                    // Give every ball its own multi-directional flight path.
+                    // This makes the balls bounce diagonally, sideways and vertically
+                    // instead of only rocking left/right.
+                    const travelX = Math.max(10, Math.min(glassW * 0.28, ballSize * 2.8));
+                    const travelY = Math.max(10, Math.min(glassH * 0.18, ballSize * 2.0));
+                    const rand = (range) => (Math.random() * 2 - 1) * range;
+                    const angles = [rand(travelX), rand(travelY), rand(travelX), rand(travelY)];
+                    el.style.setProperty('--x1', rand(travelX).toFixed(1) + 'px');
+                    el.style.setProperty('--y1', rand(travelY).toFixed(1) + 'px');
+                    el.style.setProperty('--x2', rand(travelX).toFixed(1) + 'px');
+                    el.style.setProperty('--y2', rand(travelY).toFixed(1) + 'px');
+                    el.style.setProperty('--x3', rand(travelX).toFixed(1) + 'px');
+                    el.style.setProperty('--y3', rand(travelY).toFixed(1) + 'px');
+                    el.style.setProperty('--x4', rand(travelX).toFixed(1) + 'px');
+                    el.style.setProperty('--y4', rand(travelY).toFixed(1) + 'px');
+                    el.style.setProperty('--x5', rand(travelX).toFixed(1) + 'px');
+                    el.style.setProperty('--y5', rand(travelY).toFixed(1) + 'px');
+                    for (let k = 1; k <= 5; k++) {
+                        el.style.setProperty('--r' + k, (rand(220) + (k * 35)).toFixed(0) + 'deg');
+                    }
+                    el.style.setProperty('--dur', (1.25 + Math.random() * 1.65).toFixed(2) + 's');
+                    el.style.setProperty('--delay', (-Math.random() * 1.8).toFixed(2) + 's');
                     el.style.zIndex = String(1 + Math.floor(Math.random() * 4));
                     el.style.setProperty('--delay', (Math.random() * 1.5).toFixed(2) + 's');
                     el.style.setProperty('--dur', (1.1 + Math.random() * 0.9).toFixed(2) + 's');
@@ -2275,8 +2349,14 @@
                     return el;
                 }
                 (async () => {
-                    status.textContent = '🎲 Mixing the balls…';
+                    status.textContent = '🎲 Shaking the lucky drawer…';
+                    // Shake the actual glass container first. The ball layer receives
+                    // an additional small jolt so the balls visibly follow the box.
+                    glass.classList.add('ba-shaking');
+                    ballBox.classList.add('ba-shake-balls');
                     await wait(ANIM.mixMs);
+                    glass.classList.remove('ba-shaking');
+                    ballBox.classList.remove('ba-shake-balls');
                     if (resolved) return;
                     hole.classList.add('open');
                     status.textContent = '🎯 Opening the chute…';
@@ -2305,7 +2385,9 @@
                     } else {
                         status.textContent = '😔 No winner this round.';
                     }
-                    await wait(ANIM.finalHoldMs);
+                    // Keep the actual number/name balls visible in the tray so the
+                    // result can be read before the large winner card appears.
+                    await wait(ANIM.resultRevealHoldMs);
                     finish();
                 })().catch(() => finish());
             });
@@ -2363,7 +2445,12 @@
             ballAnimationPlaying = true;
             window._ballAnimStartedAt = Date.now();
             if (timerDisplay) timerDisplay.textContent = '5';
-            playBallAnimation(winners, n, r).then(() => {
+            playBallAnimation(winners, n, r).then(async () => {
+                // Deliberate pause between the physical draw and the result card.
+                // The dropped number/name remains visible first.
+                await new Promise(resolve => setTimeout(resolve, 1200));
+                if (engineState.gamePhase !== 'results') return;
+                if (Number(engineState.roundNumber) !== r) return;
                 ballAnimationPlaying = false;
                 window._ballAnimStartedAt = null;
                 if (engineState.gamePhase !== 'results') return;
@@ -3789,8 +3876,8 @@
 
             if (navigator.onLine) {
                 const silent = now - (lastSuccessfulSyncAt || 0);
-                if (silent > 8000) {
-                    if (watchdogCooldown('sync-stall', 5000)) {
+                if (silent > 15000) {
+                    if (watchdogCooldown('sync-stall', 8000)) {
                         watchdogLog('warn', 'sync silent for ' + Math.round(silent / 1000) + 's — recovering');
                         recoverRoomSync();
                     }
@@ -3817,8 +3904,8 @@
                 const lock = lastRoomSnapshotRaw && lastRoomSnapshotRaw.spinLock;
                 const lockTs = lock && typeof lock.timestamp === 'number' ? lock.timestamp : 0;
                 const lockAge = lockTs ? (now - lockTs) : Infinity;
-                if (lockAge > 8000) {
-                    if (watchdogCooldown('spinning-stall', 5000)) {
+                if (lockAge > 15000) {
+                    if (watchdogCooldown('spinning-stall', 8000)) {
                         watchdogLog('warn', 'spinning locked for ' + Math.round(lockAge / 1000) + 's');
                         recoverSpinningStall(round);
                     }
@@ -3828,15 +3915,15 @@
             if (phase === 'results') {
                 const finished = lastRoomSnapshotRaw && Number(lastRoomSnapshotRaw.spinFinishedAt);
                 const age = finished ? (now - finished) : Infinity;
-                if (age > 10000) {
-                    if (watchdogCooldown('results-stall', 5000)) {
+                if (age > 20000) {
+                    if (watchdogCooldown('results-stall', 8000)) {
                         watchdogLog('warn', 'results phase stuck for ' + Math.round(age / 1000) + 's');
                         recoverResultsStall(round);
                     }
                 }
                 if (ballAnimationPlaying) {
                     const started = window._ballAnimStartedAt || 0;
-                    if (!started || (now - started) > 12000) {
+                    if (!started || (now - started) > 20000) {
                         watchdogLog('warn', 'ball animation stuck — clearing');
                         ballAnimationPlaying = false;
                         window._ballAnimStartedAt = null;
