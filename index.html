@@ -1026,7 +1026,7 @@
             window.WINZO_RECORD_ERROR('FIREBASE-INIT', e);
         }
 
-        const APP_VERSION = '10.0';
+        const APP_VERSION = '10.3';
         const DB = {
             getCurrentUser() { return localStorage.getItem('bingo_current_user') || null; },
             setCurrentUser(u) { if (u) localStorage.setItem('bingo_current_user', u); else localStorage.removeItem('bingo_current_user'); },
@@ -1431,55 +1431,11 @@
             }
         }
         function startResilienceEngine() {
-            if (resilienceIntervalId) return;
-            console.log('[RESILIENCE] engine started');
-
-            resilienceIntervalId = setInterval(() => {
-                if (!currentUser || !isGameInitialized || networkRoundExit) return;
-                if (!navigator.onLine) return;
-                const silent = Date.now() - (lastSuccessfulSyncAt || 0);
-
-                if (silent > 6000) {
-                    fetchRoomViaRest().then(data => {
-                        if (data) {
-                            syncGameState(data);
-                            markSyncReceived();
-                            console.log('[REST] fresh state via HTTP');
-                            if (!isNetworkConnected) {
-                                isNetworkConnected = true;
-                                networkOverlay.classList.remove('active');
-                                updateStatus('✅ Connection restored via fallback.');
-                            }
-                        } else {
-                            if (gameRef) {
-                                gameRef.once('value').then(snap => {
-                                    if (snap.exists()) { syncGameState(snap.val()); markSyncReceived(); }
-                                }).catch(() => {});
-                            }
-                            if (silent > 30000) {
-                                console.warn('[RESILIENCE] 30s silence on BOTH transports — escalating to hard reconnect');
-                                hardReconnect('both-silent-30s');
-                                markSyncReceived();
-                            }
-                        }
-                    });
-                }
-            }, 4000);
-
-            criticalPhasePollId = setInterval(() => {
-                if (!currentUser || !isGameInitialized || networkRoundExit) return;
-                const phase = engineState.gamePhase;
-                if (phase !== 'spinning' && phase !== 'results') return;
-                const silent = Date.now() - (lastSuccessfulSyncAt || 0);
-                if (silent > 3000) {
-                    fetchRoomViaRest().then(data => {
-                        if (data) {
-                            syncGameState(data);
-                            markSyncReceived();
-                        }
-                    });
-                }
-            }, 2500);
+            // Firebase's authoritative room listener is the normal transport.
+            // The master watchdog is the single fallback path; do not run continuous
+            // REST polling in parallel with it. This cuts background reads and avoids
+            // competing recovery mechanisms.
+            stopResilienceEngine();
         }
 
         function stopResilienceEngine() {
@@ -1488,7 +1444,6 @@
             if (criticalPhasePollId) { clearInterval(criticalPhasePollId); criticalPhasePollId = null; }
             detachCriticalFieldListeners();
             clearResilienceBurstTimers();
-            lastSuccessfulSyncAt = 0;
         }
 
         function claimNumber(number, callback) {
@@ -2757,7 +2712,10 @@
 
         function syncWalletFromFirebase() {
             if (!currentUser || !database) return;
-            if (userWalletRef) { userWalletRef.off(); userWalletRef = null; }
+            // Keep one wallet listener alive. Re-attaching it on every refresh creates
+            // unnecessary Firebase listener churn and duplicate callbacks.
+            if (userWalletRef && userWalletRef.key === currentUser) return;
+            if (userWalletRef) { try { userWalletRef.off(); } catch (e) {} userWalletRef = null; }
             const userRef = database.ref('users/' + currentUser);
             userWalletRef = userRef;
             userRef.on('value', snapshot => {
@@ -3642,11 +3600,14 @@
             if (updatePending) return;
             updatePending = true;
             requestAnimationFrame(() => {
-                if (playerCountEl) playerCountEl.textContent = engineState.activePlayersCount;
-                const labels = { 'selection': '⏳ Selecting', 'spinning': '🎲 Rolling', 'results': '🏆 Results' };
-                if (gamePhaseLabel) gamePhaseLabel.textContent = labels[engineState.gamePhase] || '⏳';
-                renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
                 updatePending = false;
+                if (!currentUser) return;
+                if (playerCountEl) playerCountEl.textContent = String(engineState.activePlayersCount);
+                const labels = { selection: '⏳ Selecting', spinning: '🎲 Rolling', results: '🏆 Results' };
+                if (gamePhaseLabel) gamePhaseLabel.textContent = labels[engineState.gamePhase] || '⏳';
+                updatePickStatus();
+                updateTotalBetDisplay();
+                renderNumberPicker();
             });
         }
 
@@ -3718,6 +3679,7 @@
             const clean = [...new Set((picks || []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 200))].slice(0, MAX_PICKS_PER_ROUND);
             localSelectionRound = Number(round);
             localSelectionPicks = clean;
+            numberPickerDirty = true;
             if (currentUser) {
                 if (!engineState.players[currentUser]) engineState.players[currentUser] = { name: currentUser };
                 const p = engineState.players[currentUser];
@@ -3779,6 +3741,7 @@
             const remaining = current.filter(n => Number(n) !== Number(number));
             syncLocalPlayerPicks(remaining, round, remaining.length > 0);
             engineState.allTakenNumbers.delete(Number(number));
+            numberPickerDirty = true;
             renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
         }
 
@@ -3813,6 +3776,7 @@
 
                 if (removing) {
                     pendingPickOps.add(num);
+                    numberPickerDirty = true;
                     renderNumberPicker();
                     refundPickBetFast(currentUser, currentBet).then(ok => {
                         if (!ok) {
@@ -3830,6 +3794,7 @@
                         window.WINZO_RECORD_ERROR('REMOVE-PICK', err);
                     }).finally(() => {
                         pendingPickOps.delete(num);
+                        numberPickerDirty = true;
                         renderNumberPicker();
                     });
                     return;
@@ -3851,6 +3816,7 @@
                 pendingPickOps.add(num);
                 syncLocalPlayerPicks([...myPicks, num], opRound, false);
                 engineState.allTakenNumbers.add(num);
+                numberPickerDirty = true;
                 renderNumberPicker();
                 updatePickStatus();
                 updateTotalBetDisplay();
@@ -3871,6 +3837,7 @@
                     if (!claimed) {
                         rollbackLocalNumber(num, opRound);
                         pendingPickOps.delete(num);
+                        numberPickerDirty = true;
                         renderNumberPicker();
                         updateStatus(`❌ Number ${num} was just taken!`);
                         return;
@@ -3882,6 +3849,7 @@
                         // is stable so another player cannot take it.
                         recoverPendingPick(num, opRound);
                         pendingPickOps.delete(num);
+                        numberPickerDirty = true;
                         renderNumberPicker();
                         updateStatus('⏸ Connection changed. Your number is reserved and will be restored automatically.');
                         return;
@@ -4097,7 +4065,6 @@
                 checkBotPopulationHealth(round);
             }
 
-            verifyPlayerPicksOnServer();
 
             if (currentUser && currentRoom && !gameRef) {
                 if (watchdogCooldown('no-gameRef', 5000)) {
@@ -4107,26 +4074,28 @@
             }
         }
 
-        function recoverRoomSync() {
-            if (!gameRef) {
-                if (watchdogCooldown('no-gameRef-2', 4000)) {
-                    try { initGameConnection(); } catch (e) {}
+        async function recoverRoomSync() {
+            if (!gameRef || !currentUser || networkRoundExit || getPendingRoundRefund()) return;
+            const generation = roomConnectionGeneration;
+            try {
+                const data = await fetchRoomViaRest();
+                if (generation !== roomConnectionGeneration) return;
+                if (data) {
+                    syncGameState(data);
+                    markSyncReceived();
+                    watchdogLog('info', 'room sync recovered via REST fallback');
+                    return;
                 }
-                return;
-            }
-            burstFetchState(5, 600, 'wd-sync-recover');
-            gameRef.once('value').then(snap => {
+                const snap = await gameRef.once('value');
+                if (generation !== roomConnectionGeneration) return;
                 if (snap.exists()) {
                     syncGameState(snap.val());
                     markSyncReceived();
-                    watchdogLog('info', 'room sync recovered via .once()');
+                    watchdogLog('info', 'room sync recovered via Firebase fallback');
                 }
-            }).catch(() => {});
-            try {
-                attachCriticalFieldListeners(gameRef);
-                attachNumbersTakenListener();
-                attachLastResultListener(gameRef);
-            } catch (e) {}
+            } catch (e) {
+                window.WINZO_RECORD_ERROR('RECOVER-ROOM', e);
+            }
         }
 
         function recoverSelectionStall(round) {
@@ -4328,6 +4297,7 @@
             if (referralCopyBtn) referralCopyBtn.onclick = async () => {
                 const link = referralLink ? referralLink.value.trim() : '';
                 if (!link) return;
+                if (!link) return;
                 try { await navigator.clipboard.writeText(link); } catch (e) { if (referralLink) { referralLink.select(); document.execCommand('copy'); } }
                 referralCopyBtn.textContent = '✅ Copied';
                 setTimeout(() => referralCopyBtn.textContent = '📋 Copy', 1500);
@@ -4399,7 +4369,7 @@
             }
             currentUser = null;
             if (watchdogInterval) clearInterval(watchdogInterval);
-            watchdogInterval = setInterval(runMasterWatchdog, 2000);
+            watchdogInterval = setInterval(runMasterWatchdog, 3000);
             if (!window.__winzoServerTimeTimer) {
                 window.__winzoServerTimeTimer = setInterval(() => {
                     if (!database) return;
@@ -4411,7 +4381,7 @@
             showAuthScreen();
         }
 
-        const WINZO_PRODUCTION_VERSION = '10.3.0'; // stable round locks + durable participant analytics
+        const WINZO_PRODUCTION_VERSION = '10.3.0-performance'; // stable round locks + durable participant analytics
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -4425,49 +4395,58 @@
         function renderNumberPicker(showLoading = false) {
             if (!numPicker) return;
             if (productionRenderQueued) return;
+            if (!showLoading && !numberPickerDirty) return;
             productionRenderQueued = true;
             requestAnimationFrame(() => {
                 productionRenderQueued = false;
                 if (!currentUser) {
                     numPicker.innerHTML = '<div style="color:#7a6a9a;font-size:0.7rem;text-align:center;padding:20px;">Please log in</div>';
+                    numberButtonCache = null;
+                    numberPickerDirty = false;
+                    lastNumberPickerSignature = '';
                     return;
                 }
                 if (showLoading || !isGameInitialized || Object.keys(engineState.players || {}).length === 0) {
                     let loading = '';
                     for (let i = 1; i <= 40; i++) loading += '<div class="num-btn loading">•</div>';
                     numPicker.innerHTML = loading;
+                    numberButtonCache = null;
+                    numberPickerDirty = false;
+                    lastNumberPickerSignature = '';
                     return;
                 }
 
-                // Build the 200 controls once. Subsequent updates only change classes
-                // and disabled state, avoiding repeated innerHTML/layout churn.
-                let buttons = numPicker.querySelectorAll('.num-btn[data-num]');
-                if (buttons.length !== 200) {
+                if (!numberButtonCache || numberButtonCache.length !== 200 || !numPicker.querySelector('.num-btn[data-num="1"]')) {
                     let html = '';
-                    for (let i = 1; i <= 200; i++) {
-                        html += `<button class="num-btn" data-num="${i}">${i}</button>`;
-                    }
+                    for (let i = 1; i <= 200; i++) html += `<button class="num-btn" data-num="${i}">${i}</button>`;
                     numPicker.innerHTML = html;
-                    buttons = numPicker.querySelectorAll('.num-btn[data-num]');
+                    numberButtonCache = Array.from(numPicker.querySelectorAll('.num-btn[data-num]'));
                 }
 
                 const myPicks = getMyPicks();
                 const locked = gamePausedBySticky || engineState.gamePhase !== 'selection' ||
                     engineState.activePlayersCount <= 1 || !isStableNetwork();
+                const taken = engineState.allTakenNumbers;
+                const signature = [engineState.roundNumber, engineState.gamePhase, engineState.activePlayersCount,
+                    myPicks.join(','), Array.from(taken).sort((a,b) => a-b).join(','), pendingPickOps.size, locked ? 1 : 0].join('|');
+                if (signature === lastNumberPickerSignature && !showLoading) {
+                    numberPickerDirty = false;
+                    return;
+                }
+                lastNumberPickerSignature = signature;
 
-                buttons.forEach(btn => {
+                numberButtonCache.forEach(btn => {
                     const n = Number(btn.dataset.num);
                     const selected = myPicks.includes(n);
-                    const taken = engineState.allTakenNumbers.has(n) && !selected;
+                    const isTaken = taken.has(n) && !selected;
                     const pending = pendingPickOps.has(n);
                     btn.classList.toggle('selected', selected);
-                    btn.classList.toggle('taken', taken);
+                    btn.classList.toggle('taken', isTaken);
                     btn.classList.toggle('loading', pending);
-                    btn.disabled = locked || taken || pending ||
+                    btn.disabled = locked || isTaken || pending ||
                         (myPicks.length >= MAX_PICKS_PER_ROUND && !selected);
                 });
-                updatePickStatus();
-                updateTotalBetDisplay();
+                numberPickerDirty = false;
             });
         }
         function ensureSelectionDeadline() {
@@ -4697,7 +4676,7 @@
             // the live /players presence view. A temporary connection drop must not
             // make a number available again in the same round. The round ledger
             // remains authoritative until the round is finalized.
-            lastKnownPlayersCache = JSON.parse(JSON.stringify(players));
+            // The live player map is already the authoritative snapshot; avoid a deep clone on every Firebase event.
             if (phase === 'selection') {
                 stopResultsCountdown();
                 if (!phaseDeadline) ensureSelectionDeadline();
@@ -4722,7 +4701,8 @@
                 }
             } else { engineState.winnersModalShown = false; }
             applyCardState();
-            updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
+            numberPickerDirty = true;
+            updateUIFromState();
             lastRoomSyncAt = Date.now();
             if (currentUser && gameRef && BOTS_ENABLED && !gamePausedBySticky) {
                 if (lastBotSetupRound !== round && !botPopulationBusy) {
@@ -4951,7 +4931,7 @@
                 if (remaining <= 0) { stopTimer(); requestSpin(); }
             };
             tick();
-            timerInterval = setInterval(tick, 500);
+            timerInterval = setInterval(tick, 1000);
         }
 
         function startResultsCountdown() {
