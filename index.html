@@ -195,6 +195,12 @@
         .network-offline-overlay h3 { color: #f0e6ff; font-size: 1.2rem; font-weight: 700; }
         .network-offline-overlay p { color: #b8a0d0; font-size: 0.85rem; max-width: 280px; }
         .network-offline-overlay .retry-btn { background: linear-gradient(135deg, #ffcc44, #f5a623); border: none; border-radius: 30px; padding: 10px 32px; font-weight: 700; color: #1a0a2e; cursor: pointer; }
+        .network-message-modal { display:none; position:fixed; inset:0; background:rgba(8,4,18,.78); z-index:6000; align-items:center; justify-content:center; padding:20px; }
+        .network-message-modal.active { display:flex; }
+        .network-message-card { width:min(360px,92vw); background:linear-gradient(160deg,#24103f,#160a29); border:1px solid rgba(255,204,68,.28); border-radius:24px; padding:26px 22px; text-align:center; box-shadow:0 18px 55px rgba(0,0,0,.45); animation:networkPopupIn .22s ease-out; }
+        .network-message-icon { font-size:2.6rem; margin-bottom:10px; }
+        .network-message-text { color:#f0e6ff; font-size:.95rem; line-height:1.7; font-weight:700; }
+        @keyframes networkPopupIn { from { opacity:0; transform:translateY(12px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
         .referral-box { background: rgba(20, 10, 40, 0.5); border: 1px solid rgba(120, 80, 200, 0.15); border-radius: 18px; padding: 12px; margin-bottom: 10px; }
         .referral-box .referral-stat { text-align: center; color: #b8a0d0; font-size: 0.75rem; margin-bottom: 10px; }
         .referral-box .referral-stat strong { color: #ffcc44; font-size: 1.1rem; }
@@ -473,6 +479,12 @@
             <h3>No Internet Connection</h3>
             <p>Your connection was lost. Please check your network and try again.</p>
             <button class="retry-btn" id="networkRetryBtn">🔄 Retry</button>
+        </div>
+        <div class="network-message-modal" id="networkMessageModal" role="alertdialog" aria-live="assertive">
+            <div class="network-message-card">
+                <div class="network-message-icon" id="networkMessageIcon">📶</div>
+                <div class="network-message-text" id="networkMessageText"></div>
+            </div>
         </div>
         <div id="authScreen" class="auth-screen">
             <div class="logo"><h2>🏆 <span>WINZO</span> 🏆</h2></div>
@@ -772,7 +784,7 @@
         const SERVICE_FEE_RATE = 0.20;
         const PAYOUT_RATE = 1 - SERVICE_FEE_RATE;
         const REFERRAL_COMMISSION_RATE = 0.05;
-        const TELEGRAM_BOT_LINK = 'http://t.me/WinzoBettingBot';
+        const TELEGRAM_BOT_LINK = 'https://t.me/WinzoBettingBot';
         const FIREBASE_REST_URL = 'https://renewed-8fe38-default-rtdb.firebaseio.com';
 
         let telegramDetectedUsername = null;
@@ -1084,8 +1096,129 @@
         }
         const networkOverlay = document.getElementById('networkOfflineOverlay');
         const networkRetryBtn = document.getElementById('networkRetryBtn');
+        const networkMessageModal = document.getElementById('networkMessageModal');
+        const networkMessageText = document.getElementById('networkMessageText');
+        const networkMessageIcon = document.getElementById('networkMessageIcon');
+        let networkMessageTimer = null;
+        function showNetworkPopup(message, icon = '📶', duration = 0) {
+            if (!networkMessageModal || !networkMessageText) return;
+            if (networkMessageTimer) { clearTimeout(networkMessageTimer); networkMessageTimer = null; }
+            if (networkMessageIcon) networkMessageIcon.textContent = icon;
+            networkMessageText.textContent = message;
+            networkMessageModal.classList.add('active');
+            if (duration > 0) networkMessageTimer = setTimeout(() => networkMessageModal.classList.remove('active'), duration);
+        }
+        function hideNetworkPopup() {
+            if (networkMessageTimer) { clearTimeout(networkMessageTimer); networkMessageTimer = null; }
+            if (networkMessageModal) networkMessageModal.classList.remove('active');
+        }
 
         let intentionalDisconnectUntil = 0;
+        // If a network interruption happens after money has been deducted for the
+        // current round, the player is exited from that round and the deducted
+        // amount is refunded when connectivity returns. We intentionally do NOT
+        // resynchronize the room or pull the player back into the round.
+        let networkRoundExit = false;
+        let networkRefundInFlight = false;
+        const NETWORK_REFUND_KEY = 'winzo_pending_round_refund';
+
+        function getPendingRoundRefund() {
+            try {
+                const raw = localStorage.getItem(NETWORK_REFUND_KEY);
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                if (!data || !data.username || !Number(data.round) || Number(data.amount) <= 0) return null;
+                return {
+                    username: String(data.username),
+                    round: Number(data.round),
+                    amount: Number(data.amount),
+                    picks: Array.isArray(data.picks) ? [...new Set(data.picks.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 200))] : []
+                };
+            } catch (e) { return null; }
+        }
+        function savePendingRoundRefund(username, round, amount, picks = []) {
+            if (!username || !Number(round) || !Number(amount) || amount <= 0) return;
+            const existing = getPendingRoundRefund();
+            const same = existing && existing.username === username && existing.round === Number(round);
+            const mergedPicks = [...new Set([...(same ? existing.picks : []), ...(picks || []).map(Number)])]
+                .filter(n => Number.isInteger(n) && n >= 1 && n <= 200);
+            // Pick commits call this once per pick, while recovery may pass the
+            // whole round total. Add only genuinely new picks; otherwise use the
+            // supplied total as a safety floor.
+            const newPickCount = same ? mergedPicks.filter(n => !existing.picks.includes(n)).length : mergedPicks.length;
+            const increment = (same && newPickCount > 0 && Array.isArray(picks) && picks.length === 1)
+                ? Number(amount || 0) : 0;
+            const mergedAmount = same
+                ? Math.max(Number(existing.amount || 0) + increment, Number(amount || 0))
+                : Number(amount);
+            try {
+                localStorage.setItem(NETWORK_REFUND_KEY, JSON.stringify({
+                    username, round: Number(round), amount: mergedAmount, picks: mergedPicks, ts: Date.now()
+                }));
+            } catch (e) {}
+        }
+        function clearPendingRoundRefund() {
+            try { localStorage.removeItem(NETWORK_REFUND_KEY); } catch (e) {}
+        }
+
+        function queueCurrentRoundRefund() {
+            if (!currentUser) return;
+            const round = Number(engineState.roundNumber);
+            if (!round || engineState.gamePhase !== 'selection') return;
+            const me = engineState.players[currentUser] || {};
+            const localPicks = getMyPicks();
+            const serverPicks = getPlayerPicks(me);
+            const picks = [...new Set([...localPicks, ...serverPicks])];
+            if (me.betDeducted !== true && picks.length === 0) return;
+            const amount = picks.length * Number(me.bet || currentBet || 0);
+            if (amount > 0) savePendingRoundRefund(currentUser, round, amount, picks);
+            networkRoundExit = true;
+        }
+
+        async function processNetworkRoundRefund() {
+            if (networkRefundInFlight || !database || !currentUser || !navigator.onLine) return;
+            const pending = getPendingRoundRefund();
+            if (!pending || pending.username !== currentUser) return;
+            networkRefundInFlight = true;
+            try {
+                const ok = await refundBetIdempotent(pending.username, pending.round, pending.amount, currentRoom);
+                if (!ok) return;
+
+                // Release only after the refund has been durably claimed. This is
+                // an explicit round exit, not a connection-presence cleanup.
+                if (gameRef && pending.picks.length) {
+                    await Promise.all(pending.picks.map(n => releaseNumber(n, pending.round).catch(() => false)));
+                    await gameRef.child('players/' + currentUser).transaction(player => {
+                        if (!player || Number(player.round) !== pending.round) return player;
+                        player.pick = null; player.picks = []; player.ready = false;
+                        player.betDeducted = false; player.betSources = {}; player.round = null;
+                        return player;
+                    }).catch(() => {});
+                }
+
+                walletData.play = Number(walletData.play || 0) + Number(pending.amount);
+                updateWalletUI(); updateWelcomeUI();
+                clearPendingRoundRefund();
+                localSelectionRound = null;
+                localSelectionPicks = [];
+                if (currentUser && engineState.players[currentUser]) {
+                    const p = engineState.players[currentUser];
+                    p.pick = null; p.picks = []; p.ready = false; p.betDeducted = false;
+                    p.betSources = {}; p.round = null;
+                }
+                pendingPickOps.clear();
+                engineState.allTakenNumbers = new Set(
+                    [...engineState.allTakenNumbers].filter(n => !pending.picks.includes(Number(n)))
+                );
+                renderNumberPicker(); updatePickStatus(); updateTotalBetDisplay();
+                hideNetworkPopup();
+                showNetworkPopup('ቀድሞ ያስያዙት ገንዘብ ተመላሽ ሆኗል', '💰', 3500);
+                updateStatus('💰 Your deducted bet was automatically refunded. You have left this round.');
+            } finally {
+                networkRefundInFlight = false;
+            }
+        }
+
 
         function startNetworkListener() {
             if (networkListenerActive) return;
@@ -1113,74 +1246,41 @@
             isNetworkConnected = true;
             networkOverlay.classList.remove('active');
             markNetworkHealthy();
-            updateStatus('🌐 Connection detected. Stabilizing…');
-            if (isGameInitialized && gameRef) {
-                if (networkRecoveryTimer) clearTimeout(networkRecoveryTimer);
-                networkRecoveryTimer = setTimeout(() => {
-                    if (!isNetworkConnected || !navigator.onLine) return;
-                    updateStatus('✅ Connection stable.');
-                    attachCriticalFieldListeners(gameRef);
-                    // One recovery read is enough; avoid repeated Firebase bursts.
-                    burstFetchState(1, 0, 'stable-online-recovery');
-                    renderNumberPicker();
-                }, NETWORK_STABILITY_MS);
+
+            // Do not resync the room after a disconnect. If money was deducted in
+            // the interrupted round, refund it and keep the player out of that round.
+            if (networkRoundExit || getPendingRoundRefund()) {
+                updateStatus('🌐 Connection restored. Processing automatic refund…');
+                setTimeout(() => processNetworkRoundRefund(), NETWORK_STABILITY_MS);
+                return;
             }
+
+            hideNetworkPopup();
+            updateStatus('🌐 Connection restored.');
         }
         function handleNetworkOffline() {
             if (Date.now() < intentionalDisconnectUntil) return;
-            if (isGameInitialized && currentRoom) {
-                probeRestQuickly().then(restWorks => {
-                    if (restWorks) {
-                        if (!isNetworkConnected) {
-                            isNetworkConnected = true;
-                            networkOverlay.classList.remove('active');
-                        }
-                        forceRoomResync('ws-dead-rest-alive');
-                        return;
-                    }
-                    if (!isNetworkConnected) return;
-                    isNetworkConnected = false;
-                    networkStableSince = 0;
-                    stopTimer(); stopResultsCountdown();
-                    if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
-                    networkOverlay.classList.add('active');
-                    updateStatus('⚠️ No internet connection. Game paused.');
-                    document.querySelectorAll('.num-btn').forEach(btn => btn.disabled = true);
-                });
-                return;
-            }
-            if (!isNetworkConnected) return;
+            queueCurrentRoundRefund();
             isNetworkConnected = false;
             networkStableSince = 0;
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
+            // Stop every background recovery/polling mechanism immediately.
+            stopResilienceEngine();
+            if (networkRecoveryTimer) { clearTimeout(networkRecoveryTimer); networkRecoveryTimer = null; }
             networkOverlay.classList.add('active');
-            updateStatus('⚠️ No internet connection. Game paused.');
+            showNetworkPopup('ኔትወርክ በመቋረጡ ምክንያት ለጊዜው ከጨዋታ ወተዋል። ያስያዙት ገንዘብ ተመላሽ እንኪደረግሎት ድረስ በትዕግስት ይጠብቁ።', '📶', 0);
+            updateStatus('⚠️ Connection lost. Your round bet will be refunded automatically when the connection returns.');
             document.querySelectorAll('.num-btn').forEach(btn => btn.disabled = true);
         }
         function enableNetworkListener() { if (firebaseAvailable && currentUser) startNetworkListener(); }
         networkRetryBtn.onclick = function() {
-            if (navigator.onLine) {
-                if (!isNetworkConnected) handleNetworkOnline();
-                triggerReconnectBurst('manual-retry-online');
-            } else if (database) {
-                try {
-                    database.ref('.info/connected').once('value', (snap) => {
-                        if (snap.val() === true) { isNetworkConnected = true; handleNetworkOnline(); }
-                        else {
-                            probeRestQuickly().then(ok => {
-                                if (ok) { isNetworkConnected = true; handleNetworkOnline(); }
-                                else { networkOverlay.classList.remove('active'); setTimeout(() => networkOverlay.classList.add('active'), 100); }
-                            });
-                        }
-                    });
-                } catch (e) { window.WINZO_RECORD_ERROR('RETRY', e); }
-            }
+            if (navigator.onLine) handleNetworkOnline();
+            else updateStatus('⚠️ Still offline. The automatic refund will run when the connection returns.');
         };
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) return;
-            if (!currentUser) return;
-            triggerReconnectBurst('visibility-return');
+            // Returning to the app must not start a Firebase recovery loop.
+            if (!document.hidden && getPendingRoundRefund() && navigator.onLine) processNetworkRoundRefund();
         });
 
         let restFetchInFlight = false;
@@ -1302,15 +1402,18 @@
             resilienceBurstTimers.push(t);
         }
         function forceRoomResync(why) {
+            if (networkRoundExit || getPendingRoundRefund()) return;
             if (!gameRef || !currentUser) return;
             burstFetchState(1, 0, why || 'resync');
         }
         function triggerReconnectBurst(why) {
+            if (networkRoundExit || getPendingRoundRefund()) return;
             if (!currentUser || !isGameInitialized || !gameRef) return;
             burstFetchState(1, 0, why || 'reconnect');
             try { syncWalletFromFirebase(); } catch (e) {}
         }
         function hardReconnect(why) {
+            if (networkRoundExit || getPendingRoundRefund()) return;
             if (!database || window.__winzoHardReconnectBusy) return;
             window.__winzoHardReconnectBusy = true;
             console.log('[RESILIENCE] reconnect requested:', why);
@@ -1332,7 +1435,7 @@
             console.log('[RESILIENCE] engine started');
 
             resilienceIntervalId = setInterval(() => {
-                if (!currentUser || !isGameInitialized) return;
+                if (!currentUser || !isGameInitialized || networkRoundExit) return;
                 if (!navigator.onLine) return;
                 const silent = Date.now() - (lastSuccessfulSyncAt || 0);
 
@@ -1364,7 +1467,7 @@
             }, 4000);
 
             criticalPhasePollId = setInterval(() => {
-                if (!currentUser || !isGameInitialized) return;
+                if (!currentUser || !isGameInitialized || networkRoundExit) return;
                 const phase = engineState.gamePhase;
                 if (phase !== 'spinning' && phase !== 'results') return;
                 const silent = Date.now() - (lastSuccessfulSyncAt || 0);
@@ -3471,7 +3574,7 @@
         function toggleMoreDropdown(e) { e.stopPropagation(); if (moreDropdown) moreDropdown.classList.toggle('open'); }
         function openReferralModal() {
             if (!currentUser) return;
-            const link = `${TELEGRAM_BOT_LINK}?startapp=ref_${encodeURIComponent(currentUser)}`;
+            const link = `${TELEGRAM_BOT_LINK}?startapp=${encodeURIComponent('ref_' + currentUser)}`;
             if (referralLink) referralLink.value = link;
             if (referralModal) referralModal.classList.add('active');
             closeMoreDropdown();
@@ -3785,6 +3888,7 @@
                     }
 
                     deductPickBetFast(currentUser, currentBet).then(ok => {
+                        if (ok) savePendingRoundRefund(currentUser, opRound, currentBet, [num]);
                         if (!ok) {
                             releaseNumber(num);
                             rollbackLocalNumber(num, opRound);
@@ -3913,6 +4017,7 @@
         function runMasterWatchdog() {
             if (!currentUser) return;
             if (!isGameInitialized) return;
+            if (networkRoundExit || getPendingRoundRefund()) return;
             if (gamePausedBySticky) return;
 
             const now = Date.now();
@@ -4149,43 +4254,22 @@
         }
 
         function recoverPendingPick(num, round, attempt = 0) {
-            if (!currentUser || !gameRef || Number(engineState.roundNumber) !== Number(round)) return;
-            if (engineState.gamePhase !== 'selection') return;
-            if (!isStableNetwork()) {
-                if (attempt < 8) setTimeout(() => recoverPendingPick(num, round, attempt + 1), 700);
-                return;
-            }
-            const player = engineState.players[currentUser] || {};
-            const picks = getPlayerPicks(player);
-            const alreadyFinalized = player.betDeducted === true && picks.includes(Number(num));
-            const finish = () => associateClaimedNumber(currentUser, num, round)
-                .then(ok => ok ? finalizeNumberBet(currentUser, num, round) : false)
-                .then(ok => {
-                    if (ok) recordRoundParticipant(currentUser, round, false, getMyPicks()).catch(() => {});
-                    return ok;
-                });
-            if (alreadyFinalized) return finish().catch(() => {});
-            deductPickBetFast(currentUser, currentBet)
-                .then(ok => ok ? finish() : false)
-                .catch(() => false);
+            // Network recovery no longer tries to reconstruct the player's in-round
+            // state. The safer path is to refund the deducted amount and exit the
+            // interrupted round. The caller may invoke this after a failed pick commit.
+            if (!currentUser || !Number(round)) return;
+            const me = engineState.players[currentUser] || {};
+            const picks = [...new Set([...getMyPicks(), ...getPlayerPicks(me), Number(num)])]
+                .filter(n => Number.isInteger(n) && n >= 1 && n <= 200);
+            const amount = picks.length * Number(me.bet || currentBet || 0);
+            if (amount > 0) savePendingRoundRefund(currentUser, round, amount, picks);
+            networkRoundExit = true;
         }
 
         function verifyPlayerPicksOnServer() {
-            if (!currentUser || !gameRef) return;
-            if (engineState.gamePhase !== 'selection') return;
-            if (localSelectionPicks.length === 0) return;
-            if (localSelectionRound !== engineState.roundNumber) return;
-            if (!watchdogCooldown('player-pick-verify', 5000)) return;
-            const serverPlayer = engineState.players[currentUser];
-            const serverPicks = serverPlayer ? getPlayerPicks(serverPlayer) : [];
-            const localPicks = localSelectionPicks;
-            const matches = serverPicks.length === localPicks.length
-                && serverPicks.every(p => localPicks.includes(p));
-            if (!matches) {
-                watchdogLog('warn', 'pick mismatch — local:' + JSON.stringify(localPicks) + ' server:' + JSON.stringify(serverPicks));
-                const round = localSelectionRound;
-                localPicks.forEach(num => recoverPendingPick(num, round));
-            }
+            // Deliberately disabled during the new network policy. A temporary
+            // disconnect must not trigger repeated reads/reconstruction of player state.
+            if (networkRoundExit || getPendingRoundRefund()) return;
         }
 
         function init() {
@@ -4199,6 +4283,11 @@
             if (depositBtn) depositBtn.onclick = openDepositModal;
             if (reconnectBtn) reconnectBtn.onclick = function() {
                 closeMoreDropdown();
+                if (networkRoundExit || getPendingRoundRefund()) {
+                    if (navigator.onLine) processNetworkRoundRefund();
+                    else updateStatus('⚠️ Offline. Your automatic round refund will run when the connection returns.');
+                    return;
+                }
                 updateStatus('🔌 Reconnecting…');
                 hardReconnect('manual-menu-button');
                 setTimeout(() => { updateStatus('✅ Reconnect requested. Waiting for server…'); }, 500);
@@ -4237,16 +4326,18 @@
             };
             if (referralCloseBtn) referralCloseBtn.onclick = () => { if (referralModal) referralModal.classList.remove('active'); };
             if (referralCopyBtn) referralCopyBtn.onclick = async () => {
-                const link = referralLink ? referralLink.value : '';
+                const link = referralLink ? referralLink.value.trim() : '';
+                if (!link) return;
                 try { await navigator.clipboard.writeText(link); } catch (e) { if (referralLink) { referralLink.select(); document.execCommand('copy'); } }
                 referralCopyBtn.textContent = '✅ Copied';
                 setTimeout(() => referralCopyBtn.textContent = '📋 Copy', 1500);
             };
             if (referralShareBtn) referralShareBtn.onclick = () => {
-                const link = referralLink ? referralLink.value : '';
-                const shareText = `Join Winzo and play games with me! ${link}`;
+                const link = referralLink ? referralLink.value.trim() : '';
+                if (!link) return;
+                const shareText = `Join Winzo and play games with me!`;
                 const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`;
-                if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl); else window.open(shareUrl, '_blank');
+                if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl); else window.open(shareUrl, '_blank', 'noopener');
             };
             if (moreBtn) moreBtn.onclick = toggleMoreDropdown;
             if (depositConfirm) depositConfirm.onclick = async () => {
@@ -4320,7 +4411,7 @@
             showAuthScreen();
         }
 
-        const WINZO_PRODUCTION_VERSION = '10.2.0'; // stable round locks + durable participant analytics
+        const WINZO_PRODUCTION_VERSION = '10.3.0'; // stable round locks + durable participant analytics
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -4389,6 +4480,11 @@
         }
 
         function initGameConnection() {
+            if (networkRoundExit || getPendingRoundRefund()) {
+                updateStatus('💰 Interrupted-round refund is being processed. You will not be returned to that round.');
+                if (navigator.onLine) setTimeout(() => processNetworkRoundRefund(), 0);
+                return;
+            }
             const generation = ++roomConnectionGeneration;
             watchdogState.recoveryCooldowns = {};
             watchdogState.lastBotCheckAt = 0;
