@@ -1063,6 +1063,25 @@
         let stickyBroadcastHandler = null;
 
         let isNetworkConnected = true; let networkListenerActive = false;
+        // A Firebase connection can flap for a few hundred milliseconds. Treat the
+        // client as playable only after the connection has remained healthy briefly.
+        // This prevents transient network events from mutating an active round.
+        let networkStableSince = Date.now();
+        let networkRecoveryTimer = null;
+        const NETWORK_STABILITY_MS = 1200;
+        function isStableNetwork() {
+            return isNetworkConnected && navigator.onLine && (Date.now() - networkStableSince) >= NETWORK_STABILITY_MS;
+        }
+        function markNetworkHealthy() {
+            networkStableSince = Date.now();
+            if (networkRecoveryTimer) clearTimeout(networkRecoveryTimer);
+            networkRecoveryTimer = setTimeout(() => {
+                if (isNetworkConnected && navigator.onLine) {
+                    networkStableSince = Math.min(networkStableSince, Date.now() - NETWORK_STABILITY_MS);
+                    renderNumberPicker();
+                }
+            }, NETWORK_STABILITY_MS + 20);
+        }
         const networkOverlay = document.getElementById('networkOfflineOverlay');
         const networkRetryBtn = document.getElementById('networkRetryBtn');
 
@@ -1091,14 +1110,20 @@
             networkOverlay.classList.remove('active');
         }
         function handleNetworkOnline() {
-            if (!isNetworkConnected) {
-                isNetworkConnected = true;
-                networkOverlay.classList.remove('active');
-                updateStatus('✅ Network restored.');
-            }
+            isNetworkConnected = true;
+            networkOverlay.classList.remove('active');
+            markNetworkHealthy();
+            updateStatus('🌐 Connection detected. Stabilizing…');
             if (isGameInitialized && gameRef) {
-                attachCriticalFieldListeners(gameRef);
-                burstFetchState(3, 700, 'online-recovery');
+                if (networkRecoveryTimer) clearTimeout(networkRecoveryTimer);
+                networkRecoveryTimer = setTimeout(() => {
+                    if (!isNetworkConnected || !navigator.onLine) return;
+                    updateStatus('✅ Connection stable.');
+                    attachCriticalFieldListeners(gameRef);
+                    // One recovery read is enough; avoid repeated Firebase bursts.
+                    burstFetchState(1, 0, 'stable-online-recovery');
+                    renderNumberPicker();
+                }, NETWORK_STABILITY_MS);
             }
         }
         function handleNetworkOffline() {
@@ -1115,6 +1140,7 @@
                     }
                     if (!isNetworkConnected) return;
                     isNetworkConnected = false;
+                    networkStableSince = 0;
                     stopTimer(); stopResultsCountdown();
                     if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
                     networkOverlay.classList.add('active');
@@ -1125,6 +1151,7 @@
             }
             if (!isNetworkConnected) return;
             isNetworkConnected = false;
+            networkStableSince = 0;
             stopTimer(); stopResultsCountdown();
             if (spinTimeout) { clearTimeout(spinTimeout); spinTimeout = null; }
             networkOverlay.classList.add('active');
@@ -1371,17 +1398,18 @@
                 callback(!error && !!committed);
             }, false);
         }
-        function releaseNumber(number) {
-            if (!gameRef || !Number.isInteger(Number(number))) return;
-            // Remove instead of writing false so the room does not accumulate
-            // thousands of dead keys across rounds.
-            gameRef.child('numbersTaken/' + Number(number)).transaction(current => {
-                return current === true ? null : current;
-            }).catch(() => {});
-        }
-        function releaseNumber(number) {
-            if (!gameRef) return;
-            gameRef.child('numbersTaken/' + number).set(false).catch(() => {});
+        function releaseNumber(number, expectedRound = null) {
+            if (!gameRef || !Number.isInteger(Number(number))) return Promise.resolve(false);
+            // Only explicit player removal may release a number. A disconnected client
+            // must never cause this function to be called by state reconciliation.
+            const roomRef = gameRef;
+            return roomRef.transaction(room => {
+                if (!room || (expectedRound != null && Number(room.round) !== Number(expectedRound))) return room;
+                const key = String(Number(number));
+                if (!room.numbersTaken || room.numbersTaken[key] !== true) return room;
+                room.numbersTaken[key] = null;
+                return room;
+            }).then(result => !!(result && result.committed)).catch(() => false);
         }
 
         const BOT_NAMES = [
@@ -1689,7 +1717,8 @@
                 player.betSources[String(num)] = 'play'; player.isBot = true;
                 return player;
             }).then(r => !!(r && r.committed)).catch(() => false);
-            if (!saved) { try { releaseNumber(num); } catch (e) {} return false; }
+            if (!saved) { try { releaseNumber(num, round); } catch (e) {} return false; }
+            recordRoundParticipant(botName, round, true, picks).catch(() => {});
             return true;
         }
 
@@ -3663,7 +3692,7 @@
                 const opGeneration = roomConnectionGeneration;
                 const opSerial = ++pickOperationSerial;
 
-                if (gamePausedBySticky || !isNetworkConnected) {
+                if (gamePausedBySticky || !isStableNetwork()) {
                     updateStatus('⏸ Game is temporarily unavailable.');
                     return;
                 }
@@ -3726,7 +3755,12 @@
                 claimNumber(num, function(claimed) {
                     if (opGeneration !== roomConnectionGeneration || Number(engineState.roundNumber) !== opRound ||
                         engineState.gamePhase !== 'selection') {
-                        if (claimed) releaseNumber(num);
+                        // Never release a successfully claimed number because this
+                        // browser briefly changed connections. Keep the reservation
+                        // and let the recovery ledger finish it after reconnection.
+                        if (claimed) {
+                            recoverPendingPick(num, opRound);
+                        }
                         pendingPickOps.delete(num);
                         return;
                     }
@@ -3739,12 +3773,14 @@
                         return;
                     }
 
-                    if (gamePausedBySticky || !isNetworkConnected) {
-                        releaseNumber(num);
-                        rollbackLocalNumber(num, opRound);
+                    if (gamePausedBySticky || !isStableNetwork()) {
+                        // The claim is authoritative. Do not free the number during a
+                        // transient network change; recover the bet when the connection
+                        // is stable so another player cannot take it.
+                        recoverPendingPick(num, opRound);
                         pendingPickOps.delete(num);
                         renderNumberPicker();
-                        updateStatus('⏸ Pick cancelled because the connection changed.');
+                        updateStatus('⏸ Connection changed. Your number is reserved and will be restored automatically.');
                         return;
                     }
 
@@ -3783,15 +3819,17 @@
                                     });
                                 }
                                 syncLocalPlayerPicks(getMyPicks(), opRound, true);
+                                recordRoundParticipant(currentUser, opRound, false, getMyPicks()).catch(() => {});
                                 updateStatus(`✅ ${currentUser} picked ${num} for ${currentBet} Birr!`);
                                 return true;
                             });
                         });
                     }).catch(err => {
                         window.WINZO_RECORD_ERROR('PICK', err);
-                        releaseNumber(num);
-                        rollbackLocalNumber(num, opRound);
-                        updateStatus('⚠️ Pick failed. Your balance was protected.');
+                        // If the number was already claimed, preserve it and retry the
+                        // participant/bet commit after connectivity stabilizes.
+                        recoverPendingPick(num, opRound);
+                        updateStatus('⚠️ Pick is being synchronized. The number remains reserved.');
                         return false;
                     }).finally(() => {
                         if (opSerial === pickOperationSerial || !pendingPickOps.has(num)) {
@@ -4110,6 +4148,28 @@
             }
         }
 
+        function recoverPendingPick(num, round, attempt = 0) {
+            if (!currentUser || !gameRef || Number(engineState.roundNumber) !== Number(round)) return;
+            if (engineState.gamePhase !== 'selection') return;
+            if (!isStableNetwork()) {
+                if (attempt < 8) setTimeout(() => recoverPendingPick(num, round, attempt + 1), 700);
+                return;
+            }
+            const player = engineState.players[currentUser] || {};
+            const picks = getPlayerPicks(player);
+            const alreadyFinalized = player.betDeducted === true && picks.includes(Number(num));
+            const finish = () => associateClaimedNumber(currentUser, num, round)
+                .then(ok => ok ? finalizeNumberBet(currentUser, num, round) : false)
+                .then(ok => {
+                    if (ok) recordRoundParticipant(currentUser, round, false, getMyPicks()).catch(() => {});
+                    return ok;
+                });
+            if (alreadyFinalized) return finish().catch(() => {});
+            deductPickBetFast(currentUser, currentBet)
+                .then(ok => ok ? finish() : false)
+                .catch(() => false);
+        }
+
         function verifyPlayerPicksOnServer() {
             if (!currentUser || !gameRef) return;
             if (engineState.gamePhase !== 'selection') return;
@@ -4124,13 +4184,7 @@
             if (!matches) {
                 watchdogLog('warn', 'pick mismatch — local:' + JSON.stringify(localPicks) + ' server:' + JSON.stringify(serverPicks));
                 const round = localSelectionRound;
-                let chain = Promise.resolve();
-                localPicks.forEach(num => {
-                    chain = chain.then(() => associateClaimedNumber(currentUser, num, round).catch(() => {}));
-                });
-                chain.then(() => {
-                    if (localPicks.length) finalizeNumberBet(currentUser, localPicks[0], round).catch(() => {});
-                });
+                localPicks.forEach(num => recoverPendingPick(num, round));
             }
         }
 
@@ -4266,7 +4320,7 @@
             showAuthScreen();
         }
 
-        const WINZO_PRODUCTION_VERSION = '10.1.1';
+        const WINZO_PRODUCTION_VERSION = '10.2.0'; // stable round locks + durable participant analytics
         let roomConnectionGeneration = 0;
         let productionRenderQueued = false;
 
@@ -4308,7 +4362,7 @@
 
                 const myPicks = getMyPicks();
                 const locked = gamePausedBySticky || engineState.gamePhase !== 'selection' ||
-                    engineState.activePlayersCount <= 1 || !isNetworkConnected;
+                    engineState.activePlayersCount <= 1 || !isStableNetwork();
 
                 buttons.forEach(btn => {
                     const n = Number(btn.dataset.num);
@@ -4383,6 +4437,7 @@
                         totalBets: 0,
                         prizePool: 0,
                         numbersTaken: {},
+                        roundParticipants: {},
                         winningNumber: null,
                         spinLock: null,
                         spinFinishedAt: null,
@@ -4396,6 +4451,7 @@
                 if (!snapshot || generation !== roomConnectionGeneration) return;
                 const data = snapshot.val() || {};
                 syncGameState(data);
+                restoreCurrentUserRoundParticipation(data, Number(data.round) || 1);
                 markSyncReceived();
                 fastForwardStuckRoom(generation).catch(() => {});
                 if (BOTS_ENABLED) {
@@ -4415,6 +4471,7 @@
                 const data = snapshot.val();
                 if (data) {
                     syncGameState(data);
+                    restoreCurrentUserRoundParticipation(data, Number(data.round) || 1);
                     markSyncReceived();
                 }
             }, err => window.WINZO_RECORD_ERROR('ROOM-LISTEN', err));
@@ -4425,7 +4482,9 @@
             attachCriticalFieldListeners(ref);
 
             const playerRef = ref.child('players/' + currentUser);
-            playerRef.onDisconnect().remove();
+            // Keep the live player record through short network interruptions.
+            // Round finalization clears picks atomically; transient disconnects do not.
+            playerRef.onDisconnect().cancel();
             playerRef.set({
                 name: currentUser,
                 pick: null,
@@ -4445,6 +4504,46 @@
                 if (generation === roomConnectionGeneration) renderNumberPicker();
             }, 100);
         }
+        // Durable per-round participation ledger. It is intentionally separate from
+        // /players because /players is a live presence view and can change when a
+        // client disconnects. Analytics must use the round ledger, not live presence.
+        function recordRoundParticipant(username, round, isBot, picks = []) {
+            if (!database || !currentRoom || !username || !Number.isFinite(Number(round))) return Promise.resolve(false);
+            const cleanPicks = [...new Set((picks || []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 200))];
+            const ref = database.ref(`rooms/${currentRoom}/roundParticipants/${Number(round)}/${username}`);
+            return ref.transaction(current => {
+                const base = (current && typeof current === 'object') ? current : {};
+                base.username = username;
+                base.round = Number(round);
+                base.isBot = isBot === true;
+                base.joinedAt = base.joinedAt || firebase.database.ServerValue.TIMESTAMP;
+                if (cleanPicks.length) {
+                    base.picks = [...new Set([...(Array.isArray(base.picks) ? base.picks : []), ...cleanPicks])];
+                }
+                base.pickCount = Array.isArray(base.picks) ? base.picks.length : 0;
+                base.lastSeenAt = firebase.database.ServerValue.TIMESTAMP;
+                return base;
+            }).then(result => !!(result && result.committed)).catch(() => false);
+        }
+
+        function restoreCurrentUserRoundParticipation(roomData, round) {
+            if (!currentUser || !roomData || !Number.isFinite(Number(round))) return;
+            const ledger = roomData.roundParticipants && roomData.roundParticipants[Number(round)];
+            const entry = ledger && ledger[currentUser];
+            if (!entry || entry.isBot === true) return;
+            const picks = getPlayerPicks(entry);
+            if (!picks.length) return;
+            if (!engineState.players[currentUser]) engineState.players[currentUser] = { name: currentUser };
+            const p = engineState.players[currentUser];
+            p.name = currentUser; p.picks = picks.slice(0, MAX_PICKS_PER_ROUND);
+            p.pick = p.picks[0] || null; p.ready = p.picks.length > 0;
+            p.bet = currentBet; p.round = Number(round); p.betDeducted = true;
+            p.betSources = p.betSources || {};
+            p.picks.forEach(n => { p.betSources[String(n)] = 'play'; });
+            localSelectionRound = Number(round);
+            localSelectionPicks = [...p.picks];
+        }
+
         function syncGameState(data) {
             if (!data || typeof data !== 'object') {
                 watchdogLog('warn', 'syncGameState received malformed data');
@@ -4498,23 +4597,10 @@
             }
             if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
             updateTotalBetDisplay();
-            try {
-                const currentNamesSet = new Set(playerNames);
-                Object.keys(lastKnownPlayersCache).forEach(name => {
-                    const prev = lastKnownPlayersCache[name];
-                    if (!prev) return;
-                    if (currentNamesSet.has(name)) return;
-                    const prevPicks = getPlayerPicks(prev);
-                    if (!prevPicks.length) return;
-                    if (prev.betDeducted !== true) return;
-                    const prevRound = Number(prev.round || 0);
-                    if (prevRound <= 0) return;
-                    try { if (gameRef) prevPicks.forEach(n => gameRef.child('numbersTaken/' + Number(n)).set(false).catch(() => {})); } catch (e) {}
-                    if (name === currentUser) return;
-                    if (prev.isBot === true) return;
-                    refundBetIdempotent(name, prevRound, Number(prev.bet || currentBet) * prevPicks.length, currentRoom).catch(() => {});
-                });
-            } catch (e) {}
+            // Do NOT release numbers or refund bets when a player disappears from
+            // the live /players presence view. A temporary connection drop must not
+            // make a number available again in the same round. The round ledger
+            // remains authoritative until the round is finalized.
             lastKnownPlayersCache = JSON.parse(JSON.stringify(players));
             if (phase === 'selection') {
                 stopResultsCountdown();
@@ -5006,9 +5092,30 @@
             }
 
             const players = (roomData.players && typeof roomData.players === 'object') ? roomData.players : {};
-            const playerNames = Object.keys(players);
-            const botNames = playerNames.filter(name => players[name] && players[name].isBot === true);
-            const humanPlayerCount = playerNames.length - botNames.length;
+            const ledger = (roomData.roundParticipants && roomData.roundParticipants[Number(round)] &&
+                typeof roomData.roundParticipants[Number(round)] === 'object')
+                ? roomData.roundParticipants[Number(round)] : {};
+            // Count PARTICIPANTS, not picks. A player who picked 1, 2, or 3
+            // numbers still contributes exactly one to the player count.
+            // Only players with at least one recorded pick in this round are counted.
+            const hasRoundPick = entry => {
+                if (!entry || typeof entry !== 'object') return false;
+                if (Array.isArray(entry.picks)) return entry.picks.some(n => Number.isInteger(Number(n)));
+                if (entry.pick !== undefined && entry.pick !== null && entry.pick !== '') return true;
+                return Number(entry.pickCount || 0) > 0;
+            };
+            const participantNames = Object.keys(ledger).filter(name => hasRoundPick(ledger[name]));
+            const fallbackNames = Object.keys(players).filter(name => hasRoundPick(players[name]));
+            const sourceNames = participantNames.length ? participantNames : fallbackNames;
+            const botNames = sourceNames.filter(name => {
+                const entry = ledger[name];
+                return entry ? entry.isBot === true : (players[name] && players[name].isBot === true);
+            });
+            const humanNames = sourceNames.filter(name => !botNames.includes(name));
+            // These are unique player identities who picked at least one number.
+            // They are NOT the total number of numbers picked.
+            const humanPlayerCount = humanNames.length;
+            const totalParticipantCount = sourceNames.length;
             const timestamp = Number(roomData.spinFinishedAt || roomData.finishedAt || Date.now()) || Date.now();
             const d = new Date(timestamp);
             const date = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -5019,9 +5126,12 @@
                 room: roomName,
                 round: Number(round),
                 betAmount: Number(roomData.betAmount || currentBet || 0),
-                playerCount: playerNames.length,
+                playerCount: totalParticipantCount,
                 humanPlayerCount: Math.max(0, humanPlayerCount),
+                realPlayerCount: Math.max(0, humanPlayerCount),
                 botPlayerCount: botNames.length,
+                botCount: botNames.length,
+                participantSource: participantNames.length ? 'roundParticipants' : 'players-fallback',
                 winningNumber: Number(winningNumber) || null,
                 winnersCount: Array.isArray(finalWinners) ? finalWinners.length : 0,
                 winAmount: Number(winAmount) || 0,
