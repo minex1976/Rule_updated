@@ -719,6 +719,16 @@
         const REFERRAL_COMMISSION_RATE = 0.05;
         const TELEGRAM_BOT_LINK = 'http://t.me/WinzoBettingBot';
         const FIREBASE_REST_URL = 'https://renewed-8fe38-default-rtdb.firebaseio.com';
+        // ---- Phase 1 authoritative game server ----
+        // Local testing: ws://localhost:8787. For GitHub Pages production use a WSS endpoint.
+        const WINZO_AUTHORITATIVE_SERVER_URL = window.WINZO_SERVER_URL || 'ws://localhost:8787';
+        const WINZO_AUTHORITATIVE_ENABLED = true;
+        let winzoSocket = null;
+        let winzoSocketGeneration = 0;
+        let winzoReconnectTimer = null;
+        const winzoPendingClaims = new Map(); // number -> callback (one in-flight tap per number)
+        let winzoServerReady = false;
+
 
         // ---- Lazy script loader (firebase-storage + tesseract.js) ----
         const SCRIPT_URLS = {
@@ -1347,22 +1357,28 @@
         }
 
         function claimNumber(number, callback) {
-            if (!gameRef || !Number.isInteger(Number(number))) { callback(false); return; }
-            const takenRef = gameRef.child('numbersTaken/' + Number(number));
-            takenRef.transaction(current => {
-                if (current === true) return;
-                return true;
-            }, (error, committed) => {
-                callback(!error && !!committed);
-            }, false);
+            if (!WINZO_AUTHORITATIVE_ENABLED || !winzoSocket || winzoSocket.readyState !== WebSocket.OPEN || !Number.isInteger(Number(number))) {
+                callback(false); return;
+            }
+            const n = Number(number);
+            winzoPendingClaims.set(n, callback);
+            try {
+                winzoSocket.send(JSON.stringify({ type: 'pick', number: n, bet: Number(currentBet || 0) }));
+            } catch (e) {
+                winzoPendingClaims.delete(n); callback(false);
+                return;
+            }
+            setTimeout(() => {
+                if (!winzoPendingClaims.has(n)) return;
+                const cb = winzoPendingClaims.get(n);
+                winzoPendingClaims.delete(n);
+                try { cb(false); } catch (_) {}
+            }, 8000);
         }
         function releaseNumber(number) {
-            if (!gameRef || !Number.isInteger(Number(number))) return;
-            // Remove instead of writing false so the room does not accumulate
-            // thousands of dead keys across rounds.
-            gameRef.child('numbersTaken/' + Number(number)).transaction(current => {
-                return current === true ? null : current;
-            }).catch(() => {});
+            const n = Number(number);
+            if (!WINZO_AUTHORITATIVE_ENABLED || !winzoSocket || winzoSocket.readyState !== WebSocket.OPEN || !Number.isInteger(n)) return;
+            try { winzoSocket.send(JSON.stringify({ type: 'unpick', number: n })); } catch (_) {}
         }
 
         const BOT_NAMES = [
@@ -1389,7 +1405,7 @@
         ];
         const BOT_STARTING_WALLET = 1000000;
         const BOT_PICKS_PER_ROUND = 3;
-        const BOTS_ENABLED = true;
+        const BOTS_ENABLED = false; // Phase 1: bots are authoritative on the Node.js server.
         const MIN_BOTS_PER_ROUND = 3;
         const MAX_BOTS_PER_ROUND = 6;
 
@@ -3553,47 +3569,21 @@
         }
 
         function associateClaimedNumber(username, number, round) {
-            if (!gameRef || !username) return Promise.resolve(false);
-            const playerRef = gameRef.child('players/' + username);
-            return playerRef.transaction(player => {
-                player = player && typeof player === 'object' ? player : {};
-                if (player.round != null && Number(player.round) !== Number(round)) player = {};
-                let picks = getPlayerPicks(player);
-                if (!picks.includes(Number(number))) picks.push(Number(number));
-                picks = [...new Set(picks)].filter(n => n >= 1 && n <= 200).slice(0, MAX_PICKS_PER_ROUND);
-                player.name = username; player.picks = picks; player.pick = picks[0] || null;
-                player.bet = currentBet; player.ready = picks.length > 0; player.round = Number(round);
-                player.betDeducted = player.betDeducted === true;
-                player.betSources = (player.betSources && typeof player.betSources === 'object') ? player.betSources : {};
-                return player;
-            }).then(result => !!(result && result.committed));
+            return Promise.resolve(!!WINZO_AUTHORITATIVE_ENABLED &&
+                username === currentUser && Number(round) === Number(engineState.roundNumber));
         }
 
         function finalizeNumberBet(username, number, round) {
-            if (!gameRef || !username) return Promise.resolve(false);
-            return gameRef.child('players/' + username).transaction(player => {
-                if (!player || Number(player.round) !== Number(round)) return player;
-                const picks = getPlayerPicks(player);
-                if (!picks.includes(Number(number))) return player;
-                player.betDeducted = true; player.ready = true; player.bet = currentBet;
-                player.betSources = (player.betSources && typeof player.betSources === 'object') ? player.betSources : {};
-                player.betSources[String(number)] = 'play';
-                return player;
-            }).then(result => !!(result && result.committed));
+            return Promise.resolve(!!WINZO_AUTHORITATIVE_ENABLED &&
+                username === currentUser && Number(round) === Number(engineState.roundNumber));
         }
 
         function rollbackNumberAssociation(username, number, round) {
-            if (!gameRef || !username) return Promise.resolve(false);
-            return gameRef.child('players/' + username).transaction(player => {
-                if (!player || Number(player.round) !== Number(round)) return player;
-                let picks = getPlayerPicks(player).filter(n => Number(n) !== Number(number));
-                player.picks = picks; player.pick = picks.length ? picks[0] : null;
-                player.ready = picks.length > 0;
-                player.betDeducted = picks.length > 0;
-                if (player.betSources && typeof player.betSources === 'object') delete player.betSources[String(number)];
-                if (!picks.length) { player.betSources = {}; player.round = null; }
-                return player;
-            }).then(result => !!(result && result.committed));
+            if (WINZO_AUTHORITATIVE_ENABLED) {
+                releaseNumber(number);
+                return Promise.resolve(true);
+            }
+            return Promise.resolve(false);
         }
 
         function rollbackLocalNumber(number, round) {
@@ -4352,122 +4342,95 @@
             });
         }
         function ensureSelectionDeadline() {
-            if (!gameRef || engineState.gamePhase !== 'selection') return;
-            if (gamePausedBySticky) return;
-            gameRef.child('selectionEndsAt').transaction(current => {
-                if (typeof current === 'number' && current > 0) return current;
-                return getServerNow() + SELECTION_SECONDS * 1000;
-            });
+            // The authoritative server creates and owns selectionEndsAt.
+            return;
         }
 
         function initGameConnection() {
             const generation = ++roomConnectionGeneration;
-            cancelPendingRoomSync();
-            watchdogState.recoveryCooldowns = {};
-            watchdogState.lastBotCheckAt = 0;
-            lastBotSetupRound = null;
-            lastBotSetupAt = 0;
-            spinRequestInFlight = false;
-            roundTransitionInFlight = false;
-            pendingPickOps.clear();
-
-            if (gameRef) {
-                try { gameRef.off(); } catch (e) {}
-                detachNumbersTakenListener();
-                detachLastResultListener();
-                clearCardFetchRetry();
-                gameRef = null;
+            if (winzoReconnectTimer) { clearTimeout(winzoReconnectTimer); winzoReconnectTimer = null; }
+            if (winzoSocket) {
+                try { winzoSocket.onopen = null; winzoSocket.onmessage = null; winzoSocket.onerror = null; winzoSocket.onclose = null; winzoSocket.close(); } catch (_) {}
+                winzoSocket = null;
             }
+            winzoServerReady = false;
+            pendingPickOps.clear();
             stopResilienceEngine();
             stopTimer();
             stopResultsCountdown();
+            gameRef = null;
+            if (!currentRoom || !currentUser || !WINZO_AUTHORITATIVE_ENABLED) return;
 
-            if (!database || !currentRoom || !currentUser) return;
-
-            const ref = database.ref('rooms/' + currentRoom);
-            gameRef = ref;
-
-            database.ref('.info/serverTimeOffset').once('value').then(snap => {
-                if (generation === roomConnectionGeneration) serverTimeOffset = Number(snap.val()) || 0;
-            }).catch(() => {});
-
-            ref.once('value').then(snapshot => {
-                if (generation !== roomConnectionGeneration) return;
-                if (!snapshot.exists()) {
-                    return ref.set({
-                        gameState: 'selection',
-                        round: 1,
-                        timer: SELECTION_SECONDS,
-                        selectionEndsAt: getServerNow() + SELECTION_SECONDS * 1000,
-                        drawnNumbers: [],
-                        winners: [],
-                        spinCount: 0,
-                        cumulativeRotation: 0,
-                        players: {},
-                        gameStarted: true,
-                        betAmount: currentBet,
-                        potAmount: 0,
-                        totalBets: 0,
-                        prizePool: 0,
-                        numbersTaken: {},
-                        winningNumber: null,
-                        spinLock: null,
-                        spinFinishedAt: null,
-                        spinPendingAt: null
-                    });
-                }
-            }).then(() => {
-                if (generation !== roomConnectionGeneration || !gameRef) return;
-                return ref.once('value');
-            }).then(snapshot => {
-                if (!snapshot || generation !== roomConnectionGeneration) return;
-                const data = snapshot.val() || {};
-                syncGameState(data);
+            let connectedOnce = false;
+            try {
+                winzoSocket = new WebSocket(WINZO_AUTHORITATIVE_SERVER_URL);
+            } catch (err) {
+                isNetworkConnected = false;
+                setConnectionStatus(false, '⚠️ Could not open game server connection.');
+                return;
+            }
+            const ws = winzoSocket;
+            ws.onopen = () => {
+                if (generation !== roomConnectionGeneration || ws !== winzoSocket) return;
+                connectedOnce = true;
+                winzoServerReady = true;
+                isNetworkConnected = true;
+                ws.send(JSON.stringify({ type: 'join', room: currentRoom, username: currentUser, bet: Number(currentBet || 15) }));
+                setConnectionStatus(true, '🔑 Connected to authoritative game server');
+            };
+            ws.onmessage = ev => {
+                if (generation !== roomConnectionGeneration || ws !== winzoSocket) return;
+                let msg; try { msg = JSON.parse(ev.data); } catch (_) { return; }
+                if (Number(msg.serverNow)) serverTimeOffset = Number(msg.serverNow) - Date.now();
                 markSyncReceived();
-                fastForwardStuckRoom(generation).catch(() => {});
-                if (BOTS_ENABLED) {
-                    addBotsToRoom().then(() =>
-                        ensureBotsPickedForRound(Number(engineState.roundNumber) || 1)
-                    ).catch(() => {});
+                if (msg.type === 'hello' || msg.type === 'pong') return;
+                if (msg.type === 'state' || msg.type === 'joined') {
+                    if (msg.state) {
+                        syncGameState(msg.state);
+                        lastSuccessfulSyncAt = Date.now();
+                    }
+                    isNetworkConnected = true;
+                    return;
                 }
-            }).catch(err => {
-                if (generation === roomConnectionGeneration) {
-                    window.WINZO_RECORD_ERROR('ROOM-INIT', err);
-                    updateStatus('⚠️ Could not connect to the game room. Retrying…');
+                if (msg.type === 'pickAccepted') {
+                    const n = Number(msg.number || 0);
+                    const cb = winzoPendingClaims.get(n);
+                    if (cb) { winzoPendingClaims.delete(n); try { cb(true); } catch (_) {} }
+                    return;
                 }
-            });
-
-            ref.on('value', snapshot => {
+                if (msg.type === 'pickRejected') {
+                    const n = Number(msg.number || 0);
+                    const cb = winzoPendingClaims.get(n) || winzoPendingClaims.values().next().value;
+                    if (cb) {
+                        if (n) winzoPendingClaims.delete(n); else {
+                            const firstKey = winzoPendingClaims.keys().next().value;
+                            if (firstKey != null) winzoPendingClaims.delete(firstKey);
+                        }
+                        try { cb(false); } catch (_) {}
+                    }
+                    if (msg.error) updateStatus('❌ ' + msg.error);
+                    return;
+                }
+                if (msg.type === 'spinRejected' && msg.error) updateStatus('⚠️ ' + msg.error);
+                if (msg.type === 'error' && msg.error) updateStatus('⚠️ ' + msg.error);
+            };
+            ws.onerror = () => {
                 if (generation !== roomConnectionGeneration) return;
-                const data = snapshot.val();
-                if (data) queueSyncGameState(data);
-            }, err => window.WINZO_RECORD_ERROR('ROOM-LISTEN', err));
-
-            attachNumbersTakenListener();
-            attachLastResultListener(ref);
-            // No extra field listeners here; the room listener is authoritative.
-            attachCriticalFieldListeners(ref);
-
-            const playerRef = ref.child('players/' + currentUser);
-            playerRef.onDisconnect().remove();
-            playerRef.set({
-                name: currentUser,
-                pick: null,
-                picks: [],
-                bet: currentBet,
-                ready: false,
-                betDeducted: false,
-                betSources: {},
-                round: engineState.roundNumber || 1
-            }).catch(() => {});
-
+                isNetworkConnected = false;
+                winzoServerReady = false;
+                setConnectionStatus(false, '⚠️ Game server connection lost.');
+            };
+            ws.onclose = () => {
+                if (generation !== roomConnectionGeneration) return;
+                isNetworkConnected = false;
+                winzoServerReady = false;
+                stopTimer();
+                setConnectionStatus(false, connectedOnce ? '🔄 Reconnecting to game server…' : '⚠️ Game server unavailable.');
+                if (currentUser && currentRoom && generation === roomConnectionGeneration) {
+                    winzoReconnectTimer = setTimeout(() => initGameConnection(), 2500);
+                }
+            };
             isGameInitialized = true;
-            setConnectionStatus(true, '🔑 Connected to ' + currentBet + ' Birr room');
-            startResilienceEngine();
-
-            setTimeout(() => {
-                if (generation === roomConnectionGeneration) renderNumberPicker();
-            }, 100);
         }
         function syncGameState(data) {
             if (!data || typeof data !== 'object') {
@@ -4524,6 +4487,7 @@
             if (playerCountEl) playerCountEl.textContent = String(playerNames.length);
             updateTotalBetDisplay();
             try {
+                if (WINZO_AUTHORITATIVE_ENABLED) throw new Error('authoritative-server');
                 const currentNamesSet = new Set(playerNames);
                 Object.keys(lastKnownPlayersCache).forEach(name => {
                     const prev = lastKnownPlayersCache[name];
@@ -4597,6 +4561,21 @@
                     if (winners.length) playWinningAudio(); else playNoWinnerAudio();
                 }
             } else { engineState.winnersModalShown = false; }
+            // Phase 1 keeps wallet/payout storage in Firebase, but the server owns
+            // the result that authorizes the payout. The existing idempotent payout
+            // key prevents duplicate credits when multiple clients receive results.
+            if (phase === 'results' && Array.isArray(data.winners) && data.winners.includes(currentUser)) {
+                const amount = Number(data.winAmount || 0);
+                if (amount > 0) creditWinnerAndReferral(currentUser, amount, 0, currentRoom, round).catch(() => {});
+            }
+            if (data.singlePlayerRefund && Number(data.singlePlayerRefund.round) === round - 1 &&
+                data.singlePlayerRefund.username === currentUser) {
+                const refundKey = `${currentRoom}:single:${data.singlePlayerRefund.round}:${currentUser}`;
+                if (localStorage.getItem('winzo_refund_' + refundKey) !== '1') {
+                    localStorage.setItem('winzo_refund_' + refundKey, '1');
+                    refundBetIdempotent(currentUser, Number(data.singlePlayerRefund.round), Number(data.singlePlayerRefund.amount || 0), currentRoom).catch(() => {});
+                }
+            }
             applyCardState();
             updatePrizeDisplay(); updatePickStatus(); renderNumberPicker(); updateTotalBetDisplay();
             lastRoomSyncAt = Date.now();
@@ -4619,163 +4598,15 @@
         }
 
         function requestSpin() {
-            if (!gameRef || engineState.gamePhase !== 'selection' || gamePausedBySticky) {
-                return Promise.resolve(false);
-            }
-            if (spinRequestInFlight) return spinRequestInFlight;
-
-            const generation = roomConnectionGeneration;
-            const round = Number(engineState.roundNumber);
-            spinRequestInFlight = gameRef.once('value').then(snap => {
-                if (generation !== roomConnectionGeneration || !gameRef) return false;
-                const roomSnap = snap.val() || {};
-                if (roomSnap.gameState !== 'selection' || Number(roomSnap.round) !== round) return false;
-
-                const ps = roomSnap.players || {};
-                const eligible = Object.keys(ps).filter(name => {
-                    const p = ps[name];
-                    return p && getPlayerPicks(p).length > 0 &&
-                        Number(p.round) === round && p.betDeducted === true;
-                });
-
-                // A single eligible player is intentionally refunded and the round
-                // advances; no winner is declared.
-                if (eligible.length === 1) {
-                    const only = eligible[0];
-                    const amount = Number(ps[only].bet || currentBet) * getPlayerPicks(ps[only]).length;
-                    return gameRef.transaction(r => {
-                        if (!r || r.gameState !== 'selection' || Number(r.round) !== round) return r;
-                        const rps = r.players || {};
-                        const currentEligible = Object.keys(rps).filter(name => {
-                            const p = rps[name];
-                            return p && getPlayerPicks(p).length > 0 &&
-                                Number(p.round) === round && p.betDeducted === true;
-                        });
-                        if (currentEligible.length !== 1 || currentEligible[0] !== only) return r;
-
-                        Object.keys(rps).forEach(n => {
-                            const player = rps[n];
-                            if (!player) return;
-                            player.pick = null;
-                            player.picks = [];
-                            player.ready = false;
-                            player.betDeducted = false;
-                            player.betSources = {};
-                            player.round = null;
-                        });
-                        r.players = rps;
-                        r.numbersTaken = {};
-                        r.gameState = 'selection';
-                        r.round = round + 1;
-                        r.timer = SELECTION_SECONDS;
-                        r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
-                        r.singlePlayerRefund = { round, username: only, amount, ts: Date.now() };
-                        r.winningNumber = null; r.winners = []; r.spinLock = null;
-                        r.drawnNumbers = []; r.spinFinishedAt = null; r.spinPendingAt = null;
-                        return r;
-                    }).then(res => {
-                        if (!res || !res.committed) return false;
-                        return refundBetIdempotent(only, round, amount, currentRoom).then(ok => {
-                            if (ok && gameRef) {
-                                gameRef.child('singlePlayerRefund').transaction(cur => {
-                                    if (!cur || Number(cur.round) !== round || cur.username !== only) return cur;
-                                    return null;
-                                }).catch(() => {});
-                            }
-                            return ok;
-                        });
-                    });
-                }
-
-                // With zero eligible players, do not invent a random winning number.
-                // Just start a clean next selection round.
-                if (eligible.length === 0) {
-                    return gameRef.transaction(r => {
-                        if (!r || r.gameState !== 'selection' || Number(r.round) !== round) return r;
-                        const currentEligible = Object.keys(r.players || {}).filter(name => {
-                            const p = r.players[name];
-                            return p && getPlayerPicks(p).length > 0 &&
-                                Number(p.round) === round && p.betDeducted === true;
-                        });
-                        if (currentEligible.length > 0) return r;
-                        r.gameState = 'selection';
-                        r.round = round + 1;
-                        r.timer = SELECTION_SECONDS;
-                        r.selectionEndsAt = getServerNow() + SELECTION_SECONDS * 1000;
-                        r.players = r.players || {};
-                        Object.keys(r.players).forEach(n => {
-                            const p = r.players[n];
-                            if (p) {
-                                p.pick = null; p.picks = []; p.ready = false;
-                                p.betDeducted = false; p.betSources = {}; p.round = null;
-                            }
-                        });
-                        r.numbersTaken = {};
-                        r.winningNumber = null; r.winners = []; r.spinLock = null;
-                        r.drawnNumbers = []; r.spinFinishedAt = null; r.spinPendingAt = null;
-                        r.potAmount = 0; r.prizePool = 0; r.totalBets = 0;
-                        return r;
-                    }).then(res => !!(res && res.committed));
-                }
-
-                // Multiple eligible players: choose only from numbers that are
-                // actually taken in this round. The transaction is the authoritative lock.
-                return gameRef.transaction(r => {
-                    if (!r || r.gameState !== 'selection' || Number(r.round) !== round) return r;
-                    if (r.spinLock && Number(r.spinLock.round) === round) return r;
-
-                    const players = r.players || {};
-                    const eligibleInner = Object.keys(players).filter(name => {
-                        const p = players[name];
-                        return p && getPlayerPicks(p).length > 0 &&
-                            Number(p.round) === round && p.betDeducted === true;
-                    });
-                    if (eligibleInner.length < 2) return r;
-
-                    // Preserve insertion order while avoiding repeated linear
-                    // includes() scans when several players pick overlapping numbers.
-                    const eligibleNumberSet = new Set();
-                    eligibleInner.forEach(name => {
-                        getPlayerPicks(players[name]).forEach(n => eligibleNumberSet.add(n));
-                    });
-                    if (!eligibleNumberSet.size) return r;
-
-                    const eligibleNumbers = Array.from(eligibleNumberSet);
-                    const winningNumber = eligibleNumbers[
-                        Math.floor(Math.random() * eligibleNumbers.length)
-                    ];
-                    const winners = eligibleInner.filter(name =>
-                        getPlayerPicks(players[name]).includes(winningNumber)
-                    );
-                    const bet = Number(r.betAmount || currentBet);
-                    const totalPicks = eligibleInner.reduce(
-                        (sum, name) => sum + getPlayerPicks(players[name]).length, 0
-                    );
-                    const pot = totalPicks * bet;
-                    const pool = Math.floor(pot * PAYOUT_RATE);
-
-                    r.spinLock = { round, timestamp: firebase.database.ServerValue.TIMESTAMP };
-                    r.winningNumber = winningNumber;
-                    r.winners = winners;
-                    r.potAmount = pot;
-                    r.prizePool = pool;
-                    r.gameState = 'spinning';
-                    r.spinStartedRound = round;
-                    r.timer = 5;
-                    r.spinCount = Number(r.spinCount || 0) + 1;
-                    r.spinFinishedAt = null;
-                    r.spinPendingAt = null;
-                    return r;
-                }).then(result => !!(result && result.committed));
-            }).catch(err => {
-                window.WINZO_RECORD_ERROR('REQUEST-SPIN', err);
-                return false;
-            }).finally(() => {
-                spinRequestInFlight = false;
-            });
-            return spinRequestInFlight;
+            if (!WINZO_AUTHORITATIVE_ENABLED || !winzoSocket || winzoSocket.readyState !== WebSocket.OPEN ||
+                engineState.gamePhase !== 'selection' || gamePausedBySticky) return Promise.resolve(false);
+            try {
+                winzoSocket.send(JSON.stringify({ type: 'spin' }));
+                return Promise.resolve(true);
+            } catch (_) { return Promise.resolve(false); }
         }
         function runRoomWatchdog() {
+            if (WINZO_AUTHORITATIVE_ENABLED) return;
             if (!gameRef || !currentUser || !navigator.onLine || gamePausedBySticky) return;
 
             if (engineState.gamePhase === 'selection') {
@@ -4976,203 +4807,17 @@
         }
 
         async function executeSpin() {
-            if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || !gameRef || gamePausedBySticky) return;
-
-            const generation = roomConnectionGeneration;
-            const roomName = currentRoom;
-            const ref = gameRef;
-
+            if (engineState.isSpinning || engineState.gamePhase !== 'spinning' || gamePausedBySticky) return;
+            const round = Number(engineState.roundNumber);
             engineState.isSpinning = true;
             engineState.spinInProgress = true;
-
-            let authoritativeRound = null;
-            let authoritativeWinningNumber = null;
-            let authoritativeWinners = [];
-            let finalRoom = null;
-
-            try {
-                const room = await readRoomForSpin(3);
-
-                // A connection-generation change means this client moved to a
-                // newer room listener. Do not report a spin failure in that case.
-                if (generation !== roomConnectionGeneration || ref !== gameRef) return;
-
-                if (!room) {
-                    // Do not modify Firebase. Another listener/watchdog can
-                    // continue from the authoritative state.
-                    return;
-                }
-
-                const round = Number(room.round);
-                const winningNumber = Number(room.winningNumber);
-                const winners = Array.isArray(room.winners) ? room.winners.filter(Boolean) : [];
-                authoritativeRound = round;
-                authoritativeWinningNumber = winningNumber;
-                authoritativeWinners = winners;
-
-                if (room.gameState !== 'spinning') {
-                    // Another client may already have completed this spin.
-                    // There is nothing to recover or restart here.
-                    return;
-                }
-
-                if (round !== Number(engineState.roundNumber) ||
-                    !Number.isInteger(winningNumber) ||
-                    winningNumber < 1 || winningNumber > 200) {
-
-                    // Re-read before considering recovery. A stale local/REST
-                    // response must never erase an authoritative spin.
-                    const verify = await readRoomForSpin(2);
-                    if (generation !== roomConnectionGeneration || ref !== gameRef) return;
-
-                    const verifyRound = verify ? Number(verify.round) : NaN;
-                    const verifyWinner = verify ? Number(verify.winningNumber) : NaN;
-
-                    if (verify &&
-                        verify.gameState === 'spinning' &&
-                        verifyRound === round &&
-                        Number.isInteger(verifyWinner) &&
-                        verifyWinner >= 1 && verifyWinner <= 200) {
-                        authoritativeRound = verifyRound;
-                        authoritativeWinningNumber = verifyWinner;
-                        authoritativeWinners = Array.isArray(verify.winners)
-                            ? verify.winners.filter(Boolean) : [];
-                    } else {
-                        // Do not reset the room here. The watchdog can only
-                        // recover a genuinely stale spin after its safety window.
-                        return;
-                    }
-                }
-
-                // A zero-winner result is not itself a malformed spin. The
-                // winning number is authoritative; payout simply becomes zero.
-                engineState.allTakenNumbers = new Set(
-                    Object.keys(room.numbersTaken || {})
-                        .filter(k => room.numbersTaken[k] === true)
-                        .map(Number).filter(n => n >= 1 && n <= 200)
-                );
-                engineState.winners = authoritativeWinners;
-
-                // Visual delay only. Never change the authoritative winner.
-                await new Promise(resolve => setTimeout(resolve, 1800));
-                if (generation !== roomConnectionGeneration || ref !== gameRef) return;
-
-                // Retry the same state transition. The round and winning number
-                // are captured above, so a retry can never select a new number.
-                let result = null;
-                for (let attempt = 0; attempt < 3; attempt++) {
-                    result = await ref.transaction(current => {
-                        if (!current || Number(current.round) !== authoritativeRound) return current;
-
-                        // If another client already completed the spin, accept its
-                        // result instead of attempting to overwrite it.
-                        if (current.gameState === 'results') return current;
-
-                        if (current.gameState !== 'spinning') return current;
-
-                        const currentWinner = Number(current.winningNumber);
-                        if (!Number.isInteger(currentWinner) ||
-                            currentWinner < 1 || currentWinner > 200) {
-                            return current;
-                        }
-
-                        // Use the authoritative value currently in Firebase.
-                        // This prevents a stale client from changing the result.
-                        current.drawnNumbers = [currentWinner];
-                        current.gameState = 'results';
-                        current.timer = 5;
-                        current.spinFinishedAt = firebase.database.ServerValue.TIMESTAMP;
-                        return current;
-                    });
-
-                    if (result && result.committed) break;
-
-                    const state = result && result.snapshot ? result.snapshot.val() : null;
-                    if (state && Number(state.round) === authoritativeRound &&
-                        state.gameState === 'results') {
-                        break;
-                    }
-
-                    if (attempt < 2) {
-                        await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
-                    }
-                }
-
-                if (!result || !result.snapshot) {
-                    return;
-                }
-
-                finalRoom = result.snapshot.val() || {};
-
-                // If another client completed it, use the Firebase result.
-                // Otherwise use the same authoritative number captured above.
-                if (Number(finalRoom.round) !== authoritativeRound) return;
-                if (finalRoom.gameState !== 'results') return;
-
-                const finalWinningNumber = Number(finalRoom.winningNumber);
-                if (!Number.isInteger(finalWinningNumber) ||
-                    finalWinningNumber < 1 || finalWinningNumber > 200) {
-                    return;
-                }
-
-                const finalWinners = Array.isArray(finalRoom.winners)
-                    ? finalRoom.winners.filter(Boolean)
-                    : authoritativeWinners;
-
-                const pool = Number(finalRoom.prizePool ?? finalRoom.potAmount ?? 0);
-                const winAmount = finalWinners.length ? Math.floor(pool / finalWinners.length) : 0;
-
-                // lastResult is informational. Failure here must never roll back
-                // the round or cause a second spin.
-                await ref.child('lastResult').set({
-                    round: authoritativeRound,
-                    winningNumber: finalWinningNumber,
-                    winners: finalWinners,
-                    winAmount,
-                    setAt: firebase.database.ServerValue.TIMESTAMP
-                }).catch(err => window.WINZO_RECORD_ERROR('LAST-RESULT', err));
-
-                // Payout is already idempotent through gameWinPayouts. We keep
-                // that mechanism unchanged and only retry through its own logic.
-                if (finalWinners.length && winAmount > 0) {
-                    const payoutResults = await Promise.allSettled(
-                        finalWinners.map(name => creditWinnerAndReferral(
-                            name, winAmount, 0, roomName, authoritativeRound
-                        ))
-                    );
-
-                    if (finalWinners.includes(currentUser)) {
-                        const failed = payoutResults.some(
-                            r => r.status === 'rejected' || r.value !== true
-                        );
-
-                        if (failed) {
-                            updateStatus('⚠️ Win recorded; wallet credit is being retried.', true);
-                        } else {
-                            updateStatus(`You won ${winAmount} Birr!`, true);
-                            syncWalletFromFirebase();
-                        }
-                    }
-                }
-
-                if (tg && tg.HapticFeedback && finalWinners.includes(currentUser)) {
-                    try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
-                }
-            } catch (err) {
-                window.WINZO_RECORD_ERROR('EXECUTE-SPIN', err);
-
-                // Do not reset the room and do not show a hard "spin failed"
-                // message for a transient client-side/network exception.
-                // The authoritative room/watchdog remains responsible for recovery.
-                const current = gameRef === ref ? lastRoomSnapshotRaw : null;
-                if (current &&
-                    Number(current.round) === Number(authoritativeRound) &&
-                    current.gameState === 'spinning') {
-                    updateStatus('⏳ Synchronizing the spin…', false);
-                }
-            } finally {
+            // The server has already selected and locked the winning number.
+            // This delay is visual only; no client-side result is written.
+            await new Promise(resolve => setTimeout(resolve, 1800));
+            if (Number(engineState.roundNumber) === round && engineState.gamePhase === 'spinning') {
                 engineState.isSpinning = false;
                 engineState.spinInProgress = false;
+                updateUIFromState();
             }
         }
 
